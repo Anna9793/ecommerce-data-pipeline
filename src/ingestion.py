@@ -1,18 +1,24 @@
-from config.config import INPUT_DATA_FILE, OUTPUT_DATA_FILE
-
 import pandas as pd
 from pathlib import Path
+import logging
+
+from config.config import INPUT_DATA_FILE, OUTPUT_DATA_FILE
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 def load_dataset(path):
-    print(f"Loading dataset from {path}")
+    logging.info(f"Loading dataset from {path}")
     df = pd.read_excel(path)
-    print(f"Loaded {len(df)} rows")
+    logging.info(f"Loaded {len(df)} rows")
     return df
 
 def save_raw_dataset(df, path):
-    print(f"Saving dataset to {path}")
+    logging.info(f"Saving dataset to {path}")
     df.to_csv(path, index=False)
-    print("Dataset saved successfully")
+    logging.info("Dataset saved successfully")
 
 def run_ingestion():
     input_path = INPUT_DATA_FILE
