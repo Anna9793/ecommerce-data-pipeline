@@ -42,7 +42,6 @@ J --> K[Customer Segments]
 │   ├── predictions
 │   ├── processedgit
 │   └── raw
-
 ├── main.py
 ├── models
 │   └── best_kmeans_pipeline.pkl
@@ -61,9 +60,6 @@ J --> K[Customer Segments]
 │   ├── rfm_features.py
 │   ├── transformation.py
 │   └── utils
-│       ├── config_loader.py
-│       ├── config_schema.py
-│       └── data_validation.py
 └── requirements.txt
 ```
 
