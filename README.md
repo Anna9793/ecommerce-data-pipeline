@@ -7,7 +7,7 @@ This system performs:
 - data ingestion
 - data cleaning
 - feature engineering
-- RFM customer feature commputation
+- RFM customer feature computation
 - clustering with KMeans
 - experiment tracking with MLflow
 - prediction pipeline for new data
