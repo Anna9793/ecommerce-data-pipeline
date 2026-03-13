@@ -31,7 +31,7 @@ def run_prediction_pipeline(input_path):
     
     df = transform_data(df)
 
-    rfm = compute_rfm()
+    rfm = compute_rfm(df)
 
     logging.info("Loading model")
 

@@ -18,7 +18,9 @@ PREDICTED_CLUSTERS, CLUSTER_PROFILE, CLUSTER_PLOT, BEST_MODEL_PATH)
 from src.utils.config_loader import load_config
 
 config = load_config("config/experiment.yaml")
-FEATURE_COLUMNS = config.features.columns
+cluster_range = config.clustering.cluster_range
+random_state = config.clustering.random_state
+feature_columns = config.features.columns
 
 def load_rfm_data(path):
     logging.info("Loading RFM dataset from %s", path)
@@ -45,7 +47,7 @@ def train_pipeline(pipeline, df):
 
     logging.info("Training clustering pipeline")
 
-    clusters = pipeline.fit_predict(df[FEATURE_COLUMNS])
+    clusters = pipeline.fit_predict(df[feature_columns])
 
     return pipeline, clusters
 
@@ -100,7 +102,7 @@ def visualize_clusters(df, pipeline, path):
 
     scaler = pipeline.named_steps["scaler"]
 
-    scaled_features = scaler.transform(df[FEATURE_COLUMNS])
+    scaled_features = scaler.transform(df[feature_columns])
 
     pca = PCA(n_components=2)
 
@@ -162,9 +164,6 @@ def save_model(pipeline, path):
 def run_clustering(config, config_path=None):
     
     config_name = Path(config_path).stem if config_path else "default"
-
-    cluster_range = config.clustering.cluster_range
-    random_state = config.clustering.random_state
     
     df = load_rfm_data(RFM_CUSTOMERS)
 
@@ -194,14 +193,14 @@ def run_clustering(config, config_path=None):
 
             pipeline, clusters = train_pipeline(pipeline, train_df)
 
-            score = silhouette_score(train_df[FEATURE_COLUMNS], clusters)
+            score = silhouette_score(train_df[feature_columns], clusters)
 
             mlflow.log_metric("silhouette_score", float(score))
 
             mlflow.sklearn.log_model(
             pipeline, 
             artifact_path="kmeans_pipeline",
-            input_example=train_df[FEATURE_COLUMNS].head(5),
+            input_example=train_df[feature_columns].head(5),
             registered_model_name="CustomerSegmentationModel"
             )
 
@@ -232,7 +231,7 @@ def run_clustering(config, config_path=None):
 
     visualize_clusters(train_df, pipeline, CLUSTER_PLOT)
 
-    features = test_df[FEATURE_COLUMNS]
+    features = test_df[feature_columns]
 
     predictions = pipeline.predict(features)
 
@@ -241,4 +240,4 @@ def run_clustering(config, config_path=None):
     save_clustered_data(test_df, PREDICTED_CLUSTERS)
 
 if __name__ == "__main__":
-    run_clustering()
+    run_clustering(config)
