@@ -36,32 +36,38 @@ J --> K[Customer Segments]
 
 ## Project Structure
 
+```
+```
 ecommerce-data-pipeline
 │
-├── src/
+├── config/                # configuration files
+│   ├── experiment.yaml
+│   ├── experiments/
+│   └── paths.py
+│
+├── data/                  # datasets (not tracked in git)
+│   ├── raw/
+│   ├── processed/
+│   └── predictions/
+│
+├── notebooks/             # exploratory analysis
+│
+├── src/                   # pipeline source code
 │   ├── cleaning.py
 │   ├── transformation.py
 │   ├── rfm_features.py
 │   ├── clustering.py
+│   ├── ingestion.py
 │   └── utils/
+│       ├── config_loader.py
+│       ├── config_schema.py
 │       └── data_validation.py
 │
-├── config/
-│   ├── paths.py
-│   └── experiment.yaml
-│
-├── notebooks/
-│   exploration.ipynb
-│   clustering.ipynb
-│
-├── data/
-│   raw/
-│   processed/
-│   predictions/
-│
-├── main.py
-├── predict.py
+├── main.py                # training pipeline entry point
+├── predict.py             # prediction pipeline
+├── app.py                 # Streamlit dashboard
 └── requirements.txt
+```
 
 ## Running the Pipeline
 
