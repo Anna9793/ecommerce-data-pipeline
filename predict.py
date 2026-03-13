@@ -1,6 +1,7 @@
 import pandas as pd
 import joblib
 import logging
+import argparse
 
 from src.cleaning import clean_data
 from src.transformation import transform_data
@@ -42,15 +43,32 @@ def run_prediction(input_path, model_path, config_path="config/experiment.yaml")
 
 if __name__ == "__main__":
 
-    input_file = ONLINE_RETAIL_CSV
+    parser = argparse.ArgumentParser(
+        description="Run customer segmentation predictions"
+    )
+
+    parser.add_argument(
+        "--input",
+        type=str,
+        default=ONLINE_RETAIL_CSV,
+        help="Path to input transaction dataset"
+    )
+
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=CUSTOMER_CLUSTERS,
+        help="Path where predictions will be saved"
+    )
+
+    args = parser.parse_args()
+
     model_file = BEST_MODEL_PATH
 
-    predictions = run_prediction(input_file, model_file)
+    predictions = run_prediction(args.input, model_file)
 
-    output_path = CUSTOMER_CLUSTERS
+    logging.info("Saving predictions to %s", args.output)
 
-    logging.info("Saving predictions to %s", output_path)
-
-    predictions.to_csv(output_path, index = False)
+    predictions.to_csv(args.output, index = False)
 
 
