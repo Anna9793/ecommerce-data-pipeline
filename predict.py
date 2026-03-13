@@ -8,6 +8,7 @@ from src.transformation import transform_data
 from src.rfm_features import compute_rfm
 from src.utils.config_loader import load_config
 from config.paths import ONLINE_RETAIL_CSV, BEST_MODEL_PATH, CUSTOMER_CLUSTERS
+from src.utils.data_validation import validate_columns
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,6 +27,17 @@ def run_prediction(input_path, model_path, config_path="config/experiment.yaml")
 
     logging.info("Cleaning data")
     df = clean_data(df)
+
+    validate_columns(
+        df,
+        ["invoice_no",
+        "stock_code",
+        "quantity",
+        "unit_price",
+        "customer_id",
+        "invoice_date",
+        ]
+    )
 
     logging.info("Transforming data")
     df = transform_data(df)
