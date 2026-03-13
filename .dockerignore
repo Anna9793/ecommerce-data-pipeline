@@ -1,0 +1,5 @@
+venv
+mlruns
+__pycache__
+.git
+.ipynb_checkpoints
