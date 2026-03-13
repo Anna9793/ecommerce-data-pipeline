@@ -37,7 +37,6 @@ J --> K[Customer Segments]
 ## Project Structure
 
 ```
-```
 ecommerce-data-pipeline
 │
 ├── config/                # configuration files
