@@ -1,0 +1,12 @@
+clustering:
+  cluster_range: [3, 4, 5, 6]
+  random_state: 42
+
+mlflow:
+  experiment_name: "customer_segmentation"
+
+features:
+  columns:
+    - recency
+    - frequency
+    - monetary

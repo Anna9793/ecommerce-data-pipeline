@@ -1,6 +1,10 @@
 __pycache__/
 *.pyc
+venv/
 data/raw/
 data/processed/
+data/predictions
+mlruns/
+models/
 .ipynb_checkpoints/
-.env
+.DS_Store
