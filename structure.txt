@@ -1,0 +1,32 @@
+.
+
+├── config
+├── data
+│   ├── predictions
+│   ├── processed
+│   └── raw
+
+├── main.py
+├── models
+│   └── best_kmeans_pipeline.pkl
+├── notebooks
+├── predict.py
+├── reports
+│   └── cluster.visualization.png
+├── requirements.txt
+├── src
+│   ├── cleaning.py
+│   ├── clustering.py
+│   ├── ingestion.py
+│   ├── pipelines
+│   │   ├── prediction_pipeline.py
+│   │   └── training_pipeline.py
+│   ├── rfm_features.py
+│   ├── transformation.py
+│   └── utils
+│       ├── config_loader.py
+│       ├── config_schema.py
+│       └── data_validation.py
+└── requirements.txt
+
+16 directories, 39 files

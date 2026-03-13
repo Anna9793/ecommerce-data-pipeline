@@ -37,34 +37,33 @@ J --> K[Customer Segments]
 ## Project Structure
 
 ```
-ecommerce-data-pipeline
-│
-├── config/                # configuration files
-│   ├── experiment.yaml
-│   ├── experiments/
-│   └── paths.py
-│
-├── data/                  # datasets (not tracked in git)
-│   ├── raw/
-│   ├── processed/
-│   └── predictions/
-│
-├── notebooks/             # exploratory analysis
-│
-├── src/                   # pipeline source code
-│   ├── cleaning.py
-│   ├── transformation.py
-│   ├── rfm_features.py
-│   ├── clustering.py
-│   ├── ingestion.py
-│   └── utils/
-│       ├── config_loader.py
-│       ├── config_schema.py
-│       └── data_validation.py
-│
-├── main.py                # training pipeline entry point
-├── predict.py             # prediction pipeline
-├── app.py                 # Streamlit dashboard
+├── config
+├── data
+│   ├── predictions
+│   ├── processedgit
+│   └── raw
+
+├── main.py
+├── models
+│   └── best_kmeans_pipeline.pkl
+├── notebooks
+├── predict.py
+├── reports
+│   └── cluster.visualization.png
+├── requirements.txt
+├── src
+│   ├── cleaning.py
+│   ├── clustering.py
+│   ├── ingestion.py
+│   ├── pipelines
+│   │   ├── prediction_pipeline.py
+│   │   └── training_pipeline.py
+│   ├── rfm_features.py
+│   ├── transformation.py
+│   └── utils
+│       ├── config_loader.py
+│       ├── config_schema.py
+│       └── data_validation.py
 └── requirements.txt
 ```
 
