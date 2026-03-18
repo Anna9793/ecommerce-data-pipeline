@@ -1,9 +1,18 @@
 services:
+  
+  api:
+    build: .
+    container_name: fastapi-server
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - .:/app
 
   mlflow:
     build: .
     container_name: mlflow-server
-    working_dir: /app
     command: >
       mlflow server
       --backend-store-uri file:/mlruns
@@ -14,4 +23,3 @@ services:
       - "5050:5050"
     volumes:
       - ./mlruns:/mlruns
-

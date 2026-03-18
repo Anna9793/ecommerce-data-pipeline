@@ -196,14 +196,15 @@ def run_clustering(config, config_path=None):
             score = silhouette_score(train_df[feature_columns], clusters)
 
             mlflow.log_metric("silhouette_score", float(score))
-
+            
+            print("About to log model")
             mlflow.sklearn.log_model(
             pipeline, 
             artifact_path="kmeans_pipeline",
-            input_example=train_df[feature_columns].head(5),
-            registered_model_name="CustomerSegmentationModel"
+            input_example=train_df[feature_columns].head(5)
             )
-
+            print("Model logged successfully")
+            
             if score > best_score:
                 
                 best_score = score
