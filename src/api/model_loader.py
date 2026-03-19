@@ -1,13 +1,23 @@
-import os
 import mlflow
-import mlflow.sklearn
+import mlflow.pyfunc
 
-mlflow.set_tracking_uri(
-    os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5050")
-)
+MODEL_NAME = "CustomerSegmentationModel"
+MODEL_URI = f"models:/{MODEL_NAME}/latest"
 
-MODEL_URI = "models:/CustomerSegmentationModel/140"
+current_model = None
+current_version = None
 
 def load_model():
-    model = mlflow.sklearn.load_model(MODEL_URI)
-    return model
+    global current_model, current_version
+
+    model = mlflow.pyfunc.load_model(MODEL_URI)
+
+    #Extract version from metada
+    version = model.metadata.run_id
+
+    if version != current_version:
+        print(f"🔄Loading new model version: {version}")
+        current_model = model
+        current_version = version
+
+    return current_modelmodel

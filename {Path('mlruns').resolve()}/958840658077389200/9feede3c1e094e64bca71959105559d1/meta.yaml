@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/Anna/ecommerce-data-pipeline/{Path('mlruns').resolve()}/958840658077389200/9feede3c1e094e64bca71959105559d1/artifacts
+end_time: 1773951430963
+entry_point_name: ''
+experiment_id: '958840658077389200'
+lifecycle_stage: active
+run_id: 9feede3c1e094e64bca71959105559d1
+run_name: kmeans_k5_default
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1773951429360
+status: 3
+tags: []
+user_id: Anna

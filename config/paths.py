@@ -39,4 +39,4 @@ CUSTOMER_CLUSTERS = PREDICTIONS_DIR / "customer_clusters.csv"
 
 CLUSTER_PLOT = REPORTS_DIR / "cluster.visualization.png"
 
-BEST_MODEL_PATH = MODELS_DIR / "best_kmeans_pipeline.pkl"
+MODEL_PATH = MODELS_DIR / "kmeans_pipeline.pkl"

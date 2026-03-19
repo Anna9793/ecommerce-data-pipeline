@@ -9,17 +9,5 @@ services:
 
     volumes:
       - .:/app
-
-  mlflow:
-    build: .
-    container_name: mlflow-server
-    command: >
-      mlflow server
-      --backend-store-uri file:/mlruns
-      --default-artifact-root /mlruns
-      --host 0.0.0.0
-      --port 5050
-    ports:
-      - "5050:5050"
-    volumes:
-      - ./mlruns:/mlruns
+   
+   

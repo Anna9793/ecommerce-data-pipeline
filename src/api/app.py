@@ -2,16 +2,14 @@ from fastapi import FastAPI
 import pandas as pd
 import joblib
 import mlflow
-from config.paths import BEST_MODEL_PATH
+from config.paths import MODEL_PATH
 from src.api.schemas import PredictionRequest, PredictionResponse
 from src.utils.config_loader import load_config
 
-app = FastAPI()
-
-model = joblib.load(BEST_MODEL_PATH)
-
 config = load_config("config/experiment.yaml")
 feature_columns = config.features.columns
+
+app = FastAPI()
 
 @app.get("/")
 def health():
@@ -22,6 +20,8 @@ def predict(request: PredictionRequest):
 
     #Convert input to Dataframe
     df = pd.DataFrame([request.features])[feature_columns]
+
+    model = joblib.load(MODEL_PATH)
     
     #MLflow logging
     with mlflow.start_run(run_name="prediction_run"):

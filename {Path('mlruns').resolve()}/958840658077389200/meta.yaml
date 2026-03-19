@@ -1,0 +1,6 @@
+artifact_location: file:///Users/Anna/ecommerce-data-pipeline/{Path('mlruns').resolve()}/958840658077389200
+creation_time: 1773945780732
+experiment_id: '958840658077389200'
+last_update_time: 1773945780732
+lifecycle_stage: active
+name: customer_segmentation

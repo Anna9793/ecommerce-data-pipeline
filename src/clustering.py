@@ -14,12 +14,10 @@ import mlflow
 import mlflow.sklearn
 from mlflow.tracking import MlflowClient
 from config.paths import (RFM_CUSTOMERS, TRAIN_CLUSTERS, CUSTOMER_CLUSTERS, 
-PREDICTED_CLUSTERS, CLUSTER_PROFILE, CLUSTER_PLOT, BEST_MODEL_PATH)
+PREDICTED_CLUSTERS, CLUSTER_PROFILE, CLUSTER_PLOT, MODEL_PATH)
 from src.utils.config_loader import load_config
 
 config = load_config("config/experiment.yaml")
-cluster_range = config.clustering.cluster_range
-random_state = config.clustering.random_state
 feature_columns = config.features.columns
 
 def load_rfm_data(path):
@@ -162,6 +160,13 @@ def save_model(pipeline, path):
     joblib.dump(artifact, path)
 
 def run_clustering(config, config_path=None):
+
+    mlflow.set_tracking_uri("file:{Path('mlruns').resolve()}")
+
+    mlflow.set_experiment("customer_segmentation")
+
+    cluster_range = config.clustering.cluster_range
+    random_state = config.clustering.random_state
     
     config_name = Path(config_path).stem if config_path else "default"
     
@@ -171,6 +176,7 @@ def run_clustering(config, config_path=None):
 
     best_score = -1
     best_k = None
+    best_pipeline = None
 
     for k in cluster_range:
         
@@ -179,44 +185,45 @@ def run_clustering(config, config_path=None):
         run_name = f"kmeans_k{k}_{config_name}"
 
         config_name = config_name.replace(".yaml","")
-
-        with mlflow.start_run(run_name=run_name):
-
-            if config_path:
-                mlflow.set_tag("experiment_config", config_path)
-                mlflow.log_artifact(config_path, artifact_path="config")
         
-            mlflow.log_param("cluster_range", str(config.clustering.cluster_range))
-            mlflow.log_param("random_state", config.clustering.random_state)
+        # with mlflow.start_run(run_name=run_name):
 
-            mlflow.log_param("n_clusters", k)
+        #     if config_path:
+        #         mlflow.set_tag("experiment_config", config_path)
+        #         mlflow.log_artifact(config_path, artifact_path="config")
+        
+        #     mlflow.log_param("cluster_range", str(config.clustering.cluster_range))
+        #     mlflow.log_param("random_state", config.clustering.random_state)
 
-            pipeline, clusters = train_pipeline(pipeline, train_df)
+        #     mlflow.log_param("n_clusters", k) 
 
-            score = silhouette_score(train_df[feature_columns], clusters)
+        pipeline, clusters = train_pipeline(pipeline, train_df)  
+        
+        score = silhouette_score(train_df[feature_columns], clusters)
 
-            mlflow.log_metric("silhouette_score", float(score))
+
+            # mlflow.log_metric("silhouette_score", float(score))
             
-            print("About to log model")
-            mlflow.sklearn.log_model(
-            pipeline, 
-            artifact_path="kmeans_pipeline",
-            input_example=train_df[feature_columns].head(5)
-            )
-            print("Model logged successfully")
-            
-            if score > best_score:
+            # mlflow.sklearn.log_model(
+            # pipeline, 
+            # artifact_path="kmeans_pipeline",
+            # input_example=train_df[feature_columns].head(5),
+            # )
+
+        if score > best_score:
                 
                 best_score = score
                 best_k = k
+                best_pipeline = pipeline
     
     logging .info(
         "Best model uses %s clusters with score %.4f",
         best_k,
-        best_score
-    )   
+        best_score,
+        best_pipeline
+    ) 
 
-    joblib.dump(pipeline, BEST_MODEL_PATH)
+    joblib.dump(pipeline, MODEL_PATH)
 
     train_df = assign_clusters(train_df, clusters)
 

@@ -7,7 +7,7 @@ from src.transformation import transform_data
 from src.rfm_features import compute_rfm
 from src.utils.data_validation import validate_columns
 
-from config.paths import BEST_MODEL_PATH
+from config.paths import MODEL_PATH
 
 def run_prediction_pipeline(input_path):
 
@@ -35,7 +35,7 @@ def run_prediction_pipeline(input_path):
 
     logging.info("Loading model")
 
-    model = joblib.load(BEST_MODEL_PATH)
+    model = joblib.load(MODEL_PATH)
 
     rfm["cluster"] = model.predict(rfm[["recency", "frequency", "monetary"]])
 
