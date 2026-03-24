@@ -32,11 +32,8 @@ FEATURE_RETAIL = PROCESSED_DIR / "feature_retail.csv"
 RFM_CUSTOMERS = PROCESSED_DIR / "rfm_customers.csv"
 
 TRAIN_CLUSTERS = PROCESSED_DIR / "rfm_train_clusters.csv"
-PREDICTED_CLUSTERS = PROCESSED_DIR / "rfm_predicted_clusters.csv"
 CLUSTER_PROFILE = PROCESSED_DIR / "cluster_profile.csv"
 
 CUSTOMER_CLUSTERS = PREDICTIONS_DIR / "customer_clusters.csv"
 
-CLUSTER_PLOT = REPORTS_DIR / "cluster.visualization.png"
-
-MODEL_PATH = MODELS_DIR / "kmeans_pipeline.pkl"
+BEST_MODEL_PATH = MODELS_DIR / "best_kmeans_pipeline.pkl"
