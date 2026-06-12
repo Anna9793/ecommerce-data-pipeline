@@ -21,12 +21,27 @@ def compute_rfm(df):
         )
         .reset_index()
     )
+
+    rfm["avg_order_value"] = (
+        rfm["monetary"] / rfm["frequency"].replace(0, 1)
+        ).round(2)
+
+    rfm = rfm [["customer_id", "recency", "frequency", "avg_order_value"]]
     
     return rfm
 
 def save_rfm(df, path):
     logging.info("Saving RFM dataset to %s", path)
     df.to_csv(path, index=False)
+
+def load_rfm(path=RFM_CUSTOMERS):
+
+    logging.info(
+        "Loading RFM dataset from %s",
+        path
+    )
+
+    return pd.read_csv(path)
 
 def run_rfm_features():
 

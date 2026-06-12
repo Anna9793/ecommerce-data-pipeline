@@ -1,6 +1,5 @@
 import pandas as pd
 import logging
-from pathlib import Path
 from config.paths import CLEAN_RETAIL, FEATURE_RETAIL
 
 def load_clean_data(path):
@@ -62,7 +61,6 @@ def run_transformation():
     df = transform_data(df)
 
     save_transformed_data(df, FEATURE_RETAIL)
-
 
 if __name__ == "__main__":
     run_transformation()

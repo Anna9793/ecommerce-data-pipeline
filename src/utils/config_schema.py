@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict, Optional
 
 class ClusteringConfig(BaseModel):
     cluster_range: List[int]
@@ -8,10 +8,12 @@ class ClusteringConfig(BaseModel):
 class MLflowConfig(BaseModel):
     experiment_name: str
 
-class FeatureConfig(BaseModel):
-    columns: List[str]
+class SingleExperimentConfig(BaseModel):
+    features: List[str]
+    scaler: Optional[str] = None
 
 class ExperimentConfig(BaseModel):
     clustering: ClusteringConfig
     mlflow: MLflowConfig
-    features: FeatureConfig
+    experiments: Dict[str, SingleExperimentConfig]
+

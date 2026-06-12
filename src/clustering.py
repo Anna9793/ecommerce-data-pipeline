@@ -1,9 +1,5 @@
 import logging
-from pathlib import Path
-
 import pandas as pd
-import numpy as np
-import joblib
 import matplotlib.pyplot as plt
 
 from sklearn.cluster import KMeans
@@ -13,12 +9,15 @@ from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 
+from src.features.transformers import LogTransformer
+from src.features.selection import ColumnSelector
+from src.features.to_numpy import ToNumpy
+
 from config.paths import (
     RFM_CUSTOMERS,
     TRAIN_CLUSTERS,
     CUSTOMER_CLUSTERS,
     CLUSTER_PROFILE,
-    BEST_MODEL_PATH,
     REPORTS_DIR
 )
 
@@ -34,9 +33,12 @@ def split_dataset(df, random_state):
     train_df, test_df = train_test_split(df, test_size=0.2, random_state=random_state)
     return train_df, test_df
 
-def build_pipeline(k, random_state):
+def build_pipeline(k, random_state, feature_columns):
     logging.info("Building pipeline")
     return Pipeline([
+        ("selector", ColumnSelector(columns=feature_columns)),
+        ("log", LogTransformer(columns=["frequency", "avg_order_value"])),
+        ("to_numpy", ToNumpy()),
         ("scaler", StandardScaler()),
         ("model", KMeans(n_clusters=k, random_state=random_state))
     ])
@@ -52,12 +54,13 @@ def find_best_kmeans(train_df, feature_columns, cluster_range, random_state):
     scores = []
 
     for k in cluster_range:
-        pipeline = build_pipeline(k, random_state)
+        pipeline = build_pipeline(k, random_state, feature_columns)
 
-        clusters = pipeline.fit_predict(train_df[feature_columns])
+        clusters = pipeline.fit_predict(train_df)
+
+        X_transformed = pipeline[:-1].transform(train_df)
+        score = silhouette_score(X_transformed, clusters)
         
-        score = silhouette_score(train_df[feature_columns], clusters)
-
         scores.append((k, score))
         logging.info("k=%d → silhouette score=%.4f", k, score)
 
@@ -86,30 +89,20 @@ def assign_clusters(df, pipeline, feature_columns):
 
 # SCORE VISUALIZATION
 
-def plot_silhouette_scores(scores, path):
+def plot_silhouette_scores(scores):
     logging.info("Visualizing silhouette scores distribution")
 
     ks, vals = zip(*scores)
 
-    plt.figure()
+    fig, ax = plt.subplots()
 
-    plt.plot(ks, vals, marker="o")
+    ax.plot(ks, vals, marker="o")
 
-    plt.xlabel("Number of clusters (k)")
-    plt.ylabel("Silhouette score")
-    plt.title("Silhouette Score vs Number of Clusters")
+    ax.set_xlabel("Number of clusters (k)")
+    ax.set_ylabel("Scores")
+    ax.set_title("Silhouette Scores")
 
-    plt.grid(True)
-
-    #plt.show()
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    plt.savefig(path)
-
-    logging.info("Saved silhouette plot to %s", path)
-
-    plt.close()
+    return fig
 
 # BUSINESS INTERPRETATION 
 
@@ -122,7 +115,6 @@ def profile_clusters(df):
             customers=("customer_id", "count"),
             avg_recency=("recency", "mean"),
             avg_frequency=("frequency","mean"),
-            avg_monetary=("monetary","mean"),
             avg_order_value=("avg_order_value","mean"),
         )
         .round(2)
@@ -135,27 +127,25 @@ def label_clusters(profile):
 
     profile = profile.copy()
 
-    # sort clusters by monetary value (ascending)
-    sorted_clusters= profile.sort_values("avg_monetary").index
-    n = len(sorted_clusters)
+    labels = {}
 
-    if n == 3:
-        labels = {
-            sorted_clusters[0]: "Inactive",
-            sorted_clusters[1]: "High ticket occassional",
-            sorted_clusters[2]: "Loyal customers",
-        }
+    for cluster_id, row in profile.iterrows():
 
-    elif n == 4:
-        labels = { 
-            sorted_clusters[0]: "Low value",
-            sorted_clusters[1]: "High ticket",
-            sorted_clusters[2]: "Medium value",
-            sorted_clusters[3]: "High frequency",
-       }
+        recency = row["avg_recency"]
+        frequency = row["avg_frequency"]
+        value = row ["avg_order_value"]
 
-    else:
-        labels = {c: f"Segment {i}" for i, c in enumerate(sorted_clusters)}
+        if recency > 150:
+            labels[cluster_id] = "Inactive Customers"
+
+        elif frequency > 10:
+            labels[cluster_id] = "Frequent Buyers"
+
+        elif value > 500:
+            labels[cluster_id] = "Occasional High Value Buyers"
+
+        else:
+            labels[cluster_id] = "Medium Customers"
 
     profile["segment"] = profile.index.map(labels)
 
@@ -174,23 +164,26 @@ def build_cluster_profile(df):
 
 # PCA VISUALIZATION
 
-def visualize_clusters(df, pipeline, feature_columns, path):
+def visualize_clusters(df, pipeline, feature_columns):
     logging.info("Generating PCA cluster visualization")
 
-    scaler = pipeline.named_steps["scaler"]
-    scaled = scaler.transform(df[feature_columns])
+    if len(feature_columns) < 2:
+        logging.info("Skipping PCA: only one feature")
+        return None
+
+    X_transformed = pipeline[:-1].transform(df)
 
     pca = PCA(n_components=2)
-    components = pca.fit_transform(scaled)
+    components = pca.fit_transform(X_transformed)
 
     logging.info(
         "PCA explained variance ratio: %s",
         pca.explained_variance_ratio_
     )
 
-    plt.figure(figsize=(8,6))
+    fig, ax = plt.subplots(figsize=(8,6))
 
-    scatter = plt.scatter(
+    scatter = ax.scatter(
         components[:,0],
         components[:,1],
         c=df["cluster"],
@@ -198,18 +191,13 @@ def visualize_clusters(df, pipeline, feature_columns, path):
         alpha=0.5
     )
 
-    plt.colorbar(scatter, label="Cluster")
+    fig.colorbar(scatter, ax=ax, label="Cluster")
 
-    plt.xlabel("PCA Component 1")
-    plt.ylabel("PCA Component 2")
-    plt.title("Customer Clusters (PCA Projection)")
+    ax.set_xlabel("PCA Component 1")
+    ax.set_ylabel("PCA Component 2")
+    ax.set_title("Customer Clusters (PCA Projection)")
 
-    #plt.show()
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(path)
-    logging.info("Saved PCA plot to %s", path)
-    plt.close()
+    return fig
 
 # SAVE FUNCTIONS
 
@@ -219,8 +207,6 @@ def save_outputs(
     profile, 
     pipeline):
     
-    logging.info("Saving model to %s", BEST_MODEL_PATH)
-    joblib.dump(pipeline, BEST_MODEL_PATH)
 
     logging.info("Saving training clusters to %s", TRAIN_CLUSTERS)
     train_df.to_csv(TRAIN_CLUSTERS, index=False)
@@ -234,27 +220,20 @@ def save_outputs(
 
 # MAIN PIPELINE FUNCTION
 
-def run_clustering(config):
+def run_clustering(
+    config, 
+    df=None,
+    feature_columns=None,
+    cluster_range=None):
 
     logging.info("Starting clustering pipeline")
 
-    experiment_name = "v5_remove_monetary"
-    experiment_dir = REPORTS_DIR / experiment_name
-    pca_path = experiment_dir / "pca_clusters.png"
-    silhouette_path = experiment_dir / "silhouette_plot.png"
-
-    feature_columns = config.features.columns
-    cluster_range = config.clustering.cluster_range
+    if cluster_range is None: 
+        cluster_range = config.clustering.cluster_range
     random_state = config.clustering.random_state
 
-    df = load_rfm_data(RFM_CUSTOMERS)
-    
-    df = df[df["monetary"] >= 0]
-
-    df["monetary"] = np.log1p(df["monetary"])
-    df["frequency"] = np.log1p(df["frequency"])
-
-    df["avg_order_value"] = df["monetary"] / df["frequency"].replace(0, 1)
+    if df is None:
+        df = load_rfm_data(RFM_CUSTOMERS)
 
     train_df, test_df = split_dataset(df, random_state)
 
@@ -273,7 +252,7 @@ def run_clustering(config):
     )
 
     # Plot score distribution
-    plot_silhouette_scores(scores, silhouette_path)
+    fig = plot_silhouette_scores(scores)
 
 
     # Build profile
@@ -281,7 +260,7 @@ def run_clustering(config):
     logging.info ("Cluster profile:\n%s", profile)
 
     # Visualize clusters
-    visualize_clusters(train_df, best_pipeline, feature_columns, pca_path)
+    pca_fig = visualize_clusters(train_df, best_pipeline, feature_columns)
 
     # Predict on test
     test_df = assign_clusters(test_df, best_pipeline, feature_columns)
@@ -290,3 +269,5 @@ def run_clustering(config):
     save_outputs( train_df, test_df, profile, best_pipeline)
 
     logging.info("Clustering pipeline completed")
+
+    return best_pipeline, best_k, {"silhouette": best_score}, fig, pca_fig

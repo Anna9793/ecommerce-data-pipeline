@@ -1,10 +1,11 @@
 from pathlib import Path
 
-PROJECT_ROOT = Path(".")
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-DATA_DIR = PROJECT_ROOT/ "data"
-REPORTS_DIR = PROJECT_ROOT / "reports"
-MODELS_DIR = PROJECT_ROOT / "models"
+DATA_DIR = BASE_DIR/ "data"
+REPORTS_DIR = BASE_DIR / "reports"
+MODELS_DIR = BASE_DIR / "models"
+CONFIG_DIR = BASE_DIR/ "config"
 
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
@@ -16,7 +17,8 @@ DIRECTORIES = [
     PREDICTIONS_DIR,
     PROCESSED_DIR,
     REPORTS_DIR,
-    MODELS_DIR
+    MODELS_DIR,
+    CONFIG_DIR
 ]
 
 for directory in DIRECTORIES:
@@ -35,5 +37,8 @@ TRAIN_CLUSTERS = PROCESSED_DIR / "rfm_train_clusters.csv"
 CLUSTER_PROFILE = PROCESSED_DIR / "cluster_profile.csv"
 
 CUSTOMER_CLUSTERS = PREDICTIONS_DIR / "customer_clusters.csv"
+CUSTOMER_CLUSTERS_V2 = PREDICTIONS_DIR / "customer_clusters_v2.csv"
+CUSTOMER_CLUSTERS_LABELED = PREDICTIONS_DIR / "customer_clusters_labeled.csv"
+CUSTOMER_CLUSTERS_DB = PREDICTIONS_DIR / "customer_clusters.db"
 
-BEST_MODEL_PATH = MODELS_DIR / "best_kmeans_pipeline.pkl"
+EXPERIMENT_CONFIG_PATH = CONFIG_DIR / "experiment.yaml"
