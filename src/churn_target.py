@@ -1,21 +1,23 @@
 import pandas as pd 
 
-def create_churn_target(df):
+def create_churn_target(feature_df, future_df):
 
-    max_date = df["invoice_date"].max()
-
-    cutoff_date = max_date - pd.Timedelta(days=90)
-
-    last_purchase = (
-        df.groupby("customer_id")["invoice_date"]
-        .max()
-        .reset_index()
+    active_customers = set(
+        future_df["customer_id"].unique()
     )
 
-    last_purchase["churn"] = (
-        last_purchase["invoice_date"] < cutoff_date
+    customers = (
+        feature_df["customer_id"]
+        .drop_duplicates()
+    )
+
+    target_df = pd.DataFrame({
+        "customer_id": customers
+    })
+
+    target_df["churn"] = (
+        ~target_df["customer_id"]
+        .isin(active_customers)
     ).astype(int)
 
-    return last_purchase[
-        ["customer_id", "churn"]
-    ]
+    return target_df
