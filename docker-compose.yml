@@ -5,9 +5,9 @@ services:
     image: postgres:15-alpine
     container_name: postgres-db
     environment:
-      POSTGRES_DB: ml_pipeline
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: passione
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5433:5432"
     volumes:
@@ -20,9 +20,9 @@ services:
     build: .
     container_name: fastapi-server
     environment:
-      POSTGRES_DB: ml_pipeline
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: passione
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       MLFLOW_TRACKING_URI: file:/Users/Anna/ecommerce-data-pipeline/mlruns
@@ -53,9 +53,9 @@ services:
     container_name: streamlit-dashboard
     command: streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0
     environment:
-      POSTGRES_DB: ml_pipeline
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: passione
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       API_URL: http://api:8000
