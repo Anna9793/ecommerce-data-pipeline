@@ -1,6 +1,9 @@
+import os
 import streamlit as st
 import requests
 import plotly.express as px
+
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 from app.service import MODEL_VERSION
 from app.repository import (get_total_predictions,
@@ -124,7 +127,7 @@ with st.container(border=True):
         }
 
         response = requests.post(
-            "http://127.0.0.1:8000/predict",
+            f"{API_URL}/predict",
             json=payload
         )
 
