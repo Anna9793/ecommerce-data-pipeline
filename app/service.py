@@ -1,12 +1,14 @@
+import os
 import pandas as pd
 import mlflow
 import mlflow.sklearn
 from mlflow import MlflowClient
 from config.paths import CLUSTER_PROFILE
 
-mlflow.set_tracking_uri("file:./mlruns")
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
 
 PROD_MODEL_URI = "models:/customer_segmentation_model@production"
+
 
 prod_pipeline = mlflow.sklearn.load_model(PROD_MODEL_URI)
 
