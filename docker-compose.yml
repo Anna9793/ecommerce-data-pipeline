@@ -1,13 +1,77 @@
+version: '3.8'
+
 services:
-  
+  db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: ml_pipeline
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: passione
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - pipeline-network
+
   api:
     build: .
     container_name: fastapi-server
-
+    environment:
+      POSTGRES_DB: ml_pipeline
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: passione
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      MLFLOW_TRACKING_URI: file:/Users/Anna/ecommerce-data-pipeline/mlruns
     ports:
       - "8000:8000"
-
     volumes:
-      - .:/app
-   
-   
+      - .:/Users/Anna/ecommerce-data-pipeline
+    working_dir: /Users/Anna/ecommerce-data-pipeline
+    depends_on:
+      - db
+    networks:
+      - pipeline-network
+
+  mlflow:
+    build: .
+    container_name: mlflow-server
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri file:///Users/Anna/ecommerce-data-pipeline/mlruns --default-artifact-root file:///Users/Anna/ecommerce-data-pipeline/mlruns
+    ports:
+      - "5001:5000"
+    volumes:
+      - .:/Users/Anna/ecommerce-data-pipeline
+    working_dir: /Users/Anna/ecommerce-data-pipeline
+    networks:
+      - pipeline-network
+
+  dashboard:
+    build: .
+    container_name: streamlit-dashboard
+    command: streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0
+    environment:
+      POSTGRES_DB: ml_pipeline
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: passione
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      API_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/Users/Anna/ecommerce-data-pipeline
+    working_dir: /Users/Anna/ecommerce-data-pipeline
+    depends_on:
+      - api
+    networks:
+      - pipeline-network
+
+volumes:
+  postgres_data:
+
+networks:
+  pipeline-network:
+    driver: bridge
