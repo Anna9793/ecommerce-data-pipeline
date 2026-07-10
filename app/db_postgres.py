@@ -49,6 +49,9 @@ def insert_prediction(record):
             record["response_time_ms"],
         ))
 
+        conn.commit()
+
+
 
     except Exception:
         logging.exception(
