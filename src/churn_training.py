@@ -23,10 +23,11 @@ from src.churn_target import create_churn_target
 from config.paths import CLEAN_RETAIL
 
 def run_churn_training(
-    cutoff_days=180,
+    cutoff_days=90,
     test_size=0.2,
     random_state=42
 ):
+
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
     mlflow.set_experiment("customer_churn")
 
@@ -75,10 +76,9 @@ def run_churn_training(
         "GradientBoosting": GradientBoostingClassifier(random_state=random_state)
     }
 
-    best_f1 = -1.0
-    best_pipeline = None
-    best_run_id = None
-    best_model_name = None
+    lr_f1 = -1.0
+    lr_pipeline = None
+    lr_run_id = None
 
     for model_name, model_instance in candidate_models.items():
         logging.info("Training candidate model: %s", model_name)
@@ -122,33 +122,30 @@ def run_churn_training(
                 for feature, importance in zip(X.columns, fitted_model.feature_importances_):
                     mlflow.log_metric(f"importance_{feature}", float(importance))
 
-            # Save check for the best model
-            if f1 > best_f1:
-                best_f1 = f1
-                best_pipeline = pipeline
-                best_run_id = run.info.run_id
-                best_model_name = model_name
+            # Specifically track Logistic Regression for registry promotion
+            if model_name == "LogisticRegression":
+                lr_f1 = f1
+                lr_pipeline = pipeline
+                lr_run_id = run.info.run_id
 
-    # Log and register the best model
-    if best_pipeline is not None:
-        logging.info("Best model selected: %s with F1-score of %.4f", best_model_name, best_f1)
+    # Log and register the Logistic Regression model
+    if lr_pipeline is not None:
+        logging.info("Registering Logistic Regression model (F1-score: %.4f) as production model", lr_f1)
         
-        # Start a dedicated registration run or register from the best candidate run
-        # Registering directly from the best candidate run
-        with mlflow.start_run(run_id=best_run_id):
+        with mlflow.start_run(run_id=lr_run_id):
             input_example = X_train.head(5)
-            predictions = best_pipeline.predict(input_example)
+            predictions = lr_pipeline.predict(input_example)
             signature = infer_signature(input_example, predictions)
 
             mlflow.sklearn.log_model(
-                sk_model=best_pipeline,
+                sk_model=lr_pipeline,
                 artifact_path="model",
                 input_example=input_example,
                 signature=signature
             )
 
             model_version_info = mlflow.register_model(
-                model_uri=f"runs:/{best_run_id}/model",
+                model_uri=f"runs:/{lr_run_id}/model",
                 name="customer_churn_model"
             )
 
@@ -159,8 +156,7 @@ def run_churn_training(
                 model_version_info.version
             )
             
-        logging.info("Model registered to MLflow registry under 'customer_churn_model' and tagged 'production'")
-
+        logging.info("Logistic Regression model registered to MLflow registry under 'customer_churn_model' and tagged 'production'")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
