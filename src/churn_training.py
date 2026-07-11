@@ -13,7 +13,6 @@ from sklearn.metrics import (
 import mlflow
 import mlflow.sklearn
 from mlflow.models import infer_signature
-from dotenv import load_dotenv
 
 from src.transformation import (
     load_clean_data,
@@ -22,8 +21,6 @@ from src.transformation import (
 from src.rfm_features import compute_rfm
 from src.churn_target import create_churn_target
 from config.paths import CLEAN_RETAIL
-
-load_dotenv()
 
 def run_churn_training(
     cutoff_days=180,

@@ -3,7 +3,7 @@ import logging
 import mlflow
 import mlflow.sklearn
 from mlflow.models import infer_signature
-from dotenv import load_dotenv
+
 
 from src.cleaning import run_cleaning
 from src.transformation import run_transformation
@@ -12,8 +12,6 @@ from src.rfm_features import (
     load_rfm
 )
 from src.clustering import run_clustering
-
-load_dotenv()
 
 def run_training_pipeline(config):
 
