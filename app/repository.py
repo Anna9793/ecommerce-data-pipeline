@@ -97,3 +97,37 @@ def get_segment_distribution():
 
 def save_prediction(record):
     insert_prediction(record)
+
+def get_total_churn_predictions():
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) FROM churn_predictions;")
+        count = cursor.fetchone()[0]
+        return int(count)
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_average_churn_probability():
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT AVG(churn_probability) FROM churn_predictions;")
+        avg = cursor.fetchone()[0]
+        return float(avg) if avg is not None else 0.0
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_latest_churn_predictions(limit=10):
+    conn = get_connection()
+    latest_query = f"""
+    SELECT *
+    FROM churn_predictions
+    ORDER BY created_at DESC
+    LIMIT {limit};
+    """
+    latest_df = pd.read_sql(latest_query, conn)
+    conn.close()
+    return latest_df
