@@ -63,4 +63,47 @@ def insert_prediction(record):
             cursor.close()
         if conn:
             conn.close()
+
+def insert_churn_prediction(record):
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO churn_predictions (
+                request_id,
+                customer_id,
+                recency,
+                frequency,
+                avg_order_value,
+                churn_probability,
+                is_churn,
+                model_version,
+                feature_version,
+                response_time_ms
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            record["request_id"],
+            record["customer_id"],
+            record["recency"],
+            record["frequency"],
+            record["avg_order_value"],
+            record["churn_probability"],
+            record["is_churn"],
+            record["model_version"],
+            record["feature_version"],
+            record["response_time_ms"],
+        ))
+        conn.commit()
+    except Exception:
+        logging.exception("Error inserting churn prediction")
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
     
