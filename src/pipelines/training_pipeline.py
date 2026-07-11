@@ -1,7 +1,9 @@
+import os
 import logging
 import mlflow
 import mlflow.sklearn
 from mlflow.models import infer_signature
+from dotenv import load_dotenv
 
 from src.cleaning import run_cleaning
 from src.transformation import run_transformation
@@ -11,11 +13,14 @@ from src.rfm_features import (
 )
 from src.clustering import run_clustering
 
+load_dotenv()
+
 def run_training_pipeline(config):
 
     logging.info("Start training pipeline")
 
-    mlflow.set_tracking_uri("file:./mlruns")
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
+
     mlflow.set_experiment("customer_segmentation")
 
     for exp_name, exp_config in config.experiments.items():
