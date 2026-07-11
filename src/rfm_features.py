@@ -1,7 +1,12 @@
+import os
 import pandas as pd
 import logging
 from pathlib import Path
+from dotenv import load_dotenv
 from config.paths import FEATURE_RETAIL, RFM_CUSTOMERS
+
+load_dotenv()
+
 
 def load_transactions(path):
     logging.info("Loading transaction dataset from %s", path)
@@ -34,14 +39,19 @@ def save_rfm(df, path):
     logging.info("Saving RFM dataset to %s", path)
     df.to_csv(path, index=False)
 
-def load_rfm(path=RFM_CUSTOMERS):
+def load_rfm(path=RFM_CUSTOMERS, use_bigquery=False):
+    if use_bigquery or os.getenv("USE_BIGQUERY", "false").lower() == "true":
+        logging.info("Loading RFM dataset from BigQuery view: retail_data.rfm_features")
+        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+        query = "SELECT * FROM `retail_data.rfm_features`"
+        df = pd.read_gbq(query, project_id=project_id)
+        # Ensure customer_id column type matches (e.g. string or float depending on needs)
+        # BigQuery will load as string or float depending on casting, let's keep it clean
+        return df
 
-    logging.info(
-        "Loading RFM dataset from %s",
-        path
-    )
-
+    logging.info("Loading RFM dataset from %s", path)
     return pd.read_csv(path)
+
 
 def run_rfm_features():
 
