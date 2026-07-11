@@ -1,175 +1,170 @@
-import pandas as pd 
+import os
 import logging
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import (
     accuracy_score,
     classification_report
 )
 import mlflow
+import mlflow.sklearn
+from mlflow.models import infer_signature
+from dotenv import load_dotenv
 
-from src.transformation import(
+from src.transformation import (
     load_clean_data,
     transform_data
 )
-
 from src.rfm_features import compute_rfm
-
 from src.churn_target import create_churn_target
-
 from config.paths import CLEAN_RETAIL
 
+load_dotenv()
 
 def run_churn_training(
     cutoff_days=180,
     test_size=0.2,
     random_state=42
 ):
-
-    mlflow.set_experiment(
-        "customer_churn"
-    )
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
+    mlflow.set_experiment("customer_churn")
 
     logging.info("Loading and transforming data")
-
     df = load_clean_data(CLEAN_RETAIL)
-
     df = transform_data(df)
 
-#Creating cutoff date
-
+    # Creating cutoff date
     max_date = df["invoice_date"].max()
-
     cutoff_date = max_date - pd.Timedelta(days=cutoff_days)
+    logging.info("Cutoff date: %s", cutoff_date)
 
-    logging.info(
-        "Cutoff date: %s",
-        cutoff_date
-    )
+    # Split past and future datasets
+    feature_df = df[df["invoice_date"] < cutoff_date]
+    logging.info("Feature rows: %s", len(feature_df))
 
-#Split past and future datasets
-    feature_df = df[
-    df["invoice_date"] < cutoff_date
-]
-    logging.info(
-        "Feature rows: %s",
-        len(feature_df)
-    )
+    future_df = df[df["invoice_date"] >= cutoff_date]
+    logging.info("Future rows: %s", len(future_df))
 
-    future_df = df[
-    df["invoice_date"] >= cutoff_date
-]
-    logging.info(
-        "Future rows: %s",
-        len(future_df)
-    )
-#Creating RFM features
+    # Creating RFM features
     rfm_df = compute_rfm(feature_df)
 
-#Creating the target
+    # Creating the target
+    target_df = create_churn_target(feature_df, future_df)
+    logging.info("Target rows: %s", len(target_df))
 
-    target_df = create_churn_target(
-    feature_df,
-    future_df
-)
-    logging.info(
-        "Target rows: %s",
-        len(target_df)
-    )
-#Merge
+    # Merge features and target
+    training_df = rfm_df.merge(target_df, on="customer_id", how="inner")
 
-    training_df = rfm_df.merge(
-    target_df,
-    on="customer_id",
-    how="inner"
-)
-
-#Separating predictor features (past) and target variable (future).
-    X = training_df[
-    ["recency", "frequency", "avg_order_value"]
-]
-
+    # Separating predictor features (past) and target variable (future)
+    X = training_df[["recency", "frequency", "avg_order_value"]]
     y = training_df["churn"]
 
-#Train/Test Split
-
+    # Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
-)
-#Scaling and mlflow start
-    with mlflow.start_run():
-
-        mlflow.log_params(
-            {"model_type": "LogisticRegression",
-            "cutoff_days": cutoff_days,
-            "random_state":random_state,
-            "test_size":test_size,
-            "scaler":"StandardScaler"
-        })
-
-        scaler = StandardScaler()
-
-        X_train_scaled = scaler.fit_transform(X_train)
-
-        X_test_scaled = scaler.transform(X_test)
-
-    #Training
-        model = LogisticRegression(
-        random_state=42
-    )
-        model.fit(
-        X_train_scaled,
-        y_train
+        X,
+        y,
+        test_size=test_size,
+        random_state=random_state,
+        stratify=y
     )
 
-    #Prediction
-        y_pred = model.predict(
-        X_test_scaled
-    )
+    candidate_models = {
+        "LogisticRegression": LogisticRegression(random_state=random_state),
+        "RandomForest": RandomForestClassifier(random_state=random_state, n_estimators=100),
+        "GradientBoosting": GradientBoostingClassifier(random_state=random_state)
+    }
 
-    #Evaluation
-        accuracy = accuracy_score(
-            y_test,
-            y_pred
-    )
+    best_f1 = -1.0
+    best_pipeline = None
+    best_run_id = None
+    best_model_name = None
 
-        report = classification_report(
-            y_test,
-            y_pred,
-            output_dict=True
-        )
+    for model_name, model_instance in candidate_models.items():
+        logging.info("Training candidate model: %s", model_name)
+        
+        with mlflow.start_run(run_name=model_name) as run:
+            # Build training pipeline (scaler + classifier)
+            pipeline = Pipeline([
+                ("scaler", StandardScaler()),
+                ("model", model_instance)
+            ])
 
-        mlflow.log_metrics(
-            {"accuracy": report["accuracy"],
-            "churn_precision": report["1"]["precision"],
-            "churn_recall": report["1"]["recall"],
-            "churn_f1": report["1"]["f1-score"]}
-        )
+            pipeline.fit(X_train, y_train)
+            y_pred = pipeline.predict(X_test)
 
-        coef_df = pd.DataFrame({
-            "feature": X.columns,
-            "coefficient": model.coef_[0]
-        })
+            # Evaluation
+            report = classification_report(y_test, y_pred, output_dict=True)
+            f1 = report["1"]["f1-score"]
 
-        for feature, coef in zip(
-            X.columns,
-            model.coef_[0]
-        ):
-            mlflow.log_metric(
-                f"coef_{feature}",
-                float(coef)
+            mlflow.log_params({
+                "model_type": model_name,
+                "cutoff_days": cutoff_days,
+                "random_state": random_state,
+                "test_size": test_size,
+                "scaler": "StandardScaler"
+            })
+
+            mlflow.log_metrics({
+                "accuracy": report["accuracy"],
+                "churn_precision": report["1"]["precision"],
+                "churn_recall": report["1"]["recall"],
+                "churn_f1": f1,
+                "churn_rate": training_df["churn"].mean()
+            })
+
+            # Feature coefficients or importance logging
+            fitted_model = pipeline.named_steps["model"]
+            if hasattr(fitted_model, "coef_"):
+                for feature, coef in zip(X.columns, fitted_model.coef_[0]):
+                    mlflow.log_metric(f"coef_{feature}", float(coef))
+            elif hasattr(fitted_model, "feature_importances_"):
+                for feature, importance in zip(X.columns, fitted_model.feature_importances_):
+                    mlflow.log_metric(f"importance_{feature}", float(importance))
+
+            # Save check for the best model
+            if f1 > best_f1:
+                best_f1 = f1
+                best_pipeline = pipeline
+                best_run_id = run.info.run_id
+                best_model_name = model_name
+
+    # Log and register the best model
+    if best_pipeline is not None:
+        logging.info("Best model selected: %s with F1-score of %.4f", best_model_name, best_f1)
+        
+        # Start a dedicated registration run or register from the best candidate run
+        # Registering directly from the best candidate run
+        with mlflow.start_run(run_id=best_run_id):
+            input_example = X_train.head(5)
+            predictions = best_pipeline.predict(input_example)
+            signature = infer_signature(input_example, predictions)
+
+            mlflow.sklearn.log_model(
+                sk_model=best_pipeline,
+                artifact_path="model",
+                input_example=input_example,
+                signature=signature
             )
 
-        mlflow.log_metric(
-            "churn_rate",
-            training_df["churn"].mean()
-        )
+            model_version_info = mlflow.register_model(
+                model_uri=f"runs:/{best_run_id}/model",
+                name="customer_churn_model"
+            )
+
+            client = mlflow.tracking.MlflowClient()
+            client.set_registered_model_alias(
+                "customer_churn_model",
+                "production",
+                model_version_info.version
+            )
+            
+        logging.info("Model registered to MLflow registry under 'customer_churn_model' and tagged 'production'")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     run_churn_training()
