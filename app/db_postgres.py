@@ -15,7 +15,11 @@ def get_connection():
     )
 
 def insert_prediction(record):
+    if os.getenv("USE_BIGQUERY", "false").lower() == "true":
+        return insert_prediction_bigquery(record)
+
     conn = None
+
     cursor = None
     
     try:
@@ -65,7 +69,11 @@ def insert_prediction(record):
             conn.close()
 
 def insert_churn_prediction(record):
+    if os.getenv("USE_BIGQUERY", "false").lower() == "true":
+        return insert_churn_prediction_bigquery(record)
+
     conn = None
+
     cursor = None
     try:
         conn = get_connection()
@@ -105,5 +113,52 @@ def insert_churn_prediction(record):
             cursor.close()
         if conn:
             conn.close()
+
+def insert_prediction_bigquery(record):
+    from google.cloud import bigquery
+    from datetime import datetime, timezone
+    
+    logging.info("Logging segmentation prediction to BigQuery predictions_log table")
+    record = record.copy()
+    record["created_at"] = datetime.now(timezone.utc).isoformat()
+    
+    if record.get("customer_id") is None:
+        record["customer_id"] = ""
+    else:
+        record["customer_id"] = str(record["customer_id"])
+
+    project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+    client = bigquery.Client(project=project_id)
+    table_id = f"{project_id}.retail_data.predictions_log"
+
+    
+    errors = client.insert_rows_json(table_id, [record])
+    if errors:
+        logging.error("BigQuery insert errors: %s", errors)
+        raise RuntimeError(f"Errors inserting rows to BigQuery: {errors}")
+
+def insert_churn_prediction_bigquery(record):
+    from google.cloud import bigquery
+    from datetime import datetime, timezone
+    
+    logging.info("Logging churn prediction to BigQuery churn_predictions_log table")
+    record = record.copy()
+    record["created_at"] = datetime.now(timezone.utc).isoformat()
+    
+    if record.get("customer_id") is None:
+        record["customer_id"] = ""
+    else:
+        record["customer_id"] = str(record["customer_id"])
+
+    project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+    client = bigquery.Client(project=project_id)
+    table_id = f"{project_id}.retail_data.churn_predictions_log"
+
+    
+    errors = client.insert_rows_json(table_id, [record])
+    if errors:
+        logging.error("BigQuery churn insert errors: %s", errors)
+        raise RuntimeError(f"Errors inserting churn rows to BigQuery: {errors}")
+
 
     
