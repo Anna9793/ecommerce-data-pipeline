@@ -26,10 +26,15 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       MLFLOW_TRACKING_URI: file:/Users/Anna/ecommerce-data-pipeline/mlruns
+      USE_BIGQUERY: ${USE_BIGQUERY}
+      GCP_PROJECT: ${GCP_PROJECT}
+      GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT}
+      GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud/application_default_credentials.json
     ports:
       - "8000:8000"
     volumes:
       - .:/Users/Anna/ecommerce-data-pipeline
+      - ~/.config/gcloud:/root/.config/gcloud:ro
     working_dir: /Users/Anna/ecommerce-data-pipeline
     depends_on:
       - db
@@ -59,10 +64,15 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       API_URL: http://api:8000
+      USE_BIGQUERY: ${USE_BIGQUERY}
+      GCP_PROJECT: ${GCP_PROJECT}
+      GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT}
+      GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud/application_default_credentials.json
     ports:
       - "8501:8501"
     volumes:
       - .:/Users/Anna/ecommerce-data-pipeline
+      - ~/.config/gcloud:/root/.config/gcloud:ro
     working_dir: /Users/Anna/ecommerce-data-pipeline
     depends_on:
       - api
