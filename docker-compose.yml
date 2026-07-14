@@ -29,6 +29,7 @@ services:
       USE_BIGQUERY: ${USE_BIGQUERY}
       GCP_PROJECT: ${GCP_PROJECT}
       GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT}
+      GCS_BUCKET: ${GCS_BUCKET}
       GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud/application_default_credentials.json
     ports:
       - "8000:8000"
@@ -67,6 +68,7 @@ services:
       USE_BIGQUERY: ${USE_BIGQUERY}
       GCP_PROJECT: ${GCP_PROJECT}
       GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT}
+      GCS_BUCKET: ${GCS_BUCKET}
       GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud/application_default_credentials.json
     ports:
       - "8501:8501"
