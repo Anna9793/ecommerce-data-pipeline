@@ -52,14 +52,23 @@ else:
     CHURN_MODEL_VERSION = churn_version_info.version
 
 
-profile_df = pd.read_csv(CLUSTER_PROFILE)
-
-cluster_labels = dict(
-    zip(
-        profile_df["cluster"],
-        profile_df["segment"]
+try:
+    profile_df = pd.read_csv(CLUSTER_PROFILE)
+    cluster_labels = dict(
+        zip(
+            profile_df["cluster"],
+            profile_df["segment"]
+        )
     )
-)
+except Exception as e:
+    logging.warning("Cluster profile file missing: %s. Using default cluster labels mapping.", e)
+    cluster_labels = {
+        0: "Inactive Customers",
+        1: "Medium Customers",
+        2: "Frequent Buyers",
+        3: "Occasional High Value Buyers"
+    }
+
 
 def predict_cluster(features: dict):
 
