@@ -1,6 +1,6 @@
 FROM python:3.9.6
 
-WORKDIR /Users/Anna/ecommerce-data-pipeline
+WORKDIR /app
 
 COPY . .
 
