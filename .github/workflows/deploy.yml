@@ -68,11 +68,13 @@ jobs:
 
       - name: Deploy Streamlit Dashboard to Cloud Run
         run: |
+          API_URL=$(gcloud run services describe api-service --region us-central1 --format="value(status.url)")
           gcloud run deploy dashboard-service \
             --image us-central1-docker.pkg.dev/anna-ml-pipeline/ecommerce-ml-pipeline/pipeline-image:latest \
             --command "streamlit" \
             --args="run,streamlit_app.py,--server.port,8080,--server.address,0.0.0.0" \
             --port 8080 \
             --allow-unauthenticated \
-            --set-env-vars USE_BIGQUERY=true,GCP_PROJECT=anna-ml-pipeline,GOOGLE_CLOUD_PROJECT=anna-ml-pipeline,API_URL=https://api-service-557448715890.us-central1.run.app \
+            --set-env-vars USE_BIGQUERY=true,GCP_PROJECT=anna-ml-pipeline,GOOGLE_CLOUD_PROJECT=anna-ml-pipeline,API_URL=$API_URL \
             --region us-central1
+
