@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import mlflow
 import mlflow.sklearn
+import logging
 from mlflow import MlflowClient
 from config.paths import CLUSTER_PROFILE
 
