@@ -4,4 +4,10 @@ __pycache__
 .git
 .ipynb_checkpoints
 *.pyc
+*.pyo
+*.pyd
 data/
+.env
+.pytest_cache
+venv
+.venv
