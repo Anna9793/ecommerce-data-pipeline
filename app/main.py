@@ -1,10 +1,11 @@
 import uuid
 import time
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from app.schemas import PredictionRequest, ChurnPredictionRequest, ChurnPredictionResponse
 from app.service import predict_cluster, MODEL_VERSION, predict_churn_service, CHURN_MODEL_VERSION
 from app.db_postgres import insert_prediction, insert_churn_prediction
+from scripts.train_on_vertex import submit_vertex_training_job
 
 
 app = FastAPI()
@@ -103,4 +104,16 @@ def generate_campaign_endpoint(customer_id: str):
         raise HTTPException(
             status_code=500,
             detail=f"Campaign generation failed: {str(e)}"
+        )
+
+@app.post("/train/churn")
+def trigger_churn_retraining(background_tasks: BackgroundTasks):
+    try:
+        background_tasks.add_task(submit_vertex_training_job)
+        return {"status": "success", "message": "Vertex AI custom container training job triggered successfully."}
+    except Exception as e:
+        logging.exception("Error triggering Vertex AI training job")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to submit training job: {str(e)}"
         )

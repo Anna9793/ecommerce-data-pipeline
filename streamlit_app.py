@@ -204,6 +204,20 @@ with tab2:
                 else:
                     st.success(f"✅ **Low Churn Risk** Risk: {risk_pct}%")
 
+        st.subheader("⚙️ Model Operations")
+        with st.container(border=True):
+            st.write("Trigger serverless model retraining in the cloud on GCP Vertex AI using your transactions data.")
+            if st.button("⚡ Trigger Cloud Churn Retraining", use_container_width=True):
+                with st.spinner("Submitting training job to Vertex AI..."):
+                    try:
+                        resp = requests.post(f"{API_URL}/train/churn")
+                        if resp.status_code == 200:
+                            st.success("✅ Job submitted successfully! Monitor it under Vertex AI Custom Jobs.")
+                        else:
+                            st.error(f"❌ Failed to submit job: {resp.text}")
+                    except Exception as e:
+                        st.error(f"❌ Connection error: {str(e)}")
+
 # TAB 3: AI MARKETING COPILOT
 with tab3:
     st.subheader("🤖 AI Marketing Campaign Generator & Vector Search")
