@@ -18,7 +18,10 @@ def test_predict_churn_endpoint_returns_prediction(
         json={
             "recency": 90,
             "frequency": 2,
-            "avg_order_value": 50
+            "avg_order_value": 50,
+            "spending_velocity": 1.0,
+            "cancellation_rate": 0.0,
+            "preferred_shopping_hour": 12
         }
     )
 

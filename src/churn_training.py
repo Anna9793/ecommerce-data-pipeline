@@ -58,7 +58,7 @@ def run_churn_training(
     training_df = rfm_df.merge(target_df, on="customer_id", how="inner")
 
     # Separating predictor features (past) and target variable (future)
-    X = training_df[["recency", "frequency", "avg_order_value"]]
+    X = training_df[["recency", "frequency", "avg_order_value", "spending_velocity", "cancellation_rate", "preferred_shopping_hour"]]
     y = training_df["churn"]
 
     # Train/Test Split

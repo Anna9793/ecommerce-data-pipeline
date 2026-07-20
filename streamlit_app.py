@@ -158,6 +158,9 @@ with tab2:
                     "recency",
                     "frequency",
                     "avg_order_value",
+                    "spending_velocity",
+                    "cancellation_rate",
+                    "preferred_shopping_hour",
                     "churn_probability",
                     "is_churn",
                     "created_at"
@@ -173,12 +176,18 @@ with tab2:
             churn_recency = st.number_input("Recency (days since last purchase)", min_value=0.0, value=90.0, key="churn_rec")
             churn_frequency = st.number_input("Frequency (total purchases)", min_value=1.0, value=2.0, key="churn_freq")
             churn_aov = st.number_input("Average Order Value ($)", min_value=0.0, value=45.0, key="churn_val")
+            churn_velocity = st.number_input("Spending Velocity (Ratio 30d/90d)", min_value=0.0, value=1.0, key="churn_vel")
+            churn_canc = st.number_input("Cancellation Rate (0.0 to 1.0)", min_value=0.0, max_value=1.0, value=0.0, step=0.01, key="churn_canc")
+            churn_hour = st.number_input("Preferred Shopping Hour (0-23)", min_value=0, max_value=23, value=12, key="churn_hour")
 
             if st.button("Predict Churn Risk", use_container_width=True):
                 payload = {
                     "recency": churn_recency,
                     "frequency": churn_frequency,
-                    "avg_order_value": churn_aov
+                    "avg_order_value": churn_aov,
+                    "spending_velocity": churn_velocity,
+                    "cancellation_rate": churn_canc,
+                    "preferred_shopping_hour": int(churn_hour)
                 }
                 response = requests.post(f"{API_URL}/predict/churn", json=payload)
                 if response.status_code == 200:

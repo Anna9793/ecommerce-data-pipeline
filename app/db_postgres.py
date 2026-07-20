@@ -85,19 +85,25 @@ def insert_churn_prediction(record):
                 recency,
                 frequency,
                 avg_order_value,
+                spending_velocity,
+                cancellation_rate,
+                preferred_shopping_hour,
                 churn_probability,
                 is_churn,
                 model_version,
                 feature_version,
                 response_time_ms
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             record["request_id"],
             record["customer_id"],
             record["recency"],
             record["frequency"],
             record["avg_order_value"],
+            record["spending_velocity"],
+            record["cancellation_rate"],
+            record["preferred_shopping_hour"],
             record["churn_probability"],
             record["is_churn"],
             record["model_version"],
