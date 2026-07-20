@@ -4,3 +4,4 @@ __pycache__
 .git
 .ipynb_checkpoints
 *.pyc
+data/
