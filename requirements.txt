@@ -173,6 +173,8 @@ google-cloud-bigquery
 pandas-gbq
 google-cloud-storage
 gcsfs
+google-cloud-aiplatform
+
 
 
 
