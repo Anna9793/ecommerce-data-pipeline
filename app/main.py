@@ -90,3 +90,17 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
             status_code=500, 
             detail="Internal server error"
         )
+
+@app.get("/predict/campaign/{customer_id}")
+def generate_campaign_endpoint(customer_id: str):
+    try:
+        from app.agent_service import MarketingAgentService
+        agent_service = MarketingAgentService()
+        campaign = agent_service.generate_marketing_campaign(customer_id)
+        return campaign
+    except Exception as e:
+        logging.exception("Error generating campaign")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Campaign generation failed: {str(e)}"
+        )
