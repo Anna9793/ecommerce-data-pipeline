@@ -60,8 +60,8 @@ jobs:
           context: .
           push: true
           tags: us-central1-docker.pkg.dev/anna-ml-pipeline/ecommerce-ml-pipeline/pipeline-image:latest
-          cache-from: type=registry,ref=us-central1-docker.pkg.dev/anna-ml-pipeline/ecommerce-ml-pipeline/pipeline-image:latest
-          cache-to: type=inline
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Deploy FastAPI API to Cloud Run
         run: |
