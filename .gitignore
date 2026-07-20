@@ -9,3 +9,4 @@ mlruns/
 models/
 .ipynb_checkpoints/
 .DS_Store
+churn_pipeline.yaml

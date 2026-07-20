@@ -25,15 +25,19 @@ from config.paths import CLEAN_RETAIL
 def run_churn_training(
     cutoff_days=90,
     test_size=0.2,
-    random_state=42
+    random_state=42,
+    df=None
 ):
 
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
     mlflow.set_experiment("customer_churn")
 
-    logging.info("Loading and transforming data")
-    df = load_clean_data(CLEAN_RETAIL)
-    df = transform_data(df)
+    if df is None:
+        logging.info("Loading and transforming data")
+        df = load_clean_data(CLEAN_RETAIL)
+        df = transform_data(df)
+    else:
+        logging.info("Using provided DataFrame for training")
 
     # Creating cutoff date
     max_date = df["invoice_date"].max()
@@ -157,6 +161,11 @@ def run_churn_training(
             )
             
         logging.info("Logistic Regression model registered to MLflow registry under 'customer_churn_model' and tagged 'production'")
+        return {
+            "f1_score": float(test_f1),
+            "model_version": int(model_version_info.version),
+            "run_id": str(lr_run_id)
+        }
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
