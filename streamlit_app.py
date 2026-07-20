@@ -30,7 +30,7 @@ st.title("🛍️ E-commerce Analytics & ML Dashboard")
 st.caption("Real-time Customer Segmentation & Churn Risk Analytics")
 
 # Define Tabs
-tab1, tab2 = st.tabs(["📊 Customer Segmentation", "🔮 Churn Prediction"])
+tab1, tab2, tab3 = st.tabs(["📊 Customer Segmentation", "🔮 Churn Prediction", "🤖 AI Marketing Copilot"])
 
 # TAB 1: CUSTOMER SEGMENTATION
 with tab1:
@@ -194,3 +194,74 @@ with tab2:
                     st.error(f"⚠️ **High Churn Risk!** Risk: {risk_pct}%")
                 else:
                     st.success(f"✅ **Low Churn Risk** Risk: {risk_pct}%")
+
+# TAB 3: AI MARKETING COPILOT
+with tab3:
+    st.subheader("🤖 AI Marketing Campaign Generator & Vector Search")
+    st.write("Target inactive or high-value customers with personalized recommendations and email drafts powered by Vertex AI and Gemini.")
+    
+    # Selection
+    col_input, col_info = st.columns([1, 2])
+    with col_input:
+        with st.container(border=True):
+            customer_id_input = st.text_input("Enter Customer ID", value="17850")
+            st.caption("Try sample customer IDs: **17850**, **13047**, **12583**, **12431**, **14606**")
+            generate_btn = st.button("Generate Campaign", use_container_width=True)
+            
+    with col_info:
+        st.info("💡 **How it works:** This assistant identifies the customer's churn risk and segment from BigQuery. It then performs a **Vector Search** to find products similar to their last purchased item, and prompts Gemini to write a personalized email campaign.")
+
+    if generate_btn:
+        with st.spinner("Analyzing profile, executing vector similarity search, and generating email campaign..."):
+            try:
+                response = requests.get(f"{API_URL}/predict/campaign/{customer_id_input}")
+                if response.status_code == 200:
+                    result = response.json()
+                    
+                    st.divider()
+                    col_results_left, col_results_right = st.columns([1, 1.5])
+                    
+                    with col_results_left:
+                        st.subheader("👤 Customer Profile Details")
+                        profile = result["profile"]
+                        
+                        # Profile Cards
+                        with st.container(border=True):
+                            st.write(f"**Customer ID:** {result['customer_id']}")
+                            st.write(f"**Segment:** {profile['segment']}")
+                            st.write(f"**Last Purchased:** {profile['last_purchased']}")
+                            
+                            st.write("**Customer Metrics:**")
+                            st.write(f"- Recency: {profile['recency']} days")
+                            st.write(f"- Frequency: {profile['frequency']} purchases")
+                            st.write(f"- Average Order Value: ${profile['avg_order_value']:.2f}")
+                            
+                            # Churn alert
+                            churn_prob = profile.get("churn_probability", 0)
+                            is_churn = profile.get("is_churn", 0)
+                            if is_churn == 1:
+                                st.warning(f"⚠️ Churn Risk: **High ({churn_prob*100:.1f}%)**")
+                            else:
+                                st.success(f"✅ Churn Risk: **Low ({churn_prob*100:.1f}%)**")
+                                
+                        st.subheader("🛍️ Vector Search Recommendations")
+                        st.write("Top similar items from catalog:")
+                        for rec in result["recommendations"]:
+                            with st.container(border=True):
+                                col_desc, col_sim = st.columns([3, 1])
+                                with col_desc:
+                                    st.markdown(f"**{rec['description']}**")
+                                    st.write(f"Price: ${rec['unit_price']:.2f} | Code: {rec['stock_code']}")
+                                with col_sim:
+                                    st.metric("Similarity", f"{rec['similarity']*100:.1f}%")
+                                    
+                    with col_results_right:
+                        st.subheader("📧 AI Campaign Copy Draft")
+                        with st.container(border=True):
+                            st.markdown(result["campaign_draft"])
+                            
+                else:
+                    st.error(f"Failed to generate campaign. Server returned status code: {response.status_code}")
+                    st.error(response.text)
+            except Exception as e:
+                st.error(f"Error connecting to FastAPI API: {str(e)}")
