@@ -31,7 +31,10 @@ class MarketingAgentService:
         SELECT 
             recency, 
             frequency, 
-            avg_order_value
+            avg_order_value,
+            spending_velocity,
+            cancellation_rate,
+            preferred_shopping_hour
         FROM `{self.project_id}.retail_data.rfm_features`
         WHERE CAST(customer_id AS STRING) = @customer_id
         LIMIT 1
@@ -147,6 +150,9 @@ class MarketingAgentService:
                 "recency": 30,
                 "frequency": 5,
                 "avg_order_value": 100.0,
+                "spending_velocity": 1.0,
+                "cancellation_rate": 0.0,
+                "preferred_shopping_hour": 12,
                 "segment": "Medium Customers",
                 "last_purchased": "RED RETROSPOT WRAP",
                 "churn_probability": 0.15,
@@ -169,6 +175,9 @@ class MarketingAgentService:
         - Segment Profile: {profile['segment']}
         - Churn Probability: {profile['churn_probability']*100:.1f}% (Predicted Churn Status: {"At Risk" if profile['is_churn'] == 1 else "Loyal"})
         - Last Purchased Product: "{profile['last_purchased']}"
+        - Spending Velocity (30d vs 90d spending trend): {profile.get('spending_velocity', 1.0):.2f} (Values < 1.0 indicate decreasing spending activity)
+        - Order Cancellation Rate: {profile.get('cancellation_rate', 0.0)*100:.1f}%
+        - Preferred Shopping Hour: {profile.get('preferred_shopping_hour', 12)}:00 (Use this to decide when to schedule the email)
         
         RECOMMENDED PRODUCTS (Identified via vector search based on preferences):
         {rec_list_str}
@@ -177,10 +186,12 @@ class MarketingAgentService:
         1. Draft a catchy, subject line tailored to their segment.
         2. Write a short, warm, and highly personalized email body.
         3. Address their segment characteristics:
-           - If they are predicted "At Risk" of churn, offer a special "We Miss You" 20% discount.
-           - If they are a loyal segment, thank them for their loyalty and offer early access to new items.
+           - If their Churn status is "At Risk" OR their Spending Velocity is less than 0.8, offer a special "We Miss You" 20% discount code: WINBACK20.
+           - If their Order Cancellation Rate is greater than 15%, start with a brief, friendly apology acknowledging that we'd love to make their next experience seamless, and offer free priority shipping code: SHIPSAFE.
+           - If they are a loyal segment, thank them for their loyalty and offer early access code: LOYALTYVIP.
         4. Integrate the recommended products naturally into the email body, highlighting how they match their style.
-        5. Return the response in clean, professional Markdown.
+        5. Return the response in clean, professional Markdown. Add a small metadata block at the very bottom in the format:
+           `**Delivery Meta:** [Schedule Delivery for {profile.get('preferred_shopping_hour', 12)}:00]`
         """
         
         # 4. Generate email with Gemini
@@ -189,12 +200,14 @@ class MarketingAgentService:
             email_draft = response.text
         except Exception as e:
             logging.warning("Gemini generation failed: %s. Using default mock campaign copy.", e)
-            discount_offer = "20% off with code MISSYOU20" if profile["is_churn"] == 1 else "early access with code LOYALTYVIP"
+            discount_offer = "20% off with code WINBACK20" if (profile["is_churn"] == 1 or profile.get("spending_velocity", 1.0) < 0.8) else "early access with code LOYALTYVIP"
+            apology_intro = "We noticed some of your recent orders were cancelled. We'd love to make things right and guarantee a smooth checkout next time!" if profile.get("cancellation_rate", 0.0) > 0.15 else ""
+            
             email_draft = f"""# Subject: Special Offer: Inspired by your recent purchase!
 
 Dear Customer {customer_id},
 
-We hope you are having a wonderful day! We noticed you recently purchased the **"{profile['last_purchased']}"** and loved it. 
+We hope you are having a wonderful day! {apology_intro} We noticed you recently purchased the **"{profile['last_purchased']}"** and loved it. 
 
 Based on your taste, we thought you might enjoy these top recommendations from our collection:
 1.  **{recommendations[0]['description']}** — ${recommendations[0]['unit_price']:.2f}
@@ -207,6 +220,8 @@ Enter the code at checkout. We hope to see you again soon!
 
 Best regards,  
 *Your E-Commerce Marketing Team*
+
+**Delivery Meta:** [Schedule Delivery for {profile.get('preferred_shopping_hour', 12)}:00]
 """
         
         return {
