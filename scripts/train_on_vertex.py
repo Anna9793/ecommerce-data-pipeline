@@ -20,7 +20,7 @@ def submit_vertex_training_job():
     job = aiplatform.CustomContainerTrainingJob(
         display_name="churn-prediction-retraining",
         container_uri=image_uri,
-        command=["sh", "-c", "python src/churn_training.py && python scripts/export_models.py"],
+        command=["sh", "-c", "export PYTHONPATH=. && python src/churn_training.py && python scripts/export_models.py"],
     )
     
     environment_variables = {
