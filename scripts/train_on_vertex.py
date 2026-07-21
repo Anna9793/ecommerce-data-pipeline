@@ -37,8 +37,10 @@ def submit_vertex_training_job():
         }
     )
     
-    pipeline_job.run(sync=False)
+    pipeline_job.submit()
     logging.info("Vertex AI Pipeline Job submitted successfully! Monitor it in the Google Cloud Console under Vertex AI Pipelines.")
+    return pipeline_job.name
 
 if __name__ == "__main__":
     submit_vertex_training_job()
+

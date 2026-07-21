@@ -1,3 +1,4 @@
+import os
 import uuid
 import time
 import logging
@@ -107,10 +108,18 @@ def generate_campaign_endpoint(customer_id: str):
         )
 
 @app.post("/train/churn")
-def trigger_churn_retraining(background_tasks: BackgroundTasks):
+def trigger_churn_retraining():
     try:
-        background_tasks.add_task(submit_vertex_training_job)
-        return {"status": "success", "message": "Vertex AI custom container training job triggered successfully."}
+        job_name = submit_vertex_training_job()
+        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+        location = os.getenv("GCP_LOCATION", "us-central1")
+        console_url = f"https://console.cloud.google.com/vertex-ai/pipelines/locations/{location}/runs/{job_name}?project={project_id}"
+        return {
+            "status": "success",
+            "message": "Vertex AI pipeline run submitted successfully.",
+            "job_name": job_name,
+            "console_url": console_url
+        }
     except Exception as e:
         logging.exception("Error triggering Vertex AI training job")
         raise HTTPException(

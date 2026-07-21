@@ -212,7 +212,13 @@ with tab2:
                     try:
                         resp = requests.post(f"{API_URL}/train/churn")
                         if resp.status_code == 200:
-                            st.success("✅ Job submitted successfully! Monitor it under Vertex AI Custom Jobs.")
+                            data = resp.json()
+                            console_url = data.get("console_url")
+                            if console_url:
+                                st.success("✅ Retraining pipeline submitted successfully!")
+                                st.markdown(f"[🔗 **Click here to monitor the pipeline run in Vertex AI Console**]({console_url})")
+                            else:
+                                st.success("✅ Retraining job submitted successfully!")
                         else:
                             st.error(f"❌ Failed to submit job: {resp.text}")
                     except Exception as e:
