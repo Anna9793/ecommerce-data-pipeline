@@ -162,7 +162,7 @@ def run_churn_training(
             
         logging.info("Logistic Regression model registered to MLflow registry under 'customer_churn_model' and tagged 'production'")
         return {
-            "f1_score": float(test_f1),
+            "f1_score": float(lr_f1),
             "model_version": int(model_version_info.version),
             "run_id": str(lr_run_id)
         }
