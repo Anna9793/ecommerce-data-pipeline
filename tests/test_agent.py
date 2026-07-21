@@ -1,9 +1,29 @@
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 from app.main import app
 
 client = TestClient(app)
 
-def test_generate_campaign_endpoint():
+@patch("app.agent_service.MarketingAgentService.generate_marketing_campaign")
+def test_generate_campaign_endpoint(mock_gen):
+    # Set up mock response for the campaign generation service
+    mock_gen.return_value = {
+        "customer_id": "17850",
+        "profile": {
+            "recency": 30,
+            "frequency": 5,
+            "avg_order_value": 100.0,
+            "segment": "Medium Customers",
+            "last_purchased": "RED RETROSPOT WRAP",
+            "churn_probability": 0.15,
+            "is_churn": 0
+        },
+        "recommendations": [
+            {"stock_code": "85123A", "description": "WHITE HANGING HEART T-LIGHT HOLDER", "unit_price": 2.55, "similarity": 0.85}
+        ],
+        "campaign_draft": "Mock email campaign draft copy."
+    }
+
     response = client.get("/predict/campaign/17850")
     assert response.status_code == 200
     data = response.json()
