@@ -38,6 +38,8 @@ def run_churn_training(
         df = transform_data(df)
     else:
         logging.info("Using provided DataFrame for training")
+        if "invoice_date" in df.columns:
+            df["invoice_date"] = pd.to_datetime(df["invoice_date"])
 
     # Creating cutoff date
     max_date = df["invoice_date"].max()
