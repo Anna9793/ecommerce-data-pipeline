@@ -4,10 +4,11 @@ from app.main import app
 
 client = TestClient(app)
 
-@patch("app.agent_service.MarketingAgentService.generate_marketing_campaign")
-def test_generate_campaign_endpoint(mock_gen):
-    # Set up mock response for the campaign generation service
-    mock_gen.return_value = {
+@patch("app.agent_service.MarketingAgentService")
+def test_generate_campaign_endpoint(mock_service_class):
+    # Mock the instance returned by instantiating the class
+    mock_instance = mock_service_class.return_value
+    mock_instance.generate_marketing_campaign.return_value = {
         "customer_id": "17850",
         "profile": {
             "recency": 30,
