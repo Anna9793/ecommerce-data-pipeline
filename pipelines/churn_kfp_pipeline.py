@@ -34,6 +34,8 @@ def train_churn_comp(
     import os
     import pandas as pd
     import logging
+    import mlflow.sklearn
+    import joblib
     from src.churn_training import run_churn_training
     
     logging.basicConfig(level=logging.INFO)
@@ -49,6 +51,11 @@ def train_churn_comp(
     metrics_output.log_metric("f1_score", results["f1_score"])
     metrics_output.log_metric("model_version", results["model_version"])
     
+    # Save model artifact to KFP output path
+    logging.info("Saving trained model to KFP artifact path...")
+    candidate_model = mlflow.sklearn.load_model(f"runs:/{results['run_id']}/model")
+    joblib.dump(candidate_model, model_output.path)
+    
     # Pass metadata parameters down the DAG line
     model_output.metadata["run_id"] = results["run_id"]
     model_output.metadata["f1_score"] = results["f1_score"]
@@ -63,8 +70,6 @@ def evaluate_deploy_comp(
 ):
     import os
     import json
-    import mlflow.sklearn
-    import joblib
     import logging
     from google.cloud import storage
     
@@ -93,15 +98,10 @@ def evaluate_deploy_comp(
     # Evaluation gate
     if candidate_f1 >= active_f1:
         logging.info("Candidate model is better or equal. Deploying to GCS production path...")
-        os.environ["MLFLOW_TRACKING_URI"] = "file:./mlruns"
         
-        # Load, serialize, and upload
-        candidate_model = mlflow.sklearn.load_model(f"runs:/{run_id}/model")
-        local_path = "customer_churn_model.pkl"
-        joblib.dump(candidate_model, local_path)
-        
+        # Upload candidate model direct from KFP download path
         model_blob = bucket.blob("models/customer_churn_model.pkl")
-        model_blob.upload_from_filename(local_path)
+        model_blob.upload_from_filename(model_input.path)
         
         # Write new metadata
         new_metadata = {
