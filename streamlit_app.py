@@ -49,11 +49,19 @@ with st.sidebar:
             try:
                 resp = requests.post(f"{API_URL}/simulate?mode={sim_mode}&num_records={num_records}")
                 if resp.status_code == 200:
-                    st.success(f"✅ {resp.json().get('message')}")
-                    # Clear Streamlit's cached data so the new transactions appear instantly
-                    st.cache_data.clear()
+                    data = resp.json()
+                    if data.get("status") == "success":
+                        st.success(f"✅ {data.get('message')}")
+                        # Clear Streamlit's cached data so the new transactions appear instantly
+                        st.cache_data.clear()
+                    else:
+                        st.error("❌ Simulation Failed inside API Service:")
+                        st.error(data.get("message"))
+                        with st.expander("View Detailed Exception Traceback"):
+                            st.code(data.get("traceback"))
                 else:
-                    st.error(f"❌ Simulation failed: {resp.text}")
+                    st.error(f"❌ Gateway returned status code {resp.status_code}")
+                    st.code(resp.text[:800])
             except Exception as e:
                 st.error(f"❌ Connection error: {str(e)}")
 

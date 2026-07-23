@@ -156,8 +156,10 @@ def simulate_stream_endpoint(mode: str = "standard", num_records: int = 50):
             "message": f"Successfully streamed {num_inserted} transactions to BigQuery in {mode} mode."
         }
     except Exception as e:
+        import traceback
         logging.exception("Error during transaction streaming simulation")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Streaming simulation failed: {str(e)}"
-        )
+        return {
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }
