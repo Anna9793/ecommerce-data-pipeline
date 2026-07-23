@@ -4,10 +4,25 @@ from google.cloud import aiplatform
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
+def get_api_service_url(project_id, location="us-central1"):
+    try:
+        from google.cloud import run_v2
+        client = run_v2.ServicesClient()
+        name = f"projects/{project_id}/locations/{location}/services/api-service"
+        service = client.get_service(name=name)
+        logging.info("Resolved live api-service URI: %s", service.uri)
+        return service.uri
+    except Exception as e:
+        logging.warning("Could not fetch api-service URL dynamically: %s. Using fallback.", e)
+        return "http://localhost:8000"
+
 def submit_vertex_training_job():
     project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
     location = os.getenv("GCP_LOCATION", "us-central1")
     bucket_name = os.getenv("GCS_BUCKET", "anna-ml-pipeline-bucket")
+    
+    # Resolve the API URL to pass to evaluate_deploy_comp
+    api_url = get_api_service_url(project_id, location)
     
     # 1. Compile the pipeline
     logging.info("Compiling Kubeflow pipeline...")
@@ -33,7 +48,8 @@ def submit_vertex_training_job():
         pipeline_root=f"gs://{bucket_name}/pipeline_root",
         parameter_values={
             "project_id": project_id,
-            "bucket_name": bucket_name
+            "bucket_name": bucket_name,
+            "api_url": api_url
         }
     )
     

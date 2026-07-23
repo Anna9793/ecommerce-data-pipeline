@@ -126,3 +126,38 @@ def trigger_churn_retraining():
             status_code=500,
             detail=f"Failed to submit training job: {str(e)}"
         )
+
+@app.post("/reload-models")
+def reload_models():
+    try:
+        from app.service import reload_production_models
+        reload_production_models()
+        return {"status": "success", "message": "Production models reloaded successfully."}
+    except Exception as e:
+        logging.exception("Error reloading production models")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reload models: {str(e)}"
+        )
+
+@app.post("/simulate")
+def simulate_stream_endpoint(mode: str = "standard", num_records: int = 50):
+    try:
+        from scripts.simulate_stream import generate_mock_transactions, insert_transactions_to_bq
+        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+        
+        if os.getenv("USE_BIGQUERY", "false").lower() != "true":
+            return {"status": "success", "message": f"Local simulation mode active (mocked {num_records} records)."}
+            
+        rows = generate_mock_transactions(mode=mode, num_records=num_records)
+        num_inserted = insert_transactions_to_bq(rows, project_id=project_id)
+        return {
+            "status": "success",
+            "message": f"Successfully streamed {num_inserted} transactions to BigQuery in {mode} mode."
+        }
+    except Exception as e:
+        logging.exception("Error during transaction streaming simulation")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Streaming simulation failed: {str(e)}"
+        )

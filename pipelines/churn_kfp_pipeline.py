@@ -66,7 +66,8 @@ def train_churn_comp(
 def evaluate_deploy_comp(
     model_input: Input[Model],
     bucket_name: str,
-    project_id: str
+    project_id: str,
+    api_url: str
 ):
     import os
     import json
@@ -111,6 +112,17 @@ def evaluate_deploy_comp(
         }
         metadata_blob.upload_from_string(json.dumps(new_metadata, indent=2))
         logging.info("Deployment successful.")
+        
+        # Trigger dynamic reload of models on the live API service
+        if api_url and api_url.startswith("http"):
+            import requests
+            try:
+                logging.info("Triggering dynamic model reload on live API: %s", api_url)
+                reload_url = f"{api_url.rstrip('/')}/reload-models"
+                response = requests.post(reload_url, timeout=15)
+                logging.info("Reload response: %s - %s", response.status_code, response.text)
+            except Exception as e:
+                logging.warning("Failed to trigger model reload on live API service: %s", e)
     else:
         logging.info("Candidate performance was lower than active model. Deployment skipped.")
 
@@ -120,7 +132,8 @@ def evaluate_deploy_comp(
 )
 def churn_retraining_pipeline(
     project_id: str = "anna-ml-pipeline",
-    bucket_name: str = "anna-ml-pipeline-bucket"
+    bucket_name: str = "anna-ml-pipeline-bucket",
+    api_url: str = "http://localhost:8000"
 ):
     extract_task = extract_data_comp(project_id=project_id)
     
@@ -129,7 +142,8 @@ def churn_retraining_pipeline(
     evaluate_deploy_comp(
         model_input=train_task.outputs["model_output"],
         bucket_name=bucket_name,
-        project_id=project_id
+        project_id=project_id,
+        api_url=api_url
     )
 
 if __name__ == "__main__":

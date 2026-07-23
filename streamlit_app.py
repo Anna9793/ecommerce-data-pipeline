@@ -26,6 +26,37 @@ if "last_churn_prediction" not in st.session_state:
 
 # Title
 st.set_page_config(page_title="E-commerce ML Dashboard", layout="wide")
+
+# Sidebar Ingestion Simulator Controls
+with st.sidebar:
+    st.title("🔴 Ingestion Simulator")
+    st.write("Stream mock purchases/cancellations directly to BigQuery to simulate live retail changes.")
+    
+    sim_mode = st.selectbox(
+        "Simulation Mode",
+        ["standard", "drift_cancellations", "drift_velocity"],
+        format_func=lambda x: {
+            "standard": "Standard Buying (Normal)",
+            "drift_cancellations": "Spike Cancellations (Drift)",
+            "drift_velocity": "Spike Order Size (Drift)"
+        }.get(x, x)
+    )
+    
+    num_records = st.slider("Records to Generate", min_value=10, max_value=200, value=50, step=10)
+    
+    if st.button("⚡ Stream Simulated Transactions", use_container_width=True):
+        with st.spinner("Streaming transactions to BigQuery..."):
+            try:
+                resp = requests.post(f"{API_URL}/simulate?mode={sim_mode}&num_records={num_records}")
+                if resp.status_code == 200:
+                    st.success(f"✅ {resp.json().get('message')}")
+                    # Clear Streamlit's cached data so the new transactions appear instantly
+                    st.cache_data.clear()
+                else:
+                    st.error(f"❌ Simulation failed: {resp.text}")
+            except Exception as e:
+                st.error(f"❌ Connection error: {str(e)}")
+
 st.title("🛍️ E-commerce Analytics & ML Dashboard")
 st.caption("Real-time Customer Segmentation & Churn Risk Analytics")
 

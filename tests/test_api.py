@@ -56,3 +56,15 @@ def test_predict_reject_invalid_input():
     assert response.status_code == 422
 
     assert "detail" in response.json()
+
+@patch("app.service.reload_production_models")
+def test_reload_models_endpoint(mock_reload):
+    response = client.post("/reload-models")
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert mock_reload.called
+
+def test_simulate_endpoint_local_mode():
+    response = client.post("/simulate?mode=standard&num_records=10")
+    assert response.status_code == 200
+    assert "mocked" in response.json()["message"]
