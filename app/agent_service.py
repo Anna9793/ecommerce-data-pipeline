@@ -183,12 +183,12 @@ class MarketingAgentService:
         {rec_list_str}
         
         CAMPAIGN INSTRUCTIONS:
-        1. Draft a catchy, subject line tailored to their segment.
+        1. Draft a catchy, subject line. Do NOT mention internal segment names (like "Inactive Customers" or "Frequent Buyers") anywhere in the email.
         2. Write a short, warm, and highly personalized email body.
-        3. Address their segment characteristics:
-           - If their Churn status is "At Risk" OR their Spending Velocity is less than 0.8, offer a special "We Miss You" 20% discount code: WINBACK20.
+        3. Address their profile characteristics implicitly:
+           - If their Churn status is "At Risk" OR their Spending Velocity is less than 0.8, offer a special "We Miss You" 20% discount code: WINBACK20. Do NOT use terms like "inactive" or "churn risk".
            - If their Order Cancellation Rate is greater than 15%, start with a brief, friendly apology acknowledging that we'd love to make their next experience seamless, and offer free priority shipping code: SHIPSAFE.
-           - If they are a loyal segment, thank them for their loyalty and offer early access code: LOYALTYVIP.
+           - If they are a loyal/low-risk customer, thank them for their support and offer early access code: LOYALTYVIP.
         4. Integrate the recommended products naturally into the email body, highlighting how they match their style.
         5. Return the response in clean, professional Markdown. Add a small metadata block at the very bottom in the format:
            `**Delivery Meta:** [Schedule Delivery for {profile.get('preferred_shopping_hour', 12)}:00]`
@@ -214,7 +214,7 @@ Based on your taste, we thought you might enjoy these top recommendations from o
 2.  **{recommendations[1]['description']}** — ${recommendations[1]['unit_price']:.2f}
 3.  **{recommendations[2]['description']}** — ${recommendations[2]['unit_price']:.2f}
 
-Because you are a valued customer in our **{profile['segment']}** segment, we'd like to offer you a special benefit: **{discount_offer}**!
+Because you are a valued customer, we'd like to offer you a special benefit: **{discount_offer}**!
 
 Enter the code at checkout. We hope to see you again soon!
 

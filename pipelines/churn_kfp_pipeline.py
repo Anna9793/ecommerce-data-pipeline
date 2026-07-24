@@ -63,8 +63,61 @@ def train_churn_comp(
     logging.info("Model training successfully complete.")
 
 @component(base_image="us-central1-docker.pkg.dev/anna-ml-pipeline/ecommerce-ml-pipeline/pipeline-image:latest")
+def train_segmentation_comp(
+    dataset_input: Input[Dataset],
+    model_output: Output[Model]
+):
+    import os
+    import pandas as pd
+    import logging
+    import mlflow.sklearn
+    import joblib
+    from src.rfm_features import compute_rfm
+    from sklearn.cluster import KMeans
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+    from src.features.transformers import LogTransformer
+    from src.features.selection import ColumnSelector
+    from src.features.to_numpy import ToNumpy
+    
+    logging.basicConfig(level=logging.INFO)
+    os.environ["MLFLOW_TRACKING_URI"] = "file:./mlruns"
+    
+    logging.info("Loading KFP Dataset artifact...")
+    df = pd.read_csv(dataset_input.path)
+    
+    logging.info("Computing RFM features...")
+    rfm_df = compute_rfm(df)
+    
+    logging.info("Training KMeans customer segmentation model...")
+    feature_cols = ["recency", "frequency", "avg_order_value"]
+    
+    pipeline = Pipeline([
+        ("selector", ColumnSelector(columns=feature_cols)),
+        ("log", LogTransformer(columns=["frequency", "avg_order_value"])),
+        ("to_numpy", ToNumpy()),
+        ("scaler", StandardScaler()),
+        ("model", KMeans(n_clusters=4, random_state=42, n_init=10))
+    ])
+    
+    pipeline.fit(rfm_df)
+    
+    import mlflow
+    mlflow.set_tracking_uri("file:./mlruns")
+    mlflow.set_experiment("customer_segmentation")
+    with mlflow.start_run() as run:
+        mlflow.log_params({"n_clusters": 4, "random_state": 42})
+        mlflow.sklearn.log_model(sk_model=pipeline, artifact_path="model")
+        
+        logging.info("Saving trained segmentation model to KFP artifact path...")
+        joblib.dump(pipeline, model_output.path)
+        model_output.metadata["run_id"] = run.info.run_id
+        logging.info("Segmentation model training complete.")
+
+@component(base_image="us-central1-docker.pkg.dev/anna-ml-pipeline/ecommerce-ml-pipeline/pipeline-image:latest")
 def evaluate_deploy_comp(
-    model_input: Input[Model],
+    churn_model_input: Input[Model],
+    seg_model_input: Input[Model],
     bucket_name: str,
     project_id: str,
     api_url: str
@@ -75,11 +128,11 @@ def evaluate_deploy_comp(
     from google.cloud import storage
     
     logging.basicConfig(level=logging.INFO)
-    run_id = model_input.metadata["run_id"]
-    candidate_f1 = model_input.metadata["f1_score"]
-    model_version = model_input.metadata["model_version"]
+    run_id = churn_model_input.metadata["run_id"]
+    candidate_f1 = churn_model_input.metadata["f1_score"]
+    model_version = churn_model_input.metadata["model_version"]
     
-    logging.info("Evaluating candidate model: Version %s, F1-Score %s", model_version, candidate_f1)
+    logging.info("Evaluating candidate churn model: Version %s, F1-Score %s", model_version, candidate_f1)
     
     # Download current production model details from GCS
     storage_client = storage.Client(project=project_id)
@@ -100,9 +153,12 @@ def evaluate_deploy_comp(
     if candidate_f1 >= active_f1:
         logging.info("Candidate model is better or equal. Deploying to GCS production path...")
         
-        # Upload candidate model direct from KFP download path
+        # Upload candidate models direct from KFP download paths
         model_blob = bucket.blob("models/customer_churn_model.pkl")
-        model_blob.upload_from_filename(model_input.path)
+        model_blob.upload_from_filename(churn_model_input.path)
+        
+        seg_model_blob = bucket.blob("models/customer_segmentation_model.pkl")
+        seg_model_blob.upload_from_filename(seg_model_input.path)
         
         # Write new metadata
         new_metadata = {
@@ -138,9 +194,11 @@ def churn_retraining_pipeline(
     extract_task = extract_data_comp(project_id=project_id)
     
     train_task = train_churn_comp(dataset_input=extract_task.outputs["dataset_output"])
+    train_seg_task = train_segmentation_comp(dataset_input=extract_task.outputs["dataset_output"])
     
     evaluate_deploy_comp(
-        model_input=train_task.outputs["model_output"],
+        churn_model_input=train_task.outputs["model_output"],
+        seg_model_input=train_seg_task.outputs["model_output"],
         bucket_name=bucket_name,
         project_id=project_id,
         api_url=api_url
