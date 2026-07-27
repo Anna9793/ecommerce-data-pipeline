@@ -1,3 +1,4 @@
+import os
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 
@@ -68,3 +69,29 @@ def test_simulate_endpoint_local_mode():
     response = client.post("/simulate?mode=standard&num_records=10")
     assert response.status_code == 200
     assert "mocked" in response.json()["message"]
+
+def test_monitoring_drift_endpoint():
+    response = client.get("/monitoring/drift")
+    assert response.status_code == 200
+    assert "status" in response.json()
+    assert "drift_detected" in response.json()
+
+@patch("app.main.submit_vertex_training_job")
+def test_monitoring_check_and_retrain_healthy(mock_submit):
+    response = client.post("/monitoring/check-and-retrain")
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+    assert not mock_submit.called
+
+@patch("app.main.submit_vertex_training_job")
+def test_monitoring_check_and_retrain_drifted(mock_submit):
+    mock_submit.return_value = "mock-vertex-job-name"
+    os.environ["TEST_DRIFT_ACTIVE"] = "true"
+    try:
+        response = client.post("/monitoring/check-and-retrain")
+        assert response.status_code == 200
+        assert response.json()["status"] == "drift_detected"
+        assert "console_url" in response.json()
+        assert mock_submit.called
+    finally:
+        os.environ["TEST_DRIFT_ACTIVE"] = "false"

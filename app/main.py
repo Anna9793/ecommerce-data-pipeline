@@ -163,3 +163,47 @@ def simulate_stream_endpoint(mode: str = "standard", num_records: int = 50):
             "message": str(e),
             "traceback": traceback.format_exc()
         }
+
+@app.get("/monitoring/drift")
+def get_drift_report():
+    try:
+        from src.monitoring import calculate_feature_drift
+        report = calculate_feature_drift()
+        return report
+    except Exception as e:
+        logging.exception("Error calculating feature drift")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to calculate feature drift: {str(e)}"
+        )
+
+@app.post("/monitoring/check-and-retrain")
+def check_and_retrain():
+    try:
+        from src.monitoring import calculate_feature_drift
+        report = calculate_feature_drift()
+        
+        if report.get("drift_detected", False):
+            logging.info("Data drift detected! Launching automated retraining pipeline...")
+            job_name = submit_vertex_training_job()
+            project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+            location = os.getenv("GCP_LOCATION", "us-central1")
+            console_url = f"https://console.cloud.google.com/vertex-ai/pipelines/locations/{location}/runs/{job_name}?project={project_id}"
+            return {
+                "status": "drift_detected",
+                "message": "Data drift detected! Retraining pipeline submitted successfully.",
+                "job_name": job_name,
+                "console_url": console_url
+            }
+        else:
+            logging.info("Features are healthy. No retraining triggered.")
+            return {
+                "status": "healthy",
+                "message": "Features are healthy. Retraining is not required."
+            }
+    except Exception as e:
+        logging.exception("Error checking drift and retraining")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to check and retrain: {str(e)}"
+        )

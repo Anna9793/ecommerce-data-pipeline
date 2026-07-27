@@ -69,7 +69,7 @@ st.title("🛍️ E-commerce Analytics & ML Dashboard")
 st.caption("Real-time Customer Segmentation & Churn Risk Analytics")
 
 # Define Tabs
-tab1, tab2, tab3 = st.tabs(["📊 Customer Segmentation", "🔮 Churn Prediction", "🤖 AI Marketing Copilot"])
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Customer Segmentation", "🔮 Churn Prediction", "🤖 AI Marketing Copilot", "📈 Model Monitoring"])
 
 # TAB 1: CUSTOMER SEGMENTATION
 with tab1:
@@ -333,3 +333,99 @@ with tab3:
                     st.error(response.text)
             except Exception as e:
                 st.error(f"Error connecting to FastAPI API: {str(e)}")
+
+# TAB 4: MODEL MONITORING & DRIFT
+with tab4:
+    st.subheader("📈 Real-time Feature Drift Monitoring")
+    st.write("This panel tracks statistical drift between the original training baseline and live streamed customer metrics in BigQuery using the Kolmogorov-Smirnov (K-S) test.")
+
+    # Trigger GET /monitoring/drift
+    try:
+        drift_resp = requests.get(f"{API_URL}/monitoring/drift")
+        if drift_resp.status_code == 200:
+            drift_data = drift_resp.json()
+            
+            # 1. Overall Health Badge
+            drift_detected = drift_data.get("drift_detected", False)
+            if drift_detected:
+                st.error("🔴 **DATA DRIFT DETECTED: Retraining Required!**")
+                
+                # Check-and-retrain button
+                col_btn, col_info = st.columns([1, 2])
+                with col_btn:
+                    if st.button("⚡ Run Closed-Loop Check & Retrain", use_container_width=True):
+                        with st.spinner("Checking drift and triggering Vertex AI Pipeline..."):
+                            try:
+                                retrain_resp = requests.post(f"{API_URL}/monitoring/check-and-retrain")
+                                if retrain_resp.status_code == 200:
+                                    retrain_data = retrain_resp.json()
+                                    if retrain_data.get("status") == "drift_detected":
+                                        st.success("🚀 Drift confirmed! Retraining pipeline submitted successfully!")
+                                        console_url = retrain_data.get("console_url")
+                                        if console_url:
+                                            st.markdown(f"[🔗 **Monitor Retraining Job in Vertex Console**]({console_url})")
+                                    else:
+                                        st.info("ℹ️ " + retrain_data.get("message"))
+                                else:
+                                    st.error(f"❌ Webhook call failed: {retrain_resp.text}")
+                            except Exception as e:
+                                st.error(f"❌ Connection error: {str(e)}")
+            else:
+                st.success("🟢 **SYSTEM STATUS HEALTHY: No Significant Drift Detected**")
+
+            st.divider()
+
+            # 2. Features metrics table
+            st.subheader("📊 Feature Drift Summary Table")
+            features_dict = drift_data.get("features", {})
+            
+            if features_dict:
+                table_rows = []
+                for feat, stats in features_dict.items():
+                    table_rows.append({
+                        "Feature": feat,
+                        "K-S Statistic": round(stats["ks_statistic"], 4),
+                        "p-value": f"{stats['p_value']:.4e}" if stats['p_value'] < 0.0001 else round(stats['p_value'], 4),
+                        "Baseline Mean": round(stats["baseline_mean"], 2),
+                        "Target Mean": round(stats["target_mean"], 2),
+                        "Status": "🔴 DRIFTED" if stats["drifted"] else "🟢 Healthy"
+                    })
+                st.dataframe(pd.DataFrame(table_rows), use_container_width=True)
+
+                st.divider()
+
+                # 3. Distribution chart selection
+                st.subheader("📊 Distribution Overlay Plot")
+                selected_feat = st.selectbox("Select a feature to view distribution overlay", list(features_dict.keys()))
+                
+                feat_stats = features_dict[selected_feat]
+                baseline_vals = feat_stats.get("baseline_values", [])
+                target_vals = feat_stats.get("target_values", [])
+                
+                if baseline_vals and target_vals:
+                    # Create overlay histogram using plotly
+                    plot_df = pd.concat([
+                        pd.DataFrame({"value": baseline_vals, "Dataset": "Baseline (Training)"}),
+                        pd.DataFrame({"value": target_vals, "Dataset": "Live Stream (Target)"})
+                    ])
+                    
+                    fig = px.histogram(
+                        plot_df, 
+                        x="value", 
+                        color="Dataset", 
+                        barmode="overlay",
+                        title=f"Distribution Comparison: {selected_feat}",
+                        labels={"value": selected_feat},
+                        histnorm="probability density",
+                        marginal="box",
+                        opacity=0.6,
+                        color_discrete_map={"Baseline (Training)": "#1f77b4", "Live Stream (Target)": "#ff7f0e"}
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("No feature metrics returned in the drift report.")
+        else:
+            st.error(f"Failed to fetch drift report: status {drift_resp.status_code}")
+            st.code(drift_resp.text)
+    except Exception as e:
+        st.error(f"Error fetching drift report from API: {str(e)}")
