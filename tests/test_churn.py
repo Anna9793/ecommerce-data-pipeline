@@ -46,7 +46,7 @@ def test_predict_churn_reject_invalid_input():
 
     assert response.status_code == 422
 
-@patch("app.main.submit_vertex_training_job")
+@patch("scripts.train_on_vertex.submit_vertex_training_job")
 def test_trigger_churn_retraining_endpoint(mock_submit):
     response = client.post("/train/churn")
     assert response.status_code == 200

@@ -76,14 +76,14 @@ def test_monitoring_drift_endpoint():
     assert "status" in response.json()
     assert "drift_detected" in response.json()
 
-@patch("app.main.submit_vertex_training_job")
+@patch("scripts.train_on_vertex.submit_vertex_training_job")
 def test_monitoring_check_and_retrain_healthy(mock_submit):
     response = client.post("/monitoring/check-and-retrain")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
     assert not mock_submit.called
 
-@patch("app.main.submit_vertex_training_job")
+@patch("scripts.train_on_vertex.submit_vertex_training_job")
 def test_monitoring_check_and_retrain_drifted(mock_submit):
     mock_submit.return_value = "mock-vertex-job-name"
     os.environ["TEST_DRIFT_ACTIVE"] = "true"

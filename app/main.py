@@ -6,7 +6,6 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from app.schemas import PredictionRequest, ChurnPredictionRequest, ChurnPredictionResponse
 from app.service import predict_cluster, MODEL_VERSION, predict_churn_service, CHURN_MODEL_VERSION
 from app.db_postgres import insert_prediction, insert_churn_prediction
-from scripts.train_on_vertex import submit_vertex_training_job
 
 
 app = FastAPI()
@@ -110,6 +109,7 @@ def generate_campaign_endpoint(customer_id: str):
 @app.post("/train/churn")
 def trigger_churn_retraining():
     try:
+        from scripts.train_on_vertex import submit_vertex_training_job
         job_name = submit_vertex_training_job()
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
         location = os.getenv("GCP_LOCATION", "us-central1")
@@ -185,6 +185,7 @@ def check_and_retrain():
         
         if report.get("drift_detected", False):
             logging.info("Data drift detected! Launching automated retraining pipeline...")
+            from scripts.train_on_vertex import submit_vertex_training_job
             job_name = submit_vertex_training_job()
             project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
             location = os.getenv("GCP_LOCATION", "us-central1")
