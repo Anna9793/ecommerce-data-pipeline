@@ -4,4 +4,7 @@ __pycache__
 .git
 .ipynb_checkpoints
 *.pyc
-data/
+data/raw/
+data/processed/clean_retail.csv
+data/processed/feature_retail.csv
+data/processed/rfm_train_clusters.csv
