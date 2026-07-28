@@ -56,7 +56,8 @@ def generate_mock_transactions(mode: str = "standard", num_records: int = 50) ->
         else:
             price = round(random.uniform(0.5, 12.0), 2)
             
-        inv_date = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        # Use 2011-12-09 (UCI dataset epoch) to keep the recency max date calculations stable
+        inv_date = f"2011-12-09 {random.randint(13, 23)}:{random.randint(10, 59)}:{random.randint(10, 59)}"
         
         rows.append({
             "InvoiceNo": inv_no,
