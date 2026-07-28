@@ -50,8 +50,7 @@ def submit_vertex_training_job():
             "project_id": project_id,
             "bucket_name": bucket_name,
             "api_url": api_url
-        },
-        enable_caching=False
+        }
     )
     
     pipeline_job.submit()

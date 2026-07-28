@@ -192,6 +192,7 @@ def churn_retraining_pipeline(
     api_url: str = "http://localhost:8000"
 ):
     extract_task = extract_data_comp(project_id=project_id)
+    extract_task.set_caching_options(enable_caching=False)
     
     train_task = train_churn_comp(dataset_input=extract_task.outputs["dataset_output"])
     train_seg_task = train_segmentation_comp(dataset_input=extract_task.outputs["dataset_output"])
