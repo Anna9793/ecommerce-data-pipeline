@@ -3,7 +3,9 @@ __pycache__/
 venv/
 .env
 data/raw/
-data/processed/
+data/processed/clean_retail.csv
+data/processed/feature_retail.csv
+data/processed/rfm_train_clusters.csv
 data/predictions
 mlruns/
 models/
