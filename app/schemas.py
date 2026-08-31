@@ -2,19 +2,19 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 class PredictionRequest(BaseModel):
-    customer_id: Optional[int] = None
-    recency: float = Field(..., ge=0)
-    frequency: float = Field(..., ge=0)
-    avg_order_value: float = Field(..., ge=0)
+    customer_id: Optional[str] = None
+    recency: Optional[float] = None
+    frequency: Optional[float] = None
+    avg_order_value: Optional[float] = None
 
 class ChurnPredictionRequest(BaseModel):
     customer_id: Optional[str] = None
-    recency: float = Field(..., ge=0)
-    frequency: float = Field(..., ge=0)
-    avg_order_value: float = Field(..., ge=0)
-    spending_velocity: float = Field(..., ge=0)
-    cancellation_rate: float = Field(..., ge=0)
-    preferred_shopping_hour: int = Field(..., ge=0)
+    recency: Optional[float] = None
+    frequency: Optional[float] = None
+    avg_order_value: Optional[float] = None
+    spending_velocity: Optional[float] = None
+    cancellation_rate: Optional[float] = None
+    preferred_shopping_hour: Optional[int] = None
 
 class ChurnPredictionResponse(BaseModel):
     customer_id: Optional[str] = None

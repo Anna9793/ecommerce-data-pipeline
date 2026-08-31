@@ -166,5 +166,84 @@ def insert_churn_prediction_bigquery(record):
         logging.error("BigQuery churn insert errors: %s", errors)
         raise RuntimeError(f"Errors inserting churn rows to BigQuery: {errors}")
 
+def get_online_features(customer_id: str) -> dict:
+    use_bigquery = os.getenv("USE_BIGQUERY", "false").lower() == "true"
+    
+    if use_bigquery:
+        # Try Firestore first (our Online Feature Store)
+        try:
+            from google.cloud import firestore
+            project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+            db = firestore.Client(project=project_id)
+            doc_ref = db.collection("online_customer_features").document(str(customer_id))
+            doc = doc_ref.get()
+            if doc.exists:
+                logging.info("Successfully fetched features for customer %s from Firestore", customer_id)
+                return doc.to_dict()
+        except Exception as e:
+            logging.warning("Failed to fetch features from Firestore: %s. Trying BigQuery fallback.", e)
+
+        # Fallback to BigQuery view
+        try:
+            from google.cloud import bigquery
+            project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+            client = bigquery.Client(project=project_id)
+            query = f"""
+                SELECT recency, frequency, avg_order_value, spending_velocity, cancellation_rate, preferred_shopping_hour 
+                FROM `{project_id}.retail_data.rfm_features` 
+                WHERE CAST(customer_id AS STRING) = '{customer_id}' 
+                LIMIT 1
+            """
+            query_job = client.query(query)
+            results = list(query_job.result())
+            if results:
+                row = results[0]
+                logging.info("Successfully fetched features for customer %s from BigQuery view fallback", customer_id)
+                return {
+                    "customer_id": customer_id,
+                    "recency": float(row.recency),
+                    "frequency": int(row.frequency),
+                    "avg_order_value": float(row.avg_order_value),
+                    "spending_velocity": float(row.spending_velocity) if "spending_velocity" in row else 1.0,
+                    "cancellation_rate": float(row.cancellation_rate) if "cancellation_rate" in row else 0.0,
+                    "preferred_shopping_hour": int(row.preferred_shopping_hour) if "preferred_shopping_hour" in row else 12
+                }
+        except Exception as e:
+            logging.error("Failed to fetch features from BigQuery fallback: %s", e)
+            
+    else:
+        # Local Mode: Query Postgres online_customer_features table
+        conn = None
+        cursor = None
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT recency, frequency, avg_order_value, spending_velocity, cancellation_rate, preferred_shopping_hour
+                FROM online_customer_features
+                WHERE customer_id = %s
+            """, (str(customer_id),))
+            row = cursor.fetchone()
+            if row:
+                logging.info("Successfully fetched features for customer %s from PostgreSQL online features table", customer_id)
+                return {
+                    "customer_id": customer_id,
+                    "recency": row[0],
+                    "frequency": row[1],
+                    "avg_order_value": row[2],
+                    "spending_velocity": row[3],
+                    "cancellation_rate": row[4],
+                    "preferred_shopping_hour": row[5]
+                }
+        except Exception as e:
+            logging.error("Failed to query features from PostgreSQL: %s", e)
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+                
+    return None
+
 
     

@@ -28,3 +28,14 @@ CREATE TABLE IF NOT EXISTS churn_predictions (
     response_time_ms DOUBLE PRECISION,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS online_customer_features (
+    customer_id VARCHAR(50) PRIMARY KEY,
+    recency DOUBLE PRECISION,
+    frequency INT,
+    avg_order_value DOUBLE PRECISION,
+    spending_velocity DOUBLE PRECISION,
+    cancellation_rate DOUBLE PRECISION,
+    preferred_shopping_hour INT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

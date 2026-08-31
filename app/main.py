@@ -19,14 +19,37 @@ def predict(request: PredictionRequest):
     start = time.time()
 
     try:
+        customer_id = request.customer_id
+        
+        # If any features are None, load from Online Feature Store
+        if request.recency is None or request.frequency is None or request.avg_order_value is None:
+            if not customer_id:
+                raise HTTPException(status_code=400, detail="Missing required features and no customer_id provided.")
+            
+            from app.db_postgres import get_online_features
+            features = get_online_features(customer_id)
+            if not features:
+                raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found in the Feature Store.")
+            
+            recency = features["recency"]
+            frequency = features["frequency"]
+            avg_order_value = features["avg_order_value"]
+        else:
+            recency = request.recency
+            frequency = request.frequency
+            avg_order_value = request.avg_order_value
 
-        features_dict = request.model_dump(exclude={"customer_id"})
+        features_dict = {
+            "recency": recency,
+            "frequency": frequency,
+            "avg_order_value": avg_order_value
+        }
 
-        cluster,label = predict_cluster(features_dict)
+        cluster, label = predict_cluster(features_dict)
 
         record = {
             "request_id": str(uuid.uuid4()),
-            "customer_id": request.customer_id,
+            "customer_id": customer_id,
             **features_dict,
             "cluster": cluster,
             "label": label,
@@ -38,17 +61,17 @@ def predict(request: PredictionRequest):
         insert_prediction(record)
 
         return {
-            "customer_id": request.customer_id or "unknown",
+            "customer_id": customer_id or "unknown",
             "cluster": cluster,
             "label": label        
         }
     
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
     except Exception:
         logging.exception("Unexpected error")
-        
         raise HTTPException(
             status_code=500, 
             detail="Internal server error"
@@ -59,13 +82,50 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
     start = time.time()
 
     try:
-        features_dict = request.model_dump(exclude={"customer_id"})
+        customer_id = request.customer_id
+        
+        # If any features are None, load from Online Feature Store
+        feature_fields = [
+            request.recency, request.frequency, request.avg_order_value, 
+            request.spending_velocity, request.cancellation_rate, request.preferred_shopping_hour
+        ]
+        if any(f is None for f in feature_fields):
+            if not customer_id:
+                raise HTTPException(status_code=400, detail="Missing required features and no customer_id provided.")
+            
+            from app.db_postgres import get_online_features
+            features = get_online_features(customer_id)
+            if not features:
+                raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found in the Feature Store.")
+            
+            recency = features["recency"]
+            frequency = features["frequency"]
+            avg_order_value = features["avg_order_value"]
+            spending_velocity = features["spending_velocity"]
+            cancellation_rate = features["cancellation_rate"]
+            preferred_shopping_hour = features["preferred_shopping_hour"]
+        else:
+            recency = request.recency
+            frequency = request.frequency
+            avg_order_value = request.avg_order_value
+            spending_velocity = request.spending_velocity
+            cancellation_rate = request.cancellation_rate
+            preferred_shopping_hour = request.preferred_shopping_hour
+
+        features_dict = {
+            "recency": recency,
+            "frequency": frequency,
+            "avg_order_value": avg_order_value,
+            "spending_velocity": spending_velocity,
+            "cancellation_rate": cancellation_rate,
+            "preferred_shopping_hour": preferred_shopping_hour
+        }
 
         is_churn, churn_probability = predict_churn_service(features_dict)
 
         record = {
             "request_id": str(uuid.uuid4()),
-            "customer_id": request.customer_id,
+            "customer_id": customer_id,
             **features_dict,
             "churn_probability": churn_probability,
             "is_churn": is_churn,
@@ -77,14 +137,15 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
         insert_churn_prediction(record)
 
         return ChurnPredictionResponse(
-            customer_id=request.customer_id,
+            customer_id=customer_id,
             churn_probability=churn_probability,
             is_churn=is_churn
         )
     
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
     except Exception:
         logging.exception("Unexpected error during churn prediction")
         raise HTTPException(

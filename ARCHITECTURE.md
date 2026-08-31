@@ -27,6 +27,7 @@ graph TD
 
     %% Retraining Flow
     subgraph Orchestration [3. Orchestration & Training]
+        Cron[Cloud Scheduler: Weekly Trigger] -->|POST /check-and-retrain| API
         API -->|Trigger retraining Webhook| Vertex[Vertex AI Pipelines]
         Vertex -->|Extract Transactions| BQ
         Vertex -->|Train Churn XGBoost & Seg KMeans| KFP_Train[Isolated VM Tasks]
@@ -43,10 +44,17 @@ graph TD
         Drift -->|Display Health & Charts| UI
         Drift -->|Auto-Trigger Retraining| API
     end
+    
+    %% Feature Store
+    subgraph FeatureStore [5. Online Feature Store]
+        Sync[Sync Engine: scripts/sync_feature_store.py] -->|Batch Load| BQ_RFM
+        Sync -->|Write Profiles| OnlineStore[(Firestore / PostgreSQL)]
+        API <-->|Lookup customer_id sub-15ms| OnlineStore
+    end
 
     classDef gcp fill:#4285F4,stroke:#333,stroke-width:2px,color:#fff;
     classDef serve fill:#34A853,stroke:#333,stroke-width:2px,color:#fff;
-    class BQ,GCS,Vertex,Gemini gcp;
+    class BQ,GCS,Vertex,Gemini,OnlineStore gcp;
     class API,UI,PG,FAISS serve;
 ```
 
@@ -82,6 +90,13 @@ graph TD
 *   **Drift Condition**: Rejects the null hypothesis (meaning drift is detected) if the calculated $p$-value for any feature (`recency`, `frequency`, `avg_order_value`) is $< 0.05$.
 *   **Closed-Loop**: If drift is detected, the Streamlit app warns the operator and provides a button to trigger the retraining webhook.
 
+### 2.5. Online Feature Store & Scheduler
+*   **Synchronization Script**: [scripts/sync_feature_store.py](file:///Users/Anna/ecommerce-data-pipeline/scripts/sync_feature_store.py) runs to pre-compute and sync customer features.
+*   **Serving Mode Lookup**:
+    *   **Cloud Mode (`USE_BIGQUERY=true`)**: Queries **Google Cloud Firestore** (sub-15ms document key-value lookup) with BigQuery fallback.
+    *   **Local Mode (`USE_BIGQUERY=false`)**: Queries the local **PostgreSQL** `online_customer_features` table.
+*   **Cron Automation**: A **Google Cloud Scheduler** HTTP job triggers the `/monitoring/check-and-retrain` webhook weekly (`0 0 * * 0`) using OIDC Compute Engine service account token authentication.
+
 ---
 
 ## 3. Key Design Decisions & Rationales
@@ -101,3 +116,8 @@ graph TD
 ### 3.4. Memory-Optimized Lazy Imports
 *   **Decision**: Deferred importing `google.cloud.aiplatform` and its modules to the inside of the execution endpoints instead of at the top of the file.
 *   **Rationale**: The Vertex AI SDK is highly memory-intensive. Lazy importing keeps the container startup memory footprint below 350 MiB, preventing Cloud Run from terminating instances for exceeding the 512 MiB limit.
+
+### 3.5. Hybrid Online Feature Store (PostgreSQL & Firestore)
+*   **Decision**: Implemented a dual-backend Key-Value lookup serving layer (PostgreSQL locally, Firestore in the cloud) rather than legacy Vertex AI Feature Stores.
+*   **Rationale**: Managed cloud feature stores require high-cost resources (always-on Bigtable clusters running at $100+/month). Firestore provides a serverless document key-value store with sub-15ms queries and a free tier of 50k reads/writes per day. PostgreSQL local mapping allows offline, zero-dependency developer integration without GCP credentials.
+

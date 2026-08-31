@@ -95,3 +95,30 @@ def test_monitoring_check_and_retrain_drifted(mock_submit):
         assert mock_submit.called
     finally:
         os.environ["TEST_DRIFT_ACTIVE"] = "false"
+
+@patch("app.main.insert_churn_prediction")
+@patch("app.main.predict_churn_service")
+@patch("app.db_postgres.get_online_features")
+def test_predict_by_customer_id_via_feature_store(mock_get_features, mock_predict, mock_insert):
+    mock_get_features.return_value = {
+        "customer_id": "12345",
+        "recency": 12.0,
+        "frequency": 5,
+        "avg_order_value": 150.0,
+        "spending_velocity": 1.1,
+        "cancellation_rate": 0.05,
+        "preferred_shopping_hour": 14
+    }
+    mock_predict.return_value = (1, 0.85)
+    
+    response = client.post(
+        "/predict/churn",
+        json={"customer_id": "12345"}
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["customer_id"] == "12345"
+    assert data["is_churn"] == 1
+    assert data["churn_probability"] == 0.85
+    mock_get_features.assert_called_once_with("12345")
