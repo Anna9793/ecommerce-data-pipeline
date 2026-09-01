@@ -325,7 +325,23 @@ with tab3:
                                     st.metric("Similarity", f"{rec['similarity']*100:.1f}%")
                                     
                     with col_results_right:
-                        st.subheader("📧 AI Campaign Copy Draft")
+                        st.subheader("🤝 Multi-Agent Collaboration Board")
+                        
+                        agent_traces = result.get("agent_traces")
+                        if agent_traces:
+                            with st.expander("🔍 **Step 1: Behavioral Analyst Agent**", expanded=False):
+                                st.info(agent_traces.get("analyst_diagnosis", "No trace available."))
+                                
+                            with st.expander("🎯 **Step 2: Campaign Strategist Agent**", expanded=False):
+                                st.success(agent_traces.get("strategy_plan", "No trace available."))
+                                
+                            with st.expander("✍️ **Step 3: Creative Copywriter Draft**", expanded=False):
+                                st.code(agent_traces.get("initial_draft", "No trace available."), language="markdown")
+                                
+                            with st.expander("🛡️ **Step 4: Quality & Compliance Critic Review**", expanded=False):
+                                st.warning(f"**Audit Findings:** {agent_traces.get('critic_review', 'Verified against brand guidelines.')}")
+                                
+                        st.subheader("📧 Final Approved Marketing Email")
                         with st.container(border=True):
                             st.markdown(result["campaign_draft"])
                             

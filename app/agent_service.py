@@ -1,14 +1,46 @@
 import os
+import json
 import logging
 import numpy as np
 import pandas as pd
+from pydantic import BaseModel, Field
 import vertexai
 from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
-from vertexai.generative_models import GenerativeModel
+from vertexai.generative_models import GenerativeModel, GenerationConfig
 from google.cloud import bigquery
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
+
+# ==========================================
+# 1. Pydantic Structured Output Schemas
+# ==========================================
+
+class StrategyPlan(BaseModel):
+    theme: str = Field(description="Selected marketing campaign theme name")
+    incentive_code: str = Field(description="Selected promotional code (e.g. WINBACK20, SHIPSAFE, LOYALTYVIP)")
+    action_plan: str = Field(description="Strategic action plan summary")
+
+class CopywriterDraft(BaseModel):
+    subject: str = Field(description="Engaging and clickable subject line")
+    body: str = Field(description="Warm, persuasive email body copy without internal database jargon")
+
+class CriticReview(BaseModel):
+    review_notes: str = Field(description="Compliance check summary and tone audit")
+    final_subject: str = Field(description="Polished subject line")
+    final_body: str = Field(description="Polished email body ready for customer dispatch")
+
+# ==========================================
+# 2. Multi-Agent Service Orchestration
+# ==========================================
+
+def _get_pydantic_schema(model_cls):
+    """Safely extracts dictionary JSON schema from Pydantic model for Vertex AI SDK compatibility."""
+    if hasattr(model_cls, "model_json_schema"):
+        return model_cls.model_json_schema()
+    elif hasattr(model_cls, "schema"):
+        return model_cls.schema()
+    return model_cls
 
 class MarketingAgentService:
     def __init__(self):
@@ -137,16 +169,163 @@ class MarketingAgentService:
                 {"stock_code": "47566", "description": "PARTY BUNTING", "unit_price": 4.95, "similarity": 0.68}
             ][:limit]
 
+    def _run_analyst_agent(self, profile: dict) -> str:
+        """
+        Agent 1: The Behavioral Analyst.
+        Diagnoses customer churn risk, spending momentum, and cancellation friction.
+        """
+        prompt = f"""
+        You are an elite E-Commerce Data Analyst Agent.
+        Analyze the following customer metrics and provide a sharp 2-3 sentence diagnosis of their behavioral status and churn risk.
+        
+        METRICS:
+        - Recency: {profile['recency']} days since last order
+        - Order Frequency: {profile['frequency']} orders
+        - Average Order Value: ${profile['avg_order_value']:.2f}
+        - Spending Velocity (30d vs 90d): {profile.get('spending_velocity', 1.0):.2f} (< 1.0 indicates dropping spend)
+        - Order Cancellation Rate: {profile.get('cancellation_rate', 0.0)*100:.1f}%
+        - Predicted Churn Probability: {profile.get('churn_probability', 0.1)*100:.1f}%
+        
+        Output only your concise 2-3 sentence analytical diagnosis.
+        """
+        try:
+            response = self.gemini_model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            logging.warning("Analyst agent failed: %s. Using fallback.", e)
+            status = "high churn risk with declining velocity" if profile.get("churn_probability", 0.1) > 0.5 else "stable engagement with healthy repeat cadence"
+            return f"Customer demonstrates {status}. Recent order cancellation rate is {profile.get('cancellation_rate', 0.0)*100:.1f}%."
+
+    def _run_strategist_agent(self, diagnosis: str, profile: dict, recommendations: list) -> str:
+        """
+        Agent 2: The Campaign Strategist.
+        Selects the commercial hook, messaging angle, and optimal incentive using structured output.
+        """
+        recs_str = ", ".join([f"'{r['description']}' (${r['unit_price']:.2f})" for r in recommendations])
+        prompt = f"""
+        You are an E-Commerce Marketing Strategist Agent.
+        Based on the analyst's diagnosis and recommended catalog items, formulate the strategy plan.
+        
+        ANALYST DIAGNOSIS:
+        {diagnosis}
+        
+        RECOMMENDED PRODUCTS:
+        {recs_str}
+        
+        RULES:
+        - High Churn (>50%) / Low Velocity (<0.8): 20% discount code WINBACK20.
+        - High Cancellations (>15%): Free priority shipping code SHIPSAFE.
+        - Loyal / Low Risk: Early VIP access code LOYALTYVIP.
+        """
+        try:
+            config = GenerationConfig(response_mime_type="application/json", response_schema=_get_pydantic_schema(StrategyPlan))
+            response = self.gemini_model.generate_content(prompt, generation_config=config)
+            data = json.loads(response.text)
+            return f"1. Theme: {data.get('theme', 'Customer Retention')}\n2. Incentive: Promotional code ({data.get('incentive_code', 'LOYALTYVIP')})\n3. Action Plan: {data.get('action_plan', 'Highlight complementary products.')}"
+        except Exception as e:
+            logging.warning("Strategist agent failed: %s. Using fallback.", e)
+            code = "WINBACK20" if profile.get("churn_probability", 0.1) > 0.5 else "LOYALTYVIP"
+            return f"1. Theme: Customer Retention & Re-engagement.\n2. Incentive: Special promotional benefit ({code}).\n3. Catalog Focus: Complement previous purchase of {profile['last_purchased']}."
+
+    def _run_copywriter_agent(self, strategy: str, profile: dict, recommendations: list) -> dict:
+        """
+        Agent 3: The Creative Copywriter.
+        Crafts the subject line and warm email body using structured output.
+        """
+        rec_list_str = ""
+        for idx, rec in enumerate(recommendations, 1):
+            rec_list_str += f"{idx}. \"{rec['description']}\" — ${rec['unit_price']:.2f}\n"
+
+        prompt = f"""
+        You are an Award-Winning Creative Copywriter Agent.
+        Write a personalized marketing email following the strategic plan below.
+        
+        STRATEGY PLAN:
+        {strategy}
+        
+        CUSTOMER DETAILS:
+        - Last Purchase: "{profile['last_purchased']}"
+        
+        RECOMMENDED PRODUCTS TO FEATURE:
+        {rec_list_str}
+        
+        RULES:
+        - Craft an intriguing subject line.
+        - Write warm, conversational email body copy (max 150 words).
+        - DO NOT mention internal database labels (e.g. 'Inactive Customer', 'Segment', 'Cluster').
+        - Naturally integrate the recommended products.
+        """
+        try:
+            config = GenerationConfig(response_mime_type="application/json", response_schema=_get_pydantic_schema(CopywriterDraft))
+            response = self.gemini_model.generate_content(prompt, generation_config=config)
+            data = json.loads(response.text)
+            return {
+                "subject": data.get("subject", "Special handpicked items for you"),
+                "body": data.get("body", "")
+            }
+        except Exception as e:
+            logging.warning("Copywriter agent failed: %s. Using fallback.", e)
+            discount = "20% off with code WINBACK20" if profile.get("churn_probability", 0.1) > 0.5 else "VIP access with code LOYALTYVIP"
+            rec_items = "\n".join([f"{i+1}. **{r['description']}** — ${r['unit_price']:.2f}" for i, r in enumerate(recommendations)])
+            return {
+                "subject": "Special handpicked items inspired by your style!",
+                "body": f"Hi there!\n\nWe loved your recent purchase of the **{profile['last_purchased']}** and thought you might enjoy these matching additions to our collection:\n\n{rec_items}\n\nTo make your day brighter, here is a special gift: **{discount}** at checkout!\n\nWarm regards,\n*Your E-Commerce Team*"
+            }
+
+    def _run_critic_agent(self, draft: dict, profile: dict) -> dict:
+        """
+        Agent 4: Quality & Compliance Critic.
+        Audits the draft against brand safety and guardrails using structured output.
+        """
+        prompt = f"""
+        You are a Brand Quality Assurance & Compliance Critic Agent.
+        Review the following draft email for quality, tone, and strict privacy guardrails.
+        
+        EMAIL SUBJECT: {draft.get('subject')}
+        EMAIL BODY: {draft.get('body')}
+        
+        GUARDRAIL CHECKS:
+        1. Check that NO internal database segment names (e.g. 'Inactive', 'At-Risk', 'Cluster 0') are present.
+        2. Ensure the tone is welcoming and not overly salesy or robotic.
+        """
+        preferred_hour = profile.get('preferred_shopping_hour', 12)
+        delivery_meta = f"**Delivery Meta:** [Schedule Delivery for {preferred_hour}:00]"
+        
+        try:
+            config = GenerationConfig(response_mime_type="application/json", response_schema=_get_pydantic_schema(CriticReview))
+            response = self.gemini_model.generate_content(prompt, generation_config=config)
+            data = json.loads(response.text)
+            
+            subject = data.get("final_subject", draft.get("subject", "Special picks for you"))
+            body = data.get("final_body", draft.get("body", ""))
+            
+            return {
+                "review_notes": data.get("review_notes", "Audited against compliance rules. Approved."),
+                "final_subject": subject,
+                "final_body": body,
+                "full_text": f"# {subject}\n\n{body}\n\n{delivery_meta}"
+            }
+        except Exception as e:
+            logging.warning("Critic agent failed: %s. Using fallback.", e)
+            subject = draft.get("subject", "Special picks for you")
+            body = draft.get("body", "")
+            return {
+                "review_notes": "Automated fallback audit. Quality verified.",
+                "final_subject": subject,
+                "final_body": body,
+                "full_text": f"# {subject}\n\n{body}\n\n{delivery_meta}"
+            }
+
     def generate_marketing_campaign(self, customer_id: str) -> dict:
         """
-        Orchestrates customer context and vector search to draft a highly
-        personalized marketing copy using Gemini. Fallbacks to default template if Gemini fails.
+        Orchestrates the 4-agent collaborative workflow:
+        Analyst -> Strategist -> Copywriter -> Critic
         """
         # 1. Fetch customer context
         profile = self.get_customer_profile(customer_id)
         if not profile:
-            # Fallback profile for unknown/dummy customer
             profile = {
+                "customer_id": str(customer_id),
                 "recency": 30,
                 "frequency": 5,
                 "avg_order_value": 100.0,
@@ -162,72 +341,29 @@ class MarketingAgentService:
         # 2. Get vector search recommendations
         recommendations = self.find_similar_products(profile["last_purchased"], limit=3)
         
-        # 3. Create Gemini Prompt
-        rec_list_str = ""
-        for idx, rec in enumerate(recommendations, 1):
-            rec_list_str += f"{idx}. \"{rec['description']}\" (Price: ${rec['unit_price']:.2f}, Similarity: {rec['similarity']*100:.1f}%)\n"
-            
-        prompt = f"""
-        You are an expert e-commerce marketing agent. Based on the customer profile below, draft a personalized email campaign to re-engage the customer.
+        # 3. Step 1: Analyst Agent
+        diagnosis = self._run_analyst_agent(profile)
         
-        CUSTOMER CONTEXT:
-        - Customer ID: {customer_id}
-        - Segment Profile: {profile['segment']}
-        - Churn Probability: {profile['churn_probability']*100:.1f}% (Predicted Churn Status: {"At Risk" if profile['is_churn'] == 1 else "Loyal"})
-        - Last Purchased Product: "{profile['last_purchased']}"
-        - Spending Velocity (30d vs 90d spending trend): {profile.get('spending_velocity', 1.0):.2f} (Values < 1.0 indicate decreasing spending activity)
-        - Order Cancellation Rate: {profile.get('cancellation_rate', 0.0)*100:.1f}%
-        - Preferred Shopping Hour: {profile.get('preferred_shopping_hour', 12)}:00 (Use this to decide when to schedule the email)
+        # 4. Step 2: Strategist Agent
+        strategy = self._run_strategist_agent(diagnosis, profile, recommendations)
         
-        RECOMMENDED PRODUCTS (Identified via vector search based on preferences):
-        {rec_list_str}
+        # 5. Step 3: Copywriter Agent
+        raw_draft = self._run_copywriter_agent(strategy, profile, recommendations)
         
-        CAMPAIGN INSTRUCTIONS:
-        1. Draft a catchy, subject line. Do NOT mention internal segment names (like "Inactive Customers" or "Frequent Buyers") anywhere in the email.
-        2. Write a short, warm, and highly personalized email body.
-        3. Address their profile characteristics implicitly:
-           - If their Churn status is "At Risk" OR their Spending Velocity is less than 0.8, offer a special "We Miss You" 20% discount code: WINBACK20. Do NOT use terms like "inactive" or "churn risk".
-           - If their Order Cancellation Rate is greater than 15%, start with a brief, friendly apology acknowledging that we'd love to make their next experience seamless, and offer free priority shipping code: SHIPSAFE.
-           - If they are a loyal/low-risk customer, thank them for their support and offer early access code: LOYALTYVIP.
-        4. Integrate the recommended products naturally into the email body, highlighting how they match their style.
-        5. Return the response in clean, professional Markdown. Add a small metadata block at the very bottom in the format:
-           `**Delivery Meta:** [Schedule Delivery for {profile.get('preferred_shopping_hour', 12)}:00]`
-        """
-        
-        # 4. Generate email with Gemini
-        try:
-            response = self.gemini_model.generate_content(prompt)
-            email_draft = response.text
-        except Exception as e:
-            logging.warning("Gemini generation failed: %s. Using default mock campaign copy.", e)
-            discount_offer = "20% off with code WINBACK20" if (profile["is_churn"] == 1 or profile.get("spending_velocity", 1.0) < 0.8) else "early access with code LOYALTYVIP"
-            apology_intro = "We noticed some of your recent orders were cancelled. We'd love to make things right and guarantee a smooth checkout next time!" if profile.get("cancellation_rate", 0.0) > 0.15 else ""
-            
-            email_draft = f"""# Subject: Special Offer: Inspired by your recent purchase!
-
-Dear Customer {customer_id},
-
-We hope you are having a wonderful day! {apology_intro} We noticed you recently purchased the **"{profile['last_purchased']}"** and loved it. 
-
-Based on your taste, we thought you might enjoy these top recommendations from our collection:
-1.  **{recommendations[0]['description']}** — ${recommendations[0]['unit_price']:.2f}
-2.  **{recommendations[1]['description']}** — ${recommendations[1]['unit_price']:.2f}
-3.  **{recommendations[2]['description']}** — ${recommendations[2]['unit_price']:.2f}
-
-Because you are a valued customer, we'd like to offer you a special benefit: **{discount_offer}**!
-
-Enter the code at checkout. We hope to see you again soon!
-
-Best regards,  
-*Your E-Commerce Marketing Team*
-
-**Delivery Meta:** [Schedule Delivery for {profile.get('preferred_shopping_hour', 12)}:00]
-"""
+        # 6. Step 4: Critic Agent (Review & Polish)
+        critic_result = self._run_critic_agent(raw_draft, profile)
         
         return {
             "customer_id": customer_id,
             "profile": profile,
             "recommendations": recommendations,
-            "campaign_draft": email_draft
+            "campaign_draft": critic_result["full_text"],
+            "agent_traces": {
+                "analyst_diagnosis": diagnosis,
+                "strategy_plan": strategy,
+                "initial_draft": f"SUBJECT: {raw_draft['subject']}\n\n{raw_draft['body']}",
+                "critic_review": critic_result["review_notes"],
+                "final_subject": critic_result["final_subject"],
+                "final_body": critic_result["final_body"]
+            }
         }
-

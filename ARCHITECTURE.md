@@ -74,7 +74,7 @@ graph TD
 ### 2.2. Serving Layer (FastAPI & Streamlit)
 *   **FastAPI Backend**: Located in [app/main.py](file:///Users/Anna/ecommerce-data-pipeline/app/main.py). Runs as a containerized serverless application on Google Cloud Run. Handles prediction logging, vector catalog search, LLM-generated campaigns, model hot-reloads, and drift metrics calculation.
 *   **Streamlit UI**: Located in [streamlit_app.py](file:///Users/Anna/ecommerce-data-pipeline/streamlit_app.py). Renders segmentation clusters, churn probabilities, vector similarities, LLM marketing campaign copy, and live distribution comparison histograms.
-*   **Vector Search & LLM**: Performs similarity search on e-commerce catalog items using FAISS, feeding recommended products into a prompt evaluated by the Gemini model to write personalized campaign emails.
+*   **Vector Search & Multi-Agent GenAI**: Performs similarity search on e-commerce catalog items using FAISS, feeding recommended products into a **4-Agent Collaborative Assembly Line** (Behavioral Analyst -> Campaign Strategist -> Creative Copywriter -> Quality & Compliance Critic) evaluated by Gemini to craft personalized, guardrailed email campaigns.
 
 ### 2.3. Orchestration & Training (Vertex AI Pipelines)
 *   **Location**: [pipelines/churn_kfp_pipeline.py](file:///Users/Anna/ecommerce-data-pipeline/pipelines/churn_kfp_pipeline.py)
