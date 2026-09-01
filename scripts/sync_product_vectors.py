@@ -91,17 +91,31 @@ def sync_product_vectors():
         csv_path = "data/raw/online_retail.csv"
         df = pd.read_csv(csv_path)
         
-    df = df.dropna(subset=["Description", "StockCode", "UnitPrice"])
-    df = df[df["UnitPrice"] > 0]
+    df.columns = df.columns.str.lower()
+    
+    # Map possible column name variations
+    stock_col = "stock_code" if "stock_code" in df.columns else "stockcode"
+    unit_col = "unit_price" if "unit_price" in df.columns else "unitprice"
+    desc_col = "description"
+    inv_col = "invoice_no" if "invoice_no" in df.columns else "invoiceno"
+    
+    df = df.dropna(subset=[desc_col, stock_col, unit_col])
+    df = df[df[unit_col] > 0]
     
     # Aggregate to top unique products
-    catalog = df.groupby("Description").agg({
-        "StockCode": "first",
-        "UnitPrice": "median",
-        "InvoiceNo": "count"
+    catalog = df.groupby(desc_col).agg({
+        stock_col: "first",
+        unit_col: "median",
+        inv_col: "count"
     }).reset_index()
     
-    catalog.rename(columns={"InvoiceNo": "sales_count"}, inplace=True)
+    catalog.rename(columns={
+        desc_col: "description",
+        stock_col: "stock_code",
+        unit_col: "unit_price",
+        inv_col: "sales_count"
+    }, inplace=True)
+    
     catalog = catalog.sort_values(by="sales_count", ascending=False).head(500)
     logging.info("Selected top %d unique products from historical transactions.", len(catalog))
     
@@ -110,8 +124,8 @@ def sync_product_vectors():
     document_texts = []
     
     for _, row in catalog.iterrows():
-        desc = str(row["Description"]).strip()
-        price = float(row["UnitPrice"])
+        desc = str(row["description"]).strip()
+        price = float(row["unit_price"])
         cat, tags = categorize_product(desc)
         
         doc_text = f"Product: {desc} | Category: {cat} | Price: ${price:.2f} | Tags: {tags}"
@@ -155,10 +169,10 @@ def sync_product_vectors():
         for _, row in catalog.iterrows():
             vec_str = "[" + ",".join(map(str, row["embedding"])) + "]"
             records.append((
-                str(row["StockCode"]),
-                str(row["Description"]),
+                str(row["stock_code"]),
+                str(row["description"]),
                 str(row["category"]),
-                float(row["UnitPrice"]),
+                float(row["unit_price"]),
                 str(row["document_text"]),
                 vec_str
             ))
