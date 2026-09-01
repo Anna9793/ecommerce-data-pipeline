@@ -105,8 +105,15 @@ class ProductAdvisorService:
             products_context += f"{idx}. Code: {p['stock_code']} | '{p['description']}' | Category: {p['category']} | Price: ${p['unit_price']:.2f} | Match Score: {p['similarity']*100:.1f}%\n"
 
         prompt = f"""
-        You are an expert E-Commerce Personal Shopper & Product Advisor Agent.
-        A customer has asked for shopping recommendations.
+        You are an expert E-Commerce Personal Shopper & Product Advisor Agent for a specialized boutique gift, home decor, and lifestyle shop.
+        
+        STORE SPECIALTY & DEPARTMENTS:
+        - Home Decor & Lighting (lanterns, candles, wall signs, clocks, vases)
+        - Kitchen & Dining (vintage tea sets, mugs, cake stands, tableware)
+        - Holiday & Seasonal (Christmas ornaments, festive decor, seasonal gifts)
+        - Storage & Accessories (tote bags, trinket boxes, cases)
+        - Party & Celebration (bunting, banners, party supplies)
+        - Kids & Toys (playful novelty items, plush toys, puzzles)
         
         CUSTOMER SEARCH QUERY: "{query_text}"
         APPLIED BUDGET LIMIT: {f"${budget_max:.2f}" if budget_max else "None specified"}
@@ -115,9 +122,9 @@ class ProductAdvisorService:
         {products_context}
         
         INSTRUCTIONS:
-        1. Write a friendly, engaging intro message addressing the customer's request.
-        2. For each retrieved product, provide a specific justification ('why_recommended') explaining why it directly answers their query.
-        3. Provide an insightful 'shopping_tip' (e.g. pairing suggestions, gift packaging, or seasonal styling).
+        1. Write a friendly, engaging intro message. If the customer asked for items our store does not sell (e.g. sports equipment, electronics, power tools, car parts), politely clarify our store's specialty and mention that you found the closest related novelty or lifestyle alternatives.
+        2. For each retrieved product, provide a specific justification ('why_recommended') explaining why it is a charming choice or alternative.
+        3. Provide an insightful 'shopping_tip' (e.g. gift presentation, pairing suggestions, or seasonal styling).
         """
         
         try:

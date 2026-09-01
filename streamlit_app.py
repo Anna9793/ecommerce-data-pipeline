@@ -456,7 +456,19 @@ with tab4:
 # TAB 5: PRODUCT ADVISOR CHATBOT (RAG + PGVECTOR)
 with tab5:
     st.subheader("🛍️ Product Advisor Chatbot (RAG with pgvector)")
-    st.write("Ask natural questions about our catalog. The assistant searches 768-dimensional product embeddings in **PostgreSQL (`pgvector`)** with real-time budget filtering, and uses **Gemini** to provide personalized styling and gift recommendations.")
+    st.write("Ask natural questions about our boutique catalog. The assistant searches 768-dimensional embeddings in **PostgreSQL (`pgvector`)** with real-time budget filtering and uses **Gemini** for personalized recommendations.")
+
+    # Store Departments Directory
+    with st.expander("🏪 **Explore Our Store Departments & Catalog Specialties**", expanded=True):
+        st.markdown("""
+        Our catalog features curated lifestyle, home styling, and gift collections:
+        * 🏠 **Home Decor & Lighting**: Hanging lanterns, romantic T-light holders, wall clocks, ambient candles, decorative mirrors.
+        * ☕ **Kitchen & Dining**: Regency 3-tier cakestands, vintage tea sets, ceramic mugs, cutlery, retro dining accessories.
+        * 🎄 **Holiday & Seasonal**: Handcrafted Christmas decorations, paper chain kits, winter festive gifts.
+        * 👝 **Storage & Accessories**: Vintage tote bags, trinket tins, vanity storage, stylish cases.
+        * 🎉 **Party & Celebration**: Festive bunting, party garlands, celebration accessories, greeting supplies.
+        * 🧸 **Kids & Novelty Toys**: Playful gifts, wooden toys, vintage pencil sets, children's novelties.
+        """)
 
     # Top search controls
     col_filters, col_presets = st.columns([1, 2])
@@ -471,14 +483,14 @@ with tab5:
 
     with col_presets:
         with st.container(border=True):
-            st.markdown("#### 💡 Quick Search Prompts")
+            st.markdown("#### 💡 Quick Search Ideas")
             col_b1, col_b2, col_b3 = st.columns(3)
             quick_query = None
-            if col_b1.button("🎄 Cozy winter gift", use_container_width=True):
+            if col_b1.button("🎄 Cozy Winter Gifts", use_container_width=True):
                 quick_query = "I need a warm and cozy holiday gift for a winter evening under $25."
-            if col_b2.button("☕ Vintage kitchen decor", use_container_width=True):
+            if col_b2.button("☕ Vintage Kitchenware", use_container_width=True):
                 quick_query = "Show me vintage retro kitchenware, tea sets, and cute dining accessories."
-            if col_b3.button("🎉 Party celebration supplies", use_container_width=True):
+            if col_b3.button("🎉 Party & Bunting", use_container_width=True):
                 quick_query = "What do you have for party decorations, garlands, and festive celebrations?"
 
     # Initialize chat history
