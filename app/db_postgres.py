@@ -245,5 +245,95 @@ def get_online_features(customer_id: str) -> dict:
                 
     return None
 
+def init_pgvector_table():
+    """Initializes pgvector extension and product_catalog_vectors table in PostgreSQL."""
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS product_catalog_vectors (
+                stock_code VARCHAR(50) PRIMARY KEY,
+                description TEXT NOT NULL,
+                category VARCHAR(100),
+                unit_price DOUBLE PRECISION NOT NULL,
+                document_text TEXT NOT NULL,
+                embedding vector(768),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS product_vector_idx 
+            ON product_catalog_vectors 
+            USING hnsw (embedding vector_cosine_ops);
+        """)
+        conn.commit()
+        logging.info("pgvector schema and HNSW index successfully initialized.")
+    except Exception as e:
+        logging.warning("pgvector initialization failed: %s", e)
+        if conn:
+            conn.rollback()
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+def search_product_catalog_pgvector(query_vector: list, budget_max: float = None, top_k: int = 4) -> list:
+    """
+    Executes a sub-millisecond similarity search using pgvector in PostgreSQL
+    with optional budget price filtering.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Format vector as string literal for pgvector: '[0.12, 0.34, ...]'
+        vector_str = "[" + ",".join(map(str, query_vector)) + "]"
+        
+        if budget_max is not None and budget_max > 0:
+            query = """
+                SELECT stock_code, description, category, unit_price, document_text,
+                       1 - (embedding <=> %s::vector) AS similarity
+                FROM product_catalog_vectors
+                WHERE unit_price <= %s
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s;
+            """
+            cursor.execute(query, (vector_str, float(budget_max), vector_str, int(top_k)))
+        else:
+            query = """
+                SELECT stock_code, description, category, unit_price, document_text,
+                       1 - (embedding <=> %s::vector) AS similarity
+                FROM product_catalog_vectors
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s;
+            """
+            cursor.execute(query, (vector_str, vector_str, int(top_k)))
+            
+        rows = cursor.fetchall()
+        results = []
+        for r in rows:
+            results.append({
+                "stock_code": r[0],
+                "description": r[1],
+                "category": r[2] if r[2] else "General Merchandise",
+                "unit_price": float(r[3]),
+                "document_text": r[4],
+                "similarity": round(float(r[5]), 4)
+            })
+        return results
+    except Exception as e:
+        logging.warning("pgvector search failed: %s. Returning empty results.", e)
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
 
     

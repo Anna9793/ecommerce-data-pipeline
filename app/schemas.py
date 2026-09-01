@@ -20,3 +20,8 @@ class ChurnPredictionResponse(BaseModel):
     customer_id: Optional[str] = None
     churn_probability: float
     is_churn: int
+
+class ProductAdvisorRequest(BaseModel):
+    query: str = Field(..., description="Customer natural language search query")
+    budget_max: Optional[float] = Field(None, description="Optional maximum price filter")
+    top_k: Optional[int] = Field(4, description="Number of products to retrieve")

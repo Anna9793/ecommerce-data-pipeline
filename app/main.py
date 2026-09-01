@@ -3,7 +3,7 @@ import uuid
 import time
 import logging
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from app.schemas import PredictionRequest, ChurnPredictionRequest, ChurnPredictionResponse
+from app.schemas import PredictionRequest, ChurnPredictionRequest, ChurnPredictionResponse, ProductAdvisorRequest
 from app.service import predict_cluster, MODEL_VERSION, predict_churn_service, CHURN_MODEL_VERSION
 from app.db_postgres import insert_prediction, insert_churn_prediction
 
@@ -165,6 +165,24 @@ def generate_campaign_endpoint(customer_id: str):
         raise HTTPException(
             status_code=500,
             detail=f"Campaign generation failed: {str(e)}"
+        )
+
+@app.post("/rag/advisor")
+def product_advisor_endpoint(request: ProductAdvisorRequest):
+    try:
+        from app.rag_service import ProductAdvisorService
+        advisor_service = ProductAdvisorService()
+        result = advisor_service.advise(
+            query_text=request.query,
+            budget_max=request.budget_max,
+            top_k=request.top_k or 4
+        )
+        return result
+    except Exception as e:
+        logging.exception("Error executing product advisor RAG")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Product advisor failed: {str(e)}"
         )
 
 @app.post("/train/churn")

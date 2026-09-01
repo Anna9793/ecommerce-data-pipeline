@@ -70,7 +70,13 @@ st.title("🛍️ E-commerce Analytics & ML Dashboard")
 st.caption("Real-time Customer Segmentation & Churn Risk Analytics")
 
 # Define Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Customer Segmentation", "🔮 Churn Prediction", "🤖 AI Marketing Copilot", "📈 Model Monitoring"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📊 Customer Segmentation", 
+    "🔮 Churn Prediction", 
+    "🤖 AI Marketing Copilot", 
+    "📈 Model Monitoring",
+    "🛍️ Product Advisor (RAG)"
+])
 
 # TAB 1: CUSTOMER SEGMENTATION
 with tab1:
@@ -446,3 +452,106 @@ with tab4:
             st.code(drift_resp.text)
     except Exception as e:
         st.error(f"Error fetching drift report from API: {str(e)}")
+
+# TAB 5: PRODUCT ADVISOR CHATBOT (RAG + PGVECTOR)
+with tab5:
+    st.subheader("🛍️ Product Advisor Chatbot (RAG with pgvector)")
+    st.write("Ask natural questions about our catalog. The assistant searches 768-dimensional product embeddings in **PostgreSQL (`pgvector`)** with real-time budget filtering, and uses **Gemini** to provide personalized styling and gift recommendations.")
+
+    # Top search controls
+    col_filters, col_presets = st.columns([1, 2])
+    with col_filters:
+        with st.container(border=True):
+            st.markdown("#### 🎯 Search Constraints")
+            use_budget = st.toggle("Apply Maximum Budget", value=True)
+            budget_max = None
+            if use_budget:
+                budget_max = st.slider("Max Budget ($)", min_value=5.0, max_value=100.0, value=25.0, step=5.0)
+            top_k_val = st.selectbox("Products to Retrieve", [2, 3, 4, 6], index=2)
+
+    with col_presets:
+        with st.container(border=True):
+            st.markdown("#### 💡 Quick Search Prompts")
+            col_b1, col_b2, col_b3 = st.columns(3)
+            quick_query = None
+            if col_b1.button("🎄 Cozy winter gift", use_container_width=True):
+                quick_query = "I need a warm and cozy holiday gift for a winter evening under $25."
+            if col_b2.button("☕ Vintage kitchen decor", use_container_width=True):
+                quick_query = "Show me vintage retro kitchenware, tea sets, and cute dining accessories."
+            if col_b3.button("🎉 Party celebration supplies", use_container_width=True):
+                quick_query = "What do you have for party decorations, garlands, and festive celebrations?"
+
+    # Initialize chat history
+    if "advisor_chat_history" not in st.session_state:
+        st.session_state["advisor_chat_history"] = []
+
+    # Display past messages
+    for msg in st.session_state["advisor_chat_history"]:
+        with st.chat_message(msg["role"]):
+            if msg["role"] == "user":
+                st.write(msg["content"])
+            else:
+                data = msg["content"]
+                st.write(data["intro_message"])
+                
+                # Render product recommendation cards in 2-column grid
+                recs = data.get("recommendations", [])
+                if recs:
+                    cols = st.columns(min(len(recs), 2))
+                    for idx, p in enumerate(recs):
+                        col_target = cols[idx % len(cols)]
+                        with col_target:
+                            with st.container(border=True):
+                                st.markdown(f"### 🏷️ {p['description']}")
+                                st.caption(f"**Category:** {p.get('category', 'General')} | **Code:** `{p['stock_code']}`")
+                                st.metric("Price", f"${p['unit_price']:.2f}", delta=f"{p.get('similarity', 0.85)*100:.1f}% Match")
+                                st.info(f"💡 **Why Recommended:** {p.get('why_recommended', 'Great match for your query.')}")
+                                
+                if data.get("shopping_tip"):
+                    st.success(f"✨ **Shopping Tip:** {data['shopping_tip']}")
+
+    # User chat input
+    user_input = st.chat_input("Ask for product advice (e.g. 'I need a cozy gift for winter under $20')...")
+    active_prompt = quick_query or user_input
+
+    if active_prompt:
+        # Append and display user message
+        st.session_state["advisor_chat_history"].append({"role": "user", "content": active_prompt})
+        with st.chat_message("user"):
+            st.write(active_prompt)
+
+        # Query RAG Advisor Endpoint
+        with st.chat_message("assistant"):
+            with st.spinner("Searching PostgreSQL pgvector embeddings and generating recommendations with Gemini..."):
+                try:
+                    payload = {
+                        "query": active_prompt,
+                        "budget_max": float(budget_max) if budget_max else None,
+                        "top_k": int(top_k_val)
+                    }
+                    resp = requests.post(f"{API_URL}/rag/advisor", json=payload)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        st.session_state["advisor_chat_history"].append({"role": "assistant", "content": data})
+                        
+                        st.write(data["intro_message"])
+                        
+                        recs = data.get("recommendations", [])
+                        if recs:
+                            cols = st.columns(min(len(recs), 2))
+                            for idx, p in enumerate(recs):
+                                col_target = cols[idx % len(cols)]
+                                with col_target:
+                                    with st.container(border=True):
+                                        st.markdown(f"### 🏷️ {p['description']}")
+                                        st.caption(f"**Category:** {p.get('category', 'General')} | **Code:** `{p['stock_code']}`")
+                                        st.metric("Price", f"${p['unit_price']:.2f}", delta=f"{p.get('similarity', 0.85)*100:.1f}% Match")
+                                        st.info(f"💡 **Why Recommended:** {p.get('why_recommended', 'Great match for your query.')}")
+                                        
+                        if data.get("shopping_tip"):
+                            st.success(f"✨ **Shopping Tip:** {data['shopping_tip']}")
+                    else:
+                        st.error(f"Failed to fetch product advice: {resp.status_code}")
+                        st.code(resp.text)
+                except Exception as e:
+                    st.error(f"Error communicating with RAG Advisor API: {str(e)}")

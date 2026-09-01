@@ -39,3 +39,19 @@ CREATE TABLE IF NOT EXISTS online_customer_features (
     preferred_shopping_hour INT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS product_catalog_vectors (
+    stock_code VARCHAR(50) PRIMARY KEY,
+    description TEXT NOT NULL,
+    category VARCHAR(100),
+    unit_price DOUBLE PRECISION NOT NULL,
+    document_text TEXT NOT NULL,
+    embedding vector(768),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS product_vector_idx 
+ON product_catalog_vectors 
+USING hnsw (embedding vector_cosine_ops);
