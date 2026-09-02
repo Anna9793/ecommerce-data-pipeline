@@ -167,6 +167,20 @@ def generate_campaign_endpoint(customer_id: str):
             detail=f"Campaign generation failed: {str(e)}"
         )
 
+@app.get("/predict/campaign-graph/{customer_id}")
+def generate_campaign_graph_endpoint(customer_id: str):
+    try:
+        from app.agent_graph import MarketingGraphOrchestrator
+        orchestrator = MarketingGraphOrchestrator()
+        campaign = orchestrator.run(customer_id)
+        return campaign
+    except Exception as e:
+        logging.exception("Error generating campaign via LangGraph")
+        raise HTTPException(
+            status_code=500,
+            detail=f"LangGraph campaign generation failed: {str(e)}"
+        )
+
 @app.post("/rag/advisor")
 def product_advisor_endpoint(request: ProductAdvisorRequest):
     try:

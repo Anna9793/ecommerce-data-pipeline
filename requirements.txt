@@ -176,6 +176,8 @@ gcsfs
 google-cloud-aiplatform
 kfp==2.7.0
 google-cloud-firestore
+langgraph>=0.2.0
+langchain-core>=0.3.0
 
 
 

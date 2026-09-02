@@ -273,23 +273,30 @@ with tab2:
 # TAB 3: AI MARKETING COPILOT
 with tab3:
     st.subheader("🤖 AI Marketing Campaign Generator & Vector Search")
-    st.write("Target inactive or high-value customers with personalized recommendations and email drafts powered by Vertex AI and Gemini.")
+    st.write("Target inactive or high-value customers with personalized recommendations and email drafts powered by LangGraph, Vertex AI, and Gemini.")
     
-    # Selection
     col_input, col_info = st.columns([1, 2])
     with col_input:
         with st.container(border=True):
             customer_id_input = st.text_input("Enter Customer ID", value="17850")
             st.caption("Try sample customer IDs: **17850**, **13047**, **12583**, **12431**, **14606**")
+            
+            engine_choice = st.radio(
+                "Orchestration Engine",
+                ["LangGraph (StateGraph with Self-Correction)", "Linear Assembly Line"],
+                index=0,
+                help="LangGraph supports cyclic feedback loops where the Critic can reject and send drafts back to the Copywriter."
+            )
             generate_btn = st.button("Generate Campaign", use_container_width=True)
             
     with col_info:
-        st.info("💡 **How it works:** This assistant identifies the customer's churn risk and segment from BigQuery. It then performs a **Vector Search** to find products similar to their last purchased item, and prompts Gemini to write a personalized email campaign.")
+        st.info("💡 **How it works:** This assistant identifies the customer's churn risk and segment from BigQuery / Online Feature Store, retrieves similar products using Vector Search, and uses a **LangGraph Multi-Agent Team** with an autonomous Critic audit loop to generate compliant email campaigns.")
 
     if generate_btn:
-        with st.spinner("Analyzing profile, executing vector similarity search, and generating email campaign..."):
+        endpoint_url = f"{API_URL}/predict/campaign-graph/{customer_id_input}" if "LangGraph" in engine_choice else f"{API_URL}/predict/campaign/{customer_id_input}"
+        with st.spinner(f"Executing {engine_choice}..."):
             try:
-                response = requests.get(f"{API_URL}/predict/campaign/{customer_id_input}")
+                response = requests.get(endpoint_url)
                 if response.status_code == 200:
                     result = response.json()
                     
@@ -298,62 +305,73 @@ with tab3:
                     
                     with col_results_left:
                         st.subheader("👤 Customer Profile Details")
-                        profile = result["profile"]
                         
                         # Profile Cards
                         with st.container(border=True):
-                            st.write(f"**Customer ID:** {result['customer_id']}")
-                            st.write(f"**Segment:** {profile['segment']}")
-                            st.write(f"**Last Purchased:** {profile['last_purchased']}")
+                            st.write(f"**Customer ID:** {result.get('customer_id', customer_id_input)}")
+                            st.write(f"**Segment:** {result.get('segment') or result.get('profile', {}).get('segment', 'Valued Customer')}")
                             
-                            st.write("**Customer Metrics:**")
-                            st.write(f"- Recency: {profile['recency']} days")
-                            st.write(f"- Frequency: {profile['frequency']} purchases")
-                            st.write(f"- Average Order Value: ${profile['avg_order_value']:.2f}")
-                            
-                            # Churn alert
-                            churn_prob = profile.get("churn_probability", 0)
-                            is_churn = profile.get("is_churn", 0)
-                            if is_churn == 1:
-                                st.warning(f"⚠️ Churn Risk: **High ({churn_prob*100:.1f}%)**")
+                            churn_str = result.get('churn_risk') or f"{result.get('profile', {}).get('churn_probability', 0.1)*100:.1f}%"
+                            if "High" in churn_str or float(churn_str.replace('%','')) > 50:
+                                st.warning(f"⚠️ Churn Risk: **{churn_str}**")
                             else:
-                                st.success(f"✅ Churn Risk: **Low ({churn_prob*100:.1f}%)**")
+                                st.success(f"✅ Churn Risk: **{churn_str}**")
                                 
-                        st.subheader("🛍️ Vector Search Recommendations")
-                        st.write("Top similar items from catalog:")
-                        for rec in result["recommendations"]:
-                            with st.container(border=True):
-                                col_desc, col_sim = st.columns([3, 1])
-                                with col_desc:
-                                    st.markdown(f"**{rec['description']}**")
-                                    st.write(f"Price: ${rec['unit_price']:.2f} | Code: {rec['stock_code']}")
-                                with col_sim:
-                                    st.metric("Similarity", f"{rec['similarity']*100:.1f}%")
+                            if "delivery_meta" in result:
+                                st.info(f"⏰ **Dispatch Timing:** {result['delivery_meta']}")
+                                
+                        st.subheader("🛍️ Recommended Products")
+                        if "recommended_products" in result and isinstance(result["recommended_products"], list):
+                            for p in result["recommended_products"]:
+                                if isinstance(p, dict):
+                                    st.markdown(f"- **{p.get('description')}** (${p.get('unit_price', 0):.2f})")
+                                else:
+                                    st.markdown(f"- **{p}**")
+                        elif "recommendations" in result:
+                            for rec in result["recommendations"]:
+                                with st.container(border=True):
+                                    col_desc, col_sim = st.columns([3, 1])
+                                    with col_desc:
+                                        st.markdown(f"**{rec['description']}**")
+                                        st.write(f"Price: ${rec['unit_price']:.2f} | Code: {rec['stock_code']}")
+                                    with col_sim:
+                                        st.metric("Similarity", f"{rec['similarity']*100:.1f}%")
                                     
                     with col_results_right:
                         st.subheader("🤝 Multi-Agent Collaboration Board")
                         
+                        if "graph_engine" in result:
+                            st.caption(f"Engine: **{result['graph_engine']}** | Iterations Completed: **{result.get('iterations_required', 1)}**")
+                        
                         agent_traces = result.get("agent_traces")
-                        if agent_traces:
+                        if isinstance(agent_traces, list):
+                            for trace in agent_traces:
+                                node_title = trace.get("title", trace.get("node", "Agent Step"))
+                                with st.expander(f"🔹 **{node_title}**", expanded=False):
+                                    st.markdown(trace.get("content", ""))
+                        elif isinstance(agent_traces, dict):
                             with st.expander("🔍 **Step 1: Behavioral Analyst Agent**", expanded=False):
                                 st.info(agent_traces.get("analyst_diagnosis", "No trace available."))
-                                
                             with st.expander("🎯 **Step 2: Campaign Strategist Agent**", expanded=False):
                                 st.success(agent_traces.get("strategy_plan", "No trace available."))
-                                
                             with st.expander("✍️ **Step 3: Creative Copywriter Draft**", expanded=False):
                                 st.code(agent_traces.get("initial_draft", "No trace available."), language="markdown")
-                                
                             with st.expander("🛡️ **Step 4: Quality & Compliance Critic Review**", expanded=False):
                                 st.warning(f"**Audit Findings:** {agent_traces.get('critic_review', 'Verified against brand guidelines.')}")
                                 
                         st.subheader("📧 Final Approved Marketing Email")
                         with st.container(border=True):
-                            st.markdown(result["campaign_draft"])
+                            if "subject" in result and "body" in result:
+                                st.markdown(f"### ✉️ Subject: {result['subject']}")
+                                st.markdown(result["body"])
+                            else:
+                                st.markdown(result.get("campaign_draft", ""))
                             
                 else:
                     st.error(f"Failed to generate campaign. Server returned status code: {response.status_code}")
                     st.error(response.text)
+            except Exception as e:
+                st.error(f"Error connecting to FastAPI API: {str(e)}")se.text)
             except Exception as e:
                 st.error(f"Error connecting to FastAPI API: {str(e)}")
 

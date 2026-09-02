@@ -111,7 +111,14 @@ graph TD
 *   **Hybrid Search & Budget Filtering**: Executes parameterized SQL queries that simultaneously enforce budget constraints (`unit_price <= max_budget`) and rank by cosine distance (`<=>`).
 *   **Conversational Chatbot with RAG Guardrails**: In Tab 5 of Streamlit, a conversational assistant explains *why* each candidate item was selected and gracefully handles out-of-domain requests (e.g. sports equipment or electronics) by clarifying store specialties.
 
-### 2.5. Orchestration & Training (Vertex AI Pipelines)
+### 2.5. Autonomous Agent with LangGraph & Cyclic Feedback Loops (Phase 15)
+*   **Location**: [app/agent_graph.py](file:///Users/Anna/ecommerce-data-pipeline/app/agent_graph.py)
+*   **Stateful Graph Machine (`StateGraph`)**: Replaces rigid procedural execution with a stateful computational graph using `langgraph`.
+*   **Encapsulated Nodes & Typed State**: `MarketingGraphState` manages shared memory across 5 nodes (`analyst`, `strategist`, `copywriter`, `critic`, `format_output`).
+*   **Cyclic Feedback & Self-Correction**: Implements conditional edge routing (`_should_revise_or_end`). When the Critic rejects a draft due to tone or non-compliance, it routes the state back to the Copywriter node with specific critique feedback instructions (up to a 3-iteration safety limit).
+*   **API & UI Integration**: Exposes `GET /predict/campaign-graph/{customer_id}` and renders a live iteration-by-iteration DAG timeline in Streamlit.
+
+### 2.6. Orchestration & Training (Vertex AI Pipelines)
 *   **Location**: [pipelines/churn_kfp_pipeline.py](file:///Users/Anna/ecommerce-data-pipeline/pipelines/churn_kfp_pipeline.py)
 *   **DAG Structure**: 
     1.  `extract_data_comp`: Queries clean raw data from BigQuery.
@@ -119,13 +126,13 @@ graph TD
     3.  `evaluate_deploy_comp`: Assesses candidate churn model F1-Score against active model. If candidate score is equal or superior, it uploads both pickle binaries to GCS and triggers dynamic API reload.
 *   **Step-level Caching**: Caching is globally enabled to conserve resources, but disabled specifically for `extract_data_comp`. Downstream tasks automatically execute if fresh data is extracted, but reuse the cache if the database hasn't changed.
 
-### 2.6. Statistical Monitoring (K-S Drift Engine)
+### 2.7. Statistical Monitoring (K-S Drift Engine)
 *   **Location**: [src/monitoring.py](file:///Users/Anna/ecommerce-data-pipeline/src/monitoring.py)
 *   **Method**: Uses the two-sample **Kolmogorov-Smirnov (K-S) test** from `scipy.stats` to compare the baseline training distribution (`rfm_customers.csv`) with the live target distribution (queried from BigQuery `rfm_features` view).
 *   **Drift Condition**: Rejects the null hypothesis (drift detected) if the calculated $p$-value for any feature (`recency`, `frequency`, `avg_order_value`) is $< 0.05$.
 *   **Closed-Loop**: If drift is detected, Streamlit warns the operator and provides a one-click retraining trigger.
 
-### 2.7. Online Feature Store & Cloud Scheduler
+### 2.8. Online Feature Store & Cloud Scheduler
 *   **Synchronization Script**: [scripts/sync_feature_store.py](file:///Users/Anna/ecommerce-data-pipeline/scripts/sync_feature_store.py) pre-computes and syncs customer features.
 *   **Serving Mode Lookup**:
     *   **Cloud Mode (`USE_BIGQUERY=true`)**: Queries **Google Cloud Firestore** (sub-15ms document key-value lookup) with BigQuery view fallback.
@@ -155,4 +162,8 @@ graph TD
 ### 3.5. Hybrid Online Feature Store (PostgreSQL & Firestore)
 *   **Decision**: Implemented a dual-backend Key-Value lookup serving layer (PostgreSQL locally, Firestore in the cloud) rather than legacy Vertex AI Feature Stores.
 *   **Rationale**: Managed cloud feature stores require high-cost resources (always-on Bigtable clusters running at $100+/month). Firestore provides a serverless document key-value store with sub-15ms queries and a generous permanent free tier of 50k reads/writes per day.
+
+### 3.6. Stateful Graph Orchestration vs. Static Pipelines (Phase 15)
+*   **Decision**: Implemented `langgraph` StateGraph for agent collaboration with cyclic revision loops rather than static sequential function calls.
+*   **Rationale**: Real-world generative marketing copy requires automated quality assurance. If a compliance critic rejects a draft (e.g., tone is too aggressive or a discount code is missing for an at-risk customer), LangGraph enables autonomous self-correction by dynamically re-routing back to the copywriter node with actionable feedback before returning to the user.
 
