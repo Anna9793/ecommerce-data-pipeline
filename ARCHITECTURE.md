@@ -1,13 +1,13 @@
 # E-commerce Analytics & Churn Prediction MLOps Platform
 ## System Architecture & Technical Specifications
 
-This document outlines the architecture, data flows, and technical design decisions of the E-commerce Customer Segmentation & Churn Prediction MLOps Platform.
+This document outlines the architecture, data flows, and technical design decisions of the E-commerce Customer Segmentation, Churn Prediction, Multi-Agent GenAI, and pgvector RAG Platform.
 
 ---
 
 ## 1. System Architecture Overview
 
-The platform is designed around a **closed-loop feedback system** that connects real-time data ingestion, model inference, automated orchestration, and statistical monitoring.
+The platform is designed around a **closed-loop feedback system** that connects real-time data ingestion, model inference, automated orchestration, statistical drift monitoring, multi-agent AI marketing generation, and pgvector-powered semantic search.
 
 ```mermaid
 graph TD
@@ -19,14 +19,31 @@ graph TD
     %% Serving Flow
     subgraph Serving [2. Serving Layer]
         UI[Streamlit Dashboard UI] <-->|REST API| API[FastAPI App on Cloud Run]
-        API -->|Vector Similarity Search| FAISS[FAISS Vector DB]
-        API -->|Generate Campaigns| Gemini[Gemini LLM]
         API -->|Fetch Live Metrics| BQ_RFM[BigQuery: rfm_features View]
-        API -->|Log Predictions| PG[(PostgreSQL Database)]
+        API -->|Log Predictions & Online Features| PG[(PostgreSQL Database + pgvector)]
+    end
+
+    %% Multi-Agent Assembly Line
+    subgraph MultiAgent [3. Multi-Agent Marketing Assembly Line]
+        API --> Agent1[1. Behavioral Analyst]
+        Agent1 --> Agent2[2. Campaign Strategist]
+        Agent2 --> Agent3[3. Creative Copywriter]
+        Agent3 --> Agent4[4. Quality & Compliance Critic]
+        Agent4 -->|Pydantic Structured JSON| UI_Agent[Multi-Agent Collaboration Board]
+    end
+
+    %% RAG & Vector Engine
+    subgraph RAGEngine [4. Hybrid RAG Product Advisor]
+        UI -->|Natural Language Search Query| RAG_API[POST /rag/advisor]
+        RAG_API --> Embed[Vertex AI text-embedding-004]
+        Embed -->|768d Vector Query| PG_Vec[(PostgreSQL pgvector)]
+        PG_Vec -->|HNSW Cosine Search + Price Filter| Candidates[Top Catalog Candidates]
+        Candidates --> GeminiRAG[Gemini 1.5 Flash]
+        GeminiRAG -->|Product Justifications & Shopping Tips| UI_Chat[Product Advisor Chatbot]
     end
 
     %% Retraining Flow
-    subgraph Orchestration [3. Orchestration & Training]
+    subgraph Orchestration [5. Orchestration & Training]
         Cron[Cloud Scheduler: Weekly Trigger] -->|POST /check-and-retrain| API
         API -->|Trigger retraining Webhook| Vertex[Vertex AI Pipelines]
         Vertex -->|Extract Transactions| BQ
@@ -38,7 +55,7 @@ graph TD
     end
 
     %% Monitoring Flow
-    subgraph Monitoring [4. Closed-Loop Monitoring]
+    subgraph Monitoring [6. Closed-Loop Monitoring]
         API -->|K-S Statistical Test| Drift[Drift Engine]
         Drift -->|Compare Baseline vs Live| BQ_RFM
         Drift -->|Display Health & Charts| UI
@@ -46,7 +63,7 @@ graph TD
     end
     
     %% Feature Store
-    subgraph FeatureStore [5. Online Feature Store]
+    subgraph FeatureStore [7. Online Feature Store]
         Sync[Sync Engine: scripts/sync_feature_store.py] -->|Batch Load| BQ_RFM
         Sync -->|Write Profiles| OnlineStore[(Firestore / PostgreSQL)]
         API <-->|Lookup customer_id sub-15ms| OnlineStore
@@ -54,8 +71,10 @@ graph TD
 
     classDef gcp fill:#4285F4,stroke:#333,stroke-width:2px,color:#fff;
     classDef serve fill:#34A853,stroke:#333,stroke-width:2px,color:#fff;
-    class BQ,GCS,Vertex,Gemini,OnlineStore gcp;
-    class API,UI,PG,FAISS serve;
+    classDef ai fill:#FBBC04,stroke:#333,stroke-width:2px,color:#000;
+    class BQ,GCS,Vertex,GeminiRAG,OnlineStore gcp;
+    class API,UI,PG,PG_Vec serve;
+    class Agent1,Agent2,Agent3,Agent4,UI_Agent,UI_Chat ai;
 ```
 
 ---
@@ -69,55 +88,71 @@ graph TD
     *   `Standard`: Simulates standard buying behaviors (5% baseline order cancellations).
     *   `Drift Cancellations`: Simulates cancellation drift (40%+ cancellations).
     *   `Drift Velocity`: Simulates velocity drift (spiked order quantities and prices).
-*   **Epoch-Alignment**: Simulated transaction timestamps are anchored in the **December 2011** epoch to prevent shifting the absolute max date in the database, preserving the static recency calculation without time distortion.
+*   **Epoch-Alignment**: Simulated transaction timestamps are anchored in the **December 2011** epoch to prevent shifting the absolute max date in the database, preserving static recency calculations without time distortion.
 
 ### 2.2. Serving Layer (FastAPI & Streamlit)
 *   **FastAPI Backend**: Located in [app/main.py](file:///Users/Anna/ecommerce-data-pipeline/app/main.py). Runs as a containerized serverless application on Google Cloud Run. Handles prediction logging, vector catalog search, LLM-generated campaigns, model hot-reloads, and drift metrics calculation.
-*   **Streamlit UI**: Located in [streamlit_app.py](file:///Users/Anna/ecommerce-data-pipeline/streamlit_app.py). Renders segmentation clusters, churn probabilities, vector similarities, LLM marketing campaign copy, and live distribution comparison histograms.
-*   **Vector Search & Multi-Agent GenAI**: Performs similarity search on e-commerce catalog items using FAISS, feeding recommended products into a **4-Agent Collaborative Assembly Line** (Behavioral Analyst -> Campaign Strategist -> Creative Copywriter -> Quality & Compliance Critic) evaluated by Gemini to craft personalized, guardrailed email campaigns.
+*   **Streamlit UI**: Located in [streamlit_app.py](file:///Users/Anna/ecommerce-data-pipeline/streamlit_app.py). Renders segmentation clusters, churn probabilities, multi-agent marketing traces, live drift histograms, and the conversational Product Advisor chatbot.
 
-### 2.3. Orchestration & Training (Vertex AI Pipelines)
+### 2.3. Multi-Agent Collaborative Marketing Assembly Line (Phase 13)
+*   **Location**: [app/agent_service.py](file:///Users/Anna/ecommerce-data-pipeline/app/agent_service.py)
+*   **Assembly Line Architecture**: Replaces monolithic prompts with a **4-Agent Collaborative Workflow**:
+    1.  **Behavioral Analyst (`_run_analyst_agent`)**: Objective behavioral diagnostics (velocity analysis, cancellation risk, segment assessment).
+    2.  **Campaign Strategist (`_run_strategist_agent`)**: Commercial angle formulation, promotional code selection (`WINBACK20`, `SHIPSAFE`, `LOYALTYVIP`), and product pairing.
+    3.  **Creative Copywriter (`_run_copywriter_agent`)**: Subject line generation and persuasive, personalized email body copywriting.
+    4.  **Quality & Compliance Critic (`_run_critic_agent`)**: Compliance audit (ensures internal ML cluster names never leak to customers), tone polish, and dispatch scheduling.
+*   **Structured Outputs**: Utilizes **Pydantic Schemas** (`StrategyPlan`, `CopywriterDraft`, `CriticReview`) with Gemini's `response_mime_type="application/json"` and `response_schema` parameters, eliminating fragile manual string parsing (`.split()`, `.replace()`).
+*   **UI Collaboration Board**: Displays interactive expanders in Tab 3 of Streamlit showing the step-by-step intermediate thoughts of each agent.
+
+### 2.4. Hybrid RAG Product Advisor with `pgvector` (Phase 14)
+*   **Location**: [app/rag_service.py](file:///Users/Anna/ecommerce-data-pipeline/app/rag_service.py), [scripts/sync_product_vectors.py](file:///Users/Anna/ecommerce-data-pipeline/scripts/sync_product_vectors.py), and [app/db_postgres.py](file:///Users/Anna/ecommerce-data-pipeline/app/db_postgres.py).
+*   **Contextual Multi-Attribute Embeddings**: Enriches raw products with category classifications and style/seasonal tags (*Title + Category + Price + Seasonal Tags*) before generating **768-dimensional embeddings** via Vertex AI `text-embedding-004`.
+*   **pgvector & HNSW Indexing**: Stored natively in PostgreSQL `product_catalog_vectors` with an **HNSW cosine index** (`USING hnsw (embedding vector_cosine_ops)`) for sub-millisecond retrieval.
+*   **Hybrid Search & Budget Filtering**: Executes parameterized SQL queries that simultaneously enforce budget constraints (`unit_price <= max_budget`) and rank by cosine distance (`<=>`).
+*   **Conversational Chatbot with RAG Guardrails**: In Tab 5 of Streamlit, a conversational assistant explains *why* each candidate item was selected and gracefully handles out-of-domain requests (e.g. sports equipment or electronics) by clarifying store specialties.
+
+### 2.5. Orchestration & Training (Vertex AI Pipelines)
 *   **Location**: [pipelines/churn_kfp_pipeline.py](file:///Users/Anna/ecommerce-data-pipeline/pipelines/churn_kfp_pipeline.py)
 *   **DAG Structure**: 
     1.  `extract_data_comp`: Queries clean raw data from BigQuery.
     2.  `train_churn_comp` / `train_segmentation_comp`: Executes parallel training tasks for XGBoost (Churn) and KMeans (Clustering).
-    3.  `evaluate_deploy_comp`: Assesses the candidate churn model F1-Score against the active model. If candidate score is equal or superior, it uploads both pickle binaries to GCS and triggers a dynamic API reload.
+    3.  `evaluate_deploy_comp`: Assesses candidate churn model F1-Score against active model. If candidate score is equal or superior, it uploads both pickle binaries to GCS and triggers dynamic API reload.
 *   **Step-level Caching**: Caching is globally enabled to conserve resources, but disabled specifically for `extract_data_comp`. Downstream tasks automatically execute if fresh data is extracted, but reuse the cache if the database hasn't changed.
 
-### 2.4. Statistical Monitoring (K-S Drift Engine)
+### 2.6. Statistical Monitoring (K-S Drift Engine)
 *   **Location**: [src/monitoring.py](file:///Users/Anna/ecommerce-data-pipeline/src/monitoring.py)
-*   **Method**: Uses the two-sample **Kolmogorov-Smirnov (K-S) test** from `scipy.stats` to compare the baseline training distribution (`rfm_customers.csv`) with the live target distribution (queried from the BigQuery `rfm_features` view).
-*   **Drift Condition**: Rejects the null hypothesis (meaning drift is detected) if the calculated $p$-value for any feature (`recency`, `frequency`, `avg_order_value`) is $< 0.05$.
-*   **Closed-Loop**: If drift is detected, the Streamlit app warns the operator and provides a button to trigger the retraining webhook.
+*   **Method**: Uses the two-sample **Kolmogorov-Smirnov (K-S) test** from `scipy.stats` to compare the baseline training distribution (`rfm_customers.csv`) with the live target distribution (queried from BigQuery `rfm_features` view).
+*   **Drift Condition**: Rejects the null hypothesis (drift detected) if the calculated $p$-value for any feature (`recency`, `frequency`, `avg_order_value`) is $< 0.05$.
+*   **Closed-Loop**: If drift is detected, Streamlit warns the operator and provides a one-click retraining trigger.
 
-### 2.5. Online Feature Store & Scheduler
-*   **Synchronization Script**: [scripts/sync_feature_store.py](file:///Users/Anna/ecommerce-data-pipeline/scripts/sync_feature_store.py) runs to pre-compute and sync customer features.
+### 2.7. Online Feature Store & Cloud Scheduler
+*   **Synchronization Script**: [scripts/sync_feature_store.py](file:///Users/Anna/ecommerce-data-pipeline/scripts/sync_feature_store.py) pre-computes and syncs customer features.
 *   **Serving Mode Lookup**:
-    *   **Cloud Mode (`USE_BIGQUERY=true`)**: Queries **Google Cloud Firestore** (sub-15ms document key-value lookup) with BigQuery fallback.
-    *   **Local Mode (`USE_BIGQUERY=false`)**: Queries the local **PostgreSQL** `online_customer_features` table.
+    *   **Cloud Mode (`USE_BIGQUERY=true`)**: Queries **Google Cloud Firestore** (sub-15ms document key-value lookup) with BigQuery view fallback.
+    *   **Local Mode (`USE_BIGQUERY=false`)**: Queries local **PostgreSQL** `online_customer_features` table.
 *   **Cron Automation**: A **Google Cloud Scheduler** HTTP job triggers the `/monitoring/check-and-retrain` webhook weekly (`0 0 * * 0`) using OIDC Compute Engine service account token authentication.
 
 ---
 
 ## 3. Key Design Decisions & Rationales
 
-### 3.1. Serverless serving vs. Vertex AI Endpoints
+### 3.1. Serverless Serving vs. Dedicated Vertex AI Endpoints
 *   **Decision**: Bypassed Vertex AI Endpoints in favor of GCS storage and Cloud Run serverless hosting.
-*   **Rationale**: Vertex Endpoints require dedicated, always-on Virtual Machines, costing ~$70–$100/month per model even when idle. Cloud Run scale-to-zero capability allows running the service for practically $0/month when idle, loading models into RAM dynamically.
+*   **Rationale**: Vertex Endpoints require dedicated, always-on Virtual Machines costing ~$70–$100/month per model even when idle. Cloud Run scale-to-zero capability allows running the service for $0.00/month when idle, loading models into RAM dynamically.
 
 ### 3.2. In-Memory Dynamic Hot-Reloading
-*   **Decision**: Implemented an in-RAM reload mechanism in the FastAPI application triggered by a webhook POST request.
+*   **Decision**: Implemented an in-RAM reload mechanism in FastAPI triggered by a webhook POST request.
 *   **Rationale**: Prevents server downtime during deployment. When a new model is pushed to GCS by the pipeline, Cloud Run swaps the models in memory dynamically without restarting the container, ensuring 100% availability.
 
-### 3.3. Gateway-Safe Traceback Handling
-*   **Decision**: Configured simulator endpoints to catch exceptions and return a `200 OK` JSON payload containing error and traceback information, instead of throwing an unhandled `500 Server Error`.
-*   **Rationale**: GCP Load Balancers intercept raw HTTP 500 responses and replace them with generic HTML error pages. Returning `200 OK` with error metadata ensures full diagnostic tracebacks are displayed directly in the Streamlit frontend.
+### 3.3. Pydantic Structured Outputs vs. Regex/String Slicing (Phase 13)
+*   **Decision**: Enforced JSON schemas using Pydantic models and `GenerationConfig(response_mime_type="application/json", response_schema=...)` across all agents.
+*   **Rationale**: LLMs naturally engage in polite conversational chit-chat (`"Sure! Here is your plan:"`) or wrap text in markdown backticks, which breaks standard `json.loads()` and crashes APIs. Setting `response_mime_type="application/json"` applies token-level constrained decoding, guaranteeing valid JSON every time.
 
-### 3.4. Memory-Optimized Lazy Imports
-*   **Decision**: Deferred importing `google.cloud.aiplatform` and its modules to the inside of the execution endpoints instead of at the top of the file.
-*   **Rationale**: The Vertex AI SDK is highly memory-intensive. Lazy importing keeps the container startup memory footprint below 350 MiB, preventing Cloud Run from terminating instances for exceeding the 512 MiB limit.
+### 3.4. PostgreSQL `pgvector` vs. Standalone Vector Databases (Phase 14)
+*   **Decision**: Integrated vector similarity search directly inside our existing PostgreSQL database using the `pgvector` extension and HNSW indexing, rather than introducing third-party vector databases (Pinecone, Qdrant, Milvus).
+*   **Rationale**: Co-locating relational feature tables, prediction logs, and vector embeddings in a single PostgreSQL instance reduces operational overhead, eliminates multi-database synchronization lag, and allows hybrid SQL filtering (e.g. `WHERE unit_price <= 25.0 ORDER BY embedding <=> query_vector`).
 
 ### 3.5. Hybrid Online Feature Store (PostgreSQL & Firestore)
 *   **Decision**: Implemented a dual-backend Key-Value lookup serving layer (PostgreSQL locally, Firestore in the cloud) rather than legacy Vertex AI Feature Stores.
-*   **Rationale**: Managed cloud feature stores require high-cost resources (always-on Bigtable clusters running at $100+/month). Firestore provides a serverless document key-value store with sub-15ms queries and a free tier of 50k reads/writes per day. PostgreSQL local mapping allows offline, zero-dependency developer integration without GCP credentials.
+*   **Rationale**: Managed cloud feature stores require high-cost resources (always-on Bigtable clusters running at $100+/month). Firestore provides a serverless document key-value store with sub-15ms queries and a generous permanent free tier of 50k reads/writes per day.
 
