@@ -13,7 +13,30 @@ resource "google_pubsub_topic" "transactions_topic" {
   }
 }
 
-# 2. Worker Pull Subscription for Online Feature Store & Real-time Services
+# 2. Dead Letter Queue Topic & Subscription (Infrastructure Protection)
+resource "google_pubsub_topic" "dead_letter_topic" {
+  name = "retail-transactions-dead-letter-topic"
+
+  labels = {
+    environment = var.environment
+    managed_by  = "terraform"
+    service     = "dead-letter-queue"
+  }
+}
+
+resource "google_pubsub_subscription" "dead_letter_subscription" {
+  name  = "retail-transactions-dead-letter-sub"
+  topic = google_pubsub_topic.dead_letter_topic.name
+
+  message_retention_duration = "604800s" # 7 days retention for debugging
+
+  labels = {
+    environment = var.environment
+    managed_by  = "terraform"
+  }
+}
+
+# 3. Worker Pull Subscription for Online Feature Store & Real-time Services
 resource "google_pubsub_subscription" "worker_subscription" {
   name  = "retail-transactions-sub"
   topic = google_pubsub_topic.transactions_topic.name
@@ -34,6 +57,12 @@ resource "google_pubsub_subscription" "worker_subscription" {
   retry_policy {
     minimum_backoff = "10s"
     maximum_backoff = "600s"
+  }
+
+  # Forward poisoned messages to DLQ after 5 failed delivery attempts
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.dead_letter_topic.id
+    max_delivery_attempts = 5
   }
 
   labels = {

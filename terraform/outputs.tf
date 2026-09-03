@@ -36,3 +36,8 @@ output "pubsub_subscription_name" {
   description = "Google Cloud Pub/Sub worker subscription name"
   value       = google_pubsub_subscription.worker_subscription.name
 }
+
+output "pubsub_dead_letter_topic_name" {
+  description = "Google Cloud Pub/Sub Dead Letter Queue topic name"
+  value       = google_pubsub_topic.dead_letter_topic.name
+}

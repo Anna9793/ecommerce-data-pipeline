@@ -10,32 +10,64 @@ from apache_beam.transforms import window
 
 logging.basicConfig(level=logging.INFO)
 
+DEAD_LETTER_TAG = "dead_letter"
+
 # ============================================================
-# 1. Beam Transform DoFns
+# 1. Beam Transform DoFns with Dead-Letter Queue Routing
 # ============================================================
 
 class ParseTransactionDoFn(beam.DoFn):
-    """Parses JSON transaction string/bytes into structured dictionary with validation."""
+    """
+    Parses JSON transaction string/bytes into structured dictionary.
+    Routes corrupted, malformed, or invalid records to the Dead-Letter Queue.
+    """
 
-    def process(self, element) -> Iterable[Dict[str, Any]]:
+    def process(self, element) -> Iterable[Any]:
+        raw_str = ""
         try:
             if isinstance(element, bytes):
-                element = element.decode("utf-8")
-            if isinstance(element, str):
-                data = json.loads(element)
+                raw_str = element.decode("utf-8")
+            elif isinstance(element, str):
+                raw_str = element
             else:
-                data = element
+                raw_str = json.dumps(element)
+
+            data = json.loads(raw_str)
             
             customer_id = data.get("CustomerID") or data.get("customer_id")
             if not customer_id or str(customer_id).strip() in ("", "None", "nan"):
-                return  # Skip guest / anonymous checkouts
+                # Route missing Customer ID to Dead-Letter Queue
+                yield beam.pvalue.TaggedOutput(
+                    DEAD_LETTER_TAG,
+                    {
+                        "raw_payload": raw_str,
+                        "error_type": "MISSING_CUSTOMER_ID",
+                        "error_message": "Transaction rejected: missing or empty CustomerID",
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                )
+                return
                 
             qty = int(data.get("Quantity", 1))
             unit_price = float(data.get("UnitPrice", 0.0))
-            inv_no = str(data.get("InvoiceNo", ""))
             
+            if unit_price < 0:
+                # Route negative unit price to Dead-Letter Queue
+                yield beam.pvalue.TaggedOutput(
+                    DEAD_LETTER_TAG,
+                    {
+                        "raw_payload": raw_str,
+                        "error_type": "INVALID_UNIT_PRICE",
+                        "error_message": f"Negative UnitPrice detected: {unit_price}",
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                )
+                return
+
+            inv_no = str(data.get("InvoiceNo", ""))
             is_cancel = inv_no.startswith("C") or qty < 0
             
+            # Main valid output
             yield {
                 "customer_id": str(customer_id),
                 "invoice_no": inv_no,
@@ -48,7 +80,17 @@ class ParseTransactionDoFn(beam.DoFn):
                 "invoice_date": str(data.get("InvoiceDate", datetime.utcnow().isoformat()))
             }
         except Exception as e:
-            logging.warning("Skipping malformed transaction in Dataflow: %s", e)
+            # Route unparseable / syntax errors to Dead-Letter Queue
+            logging.warning("Routing corrupted transaction to Dead-Letter Queue: %s", e)
+            yield beam.pvalue.TaggedOutput(
+                DEAD_LETTER_TAG,
+                {
+                    "raw_payload": str(element),
+                    "error_type": "JSON_PARSE_ERROR",
+                    "error_message": str(e),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
 
 class AggregateCustomerMetrics(beam.CombineFn):
     """Accumulates transaction spend, count, and cancellations per window."""
@@ -152,10 +194,18 @@ def run_pipeline(
     logging.info("Starting Apache Beam pipeline with %s on %s", runner, topic_path)
 
     with beam.Pipeline(options=options) as p:
-        (
+        parsed_results = (
             p
             | "ReadFromPubSub" >> beam.io.ReadFromPubSub(topic=topic_path)
-            | "ParseTransaction" >> beam.ParDo(ParseTransactionDoFn())
+            | "ParseTransactionAndDLQ" >> beam.ParDo(ParseTransactionDoFn()).with_outputs(
+                DEAD_LETTER_TAG,
+                main="valid"
+            )
+        )
+
+        # 1. Main Path: Valid transactions -> Windowing -> Aggregation -> BigQuery
+        (
+            parsed_results.valid
             | "FixedWindows" >> beam.WindowInto(window.FixedWindows(window_size_seconds))
             | "KeyByCustomer" >> beam.Map(lambda tx: (tx["customer_id"], tx))
             | "CombineCustomerMetrics" >> beam.CombinePerKey(AggregateCustomerMetrics())
@@ -166,6 +216,12 @@ def run_pipeline(
                 write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
                 create_disposition=beam.io.BigQueryDisposition.CREATE_NEVER
             )
+        )
+
+        # 2. Dead-Letter Path: Log and monitor corrupted records
+        (
+            parsed_results[DEAD_LETTER_TAG]
+            | "FormatDLQLogs" >> beam.Map(lambda err: logging.error("DLQ EVENT: %s", json.dumps(err)))
         )
 
 if __name__ == "__main__":

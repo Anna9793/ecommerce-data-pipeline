@@ -197,3 +197,7 @@ graph TD
 *   **Decision**: Selected Apache Beam on Google Cloud Dataflow for streaming ETL and windowed feature calculation instead of hosting Apache Spark on Dataproc.
 *   **Rationale**: Dataflow provides true serverless autoscaling with zero cluster management, scales worker VMs dynamically based on pipeline backlog/watermark lag, and offers unified windowing semantics (fixed, sliding, session) across batch and streaming.
 
+### 3.10. Dual-Level Dead Letter Queues (Defense in Depth)
+*   **Decision**: Implemented Dead Letter Queues (DLQs) at two distinct layers: (1) **Pub/Sub Infrastructure DLQ** (`retail-transactions-dead-letter-topic` with `max_delivery_attempts = 5`), and (2) **Apache Beam Application DLQ** using `beam.pvalue.TaggedOutput("dead_letter", ...)`.
+*   **Rationale**: Protects the streaming pipeline from "poison pill" messages. Pub/Sub DLQ intercepts infrastructure and network delivery crashes, preventing endless retry loops; Apache Beam DLQ intercepts data quality violations (malformed JSON, negative prices, missing customer IDs) without dropping records or stalling the streaming execution graph.
+
