@@ -148,7 +148,14 @@ graph TD
     *   `firestore.tf`: Enables Cloud Firestore native NoSQL mode.
     *   `cloud_run.tf`: Deploys serverless backend and dashboard with memory sizing (`1Gi`) and public IAM invoker policies.
     *   `scheduler.tf`: Configures the weekly model evaluation cron job.
+    *   `pubsub.tf`: Defines streaming topics and fan-out subscriptions.
+    *   `dataflow.tf`: Configures the BigQuery streaming customer aggregates table.
 *   **Environment Agnostic**: Parameterized via `variables.tf` and `terraform.tfvars.example` for multi-environment deployments (`dev`, `staging`, `production`).
+
+### 2.10. Streaming ETL & Feature Engineering (Apache Beam & Dataflow) (Phase 18)
+*   **Location**: [src/dataflow_pipeline.py](file:///Users/Anna/ecommerce-data-pipeline/src/dataflow_pipeline.py)
+*   **Unified Batch & Streaming Engine**: Implemented an **Apache Beam** pipeline that consumes real-time transactions from Google Cloud Pub/Sub, executes **5-minute fixed windowing (`window.FixedWindows(300)`)**, calculates customer rolling metrics (total spend, unique orders, cancellations), and derives real-time **spending velocity** and cancellation ratios before streaming to BigQuery `streaming_customer_aggregates`.
+*   **DirectRunner & DataflowRunner**: Supports both local deterministic unit testing via `DirectRunner` and horizontal autoscaling on Google Cloud Dataflow.
 
 ---
 
@@ -185,4 +192,8 @@ graph TD
 ### 3.8. Event-Driven Pub/Sub Streaming vs. Direct Synchronous Writes (Phase 17)
 *   **Decision**: Implemented an asynchronous message broker layer via Google Cloud Pub/Sub (`retail-transactions-topic`) with fan-out subscriptions to BigQuery and the Online Feature Store, rather than direct synchronous database insertions.
 *   **Rationale**: Eliminates checkout blocking latency, provides a shock-absorbing buffer against traffic spikes during high-volume periods (e.g. Black Friday), prevents data loss if downstream databases experience transient latency, and allows independent scaling of consumers (Warehouse ingestion vs. Real-time Feature Store updates).
+
+### 3.9. Serverless Apache Beam on Dataflow vs. Spark on Dataproc (Phase 18)
+*   **Decision**: Selected Apache Beam on Google Cloud Dataflow for streaming ETL and windowed feature calculation instead of hosting Apache Spark on Dataproc.
+*   **Rationale**: Dataflow provides true serverless autoscaling with zero cluster management, scales worker VMs dynamically based on pipeline backlog/watermark lag, and offers unified windowing semantics (fixed, sliding, session) across batch and streaming.
 

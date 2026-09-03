@@ -15,6 +15,7 @@ locals {
     "cloudscheduler.googleapis.com",
     "firestore.googleapis.com",
     "pubsub.googleapis.com",
+    "dataflow.googleapis.com",
     "artifactregistry.googleapis.com",
     "iam.googleapis.com",
     "cloudresourcemanager.googleapis.com"
