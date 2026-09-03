@@ -180,6 +180,8 @@ langgraph>=0.2.0
 langchain-core>=0.3.0
 google-cloud-pubsub>=2.18.0
 apache-beam[gcp]>=2.55.0
+apache-airflow>=2.8.0
+apache-airflow-providers-google
 
 
 

@@ -157,6 +157,15 @@ graph TD
 *   **Unified Batch & Streaming Engine**: Implemented an **Apache Beam** pipeline that consumes real-time transactions from Google Cloud Pub/Sub, executes **5-minute fixed windowing (`window.FixedWindows(300)`)**, calculates customer rolling metrics (total spend, unique orders, cancellations), and derives real-time **spending velocity** and cancellation ratios before streaming to BigQuery `streaming_customer_aggregates`.
 *   **DirectRunner & DataflowRunner**: Supports both local deterministic unit testing via `DirectRunner` and horizontal autoscaling on Google Cloud Dataflow.
 
+### 2.11. Master Enterprise Workflow Orchestration (Apache Airflow & Cloud Composer) (Phase 19)
+*   **Location**: [dags/ecommerce_master_pipeline_dag.py](file:///Users/Anna/ecommerce-data-pipeline/dags/ecommerce_master_pipeline_dag.py)
+*   **Master Orchestration Graph**: Orchestrates the daily data lifecycle:
+    1.  `check_raw_transactions`: Verifies data availability in BigQuery.
+    2.  `validate_data_quality`: Enforces schema and data quality rules (non-null IDs, strictly positive prices).
+    3.  `refresh_rfm_features`: Recalculates analytical RFM features.
+    4.  `sync_online_feature_store` & `sync_product_vectors`: Synchronizes the Online Feature Store (Firestore/PostgreSQL) and pgvector semantic embeddings concurrently.
+    5.  `evaluate_statistical_drift_branch`: Runs a 2-sample Kolmogorov-Smirnov test; branches to `trigger_vertex_ml_pipeline` if drift $p < 0.05$.
+
 ---
 
 ## 3. Key Design Decisions & Rationales
@@ -200,4 +209,8 @@ graph TD
 ### 3.10. Dual-Level Dead Letter Queues (Defense in Depth)
 *   **Decision**: Implemented Dead Letter Queues (DLQs) at two distinct layers: (1) **Pub/Sub Infrastructure DLQ** (`retail-transactions-dead-letter-topic` with `max_delivery_attempts = 5`), and (2) **Apache Beam Application DLQ** using `beam.pvalue.TaggedOutput("dead_letter", ...)`.
 *   **Rationale**: Protects the streaming pipeline from "poison pill" messages. Pub/Sub DLQ intercepts infrastructure and network delivery crashes, preventing endless retry loops; Apache Beam DLQ intercepts data quality violations (malformed JSON, negative prices, missing customer IDs) without dropping records or stalling the streaming execution graph.
+
+### 3.11. Cloud Composer (Airflow) as Platform Conductor vs. Vertex AI (Kubeflow) as ML Engine (Phase 19)
+*   **Decision**: Established Apache Airflow on Cloud Composer as the top-level platform orchestrator for daily ETL, data quality audits, and feature store syncing, while delegating model training and evaluation gates to Vertex AI Pipelines (Kubeflow).
+*   **Rationale**: Separates data pipeline orchestration (multi-system integrations, data contracts, and daily schedules) from containerized ML training workloads (GPU/TPU resource allocation, experiment tracking, and model registry governance). Airflow serves as the master conductor that only triggers Vertex AI when statistical feature drift is formally detected.
 
