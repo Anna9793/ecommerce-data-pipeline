@@ -182,3 +182,7 @@ graph TD
 *   **Decision**: Provisioned all cloud infrastructure using Terraform rather than manual configuration in the GCP Console.
 *   **Rationale**: Guarantees environment parity between development and production, prevents configuration drift, enables disaster recovery in under 2 minutes, and provides a clear Git-audited trail of all architectural changes.
 
+### 3.8. Event-Driven Pub/Sub Streaming vs. Direct Synchronous Writes (Phase 17)
+*   **Decision**: Implemented an asynchronous message broker layer via Google Cloud Pub/Sub (`retail-transactions-topic`) with fan-out subscriptions to BigQuery and the Online Feature Store, rather than direct synchronous database insertions.
+*   **Rationale**: Eliminates checkout blocking latency, provides a shock-absorbing buffer against traffic spikes during high-volume periods (e.g. Black Friday), prevents data loss if downstream databases experience transient latency, and allows independent scaling of consumers (Warehouse ingestion vs. Real-time Feature Store updates).
+

@@ -26,3 +26,13 @@ output "cloud_scheduler_job_name" {
   description = "Name of the automated retraining Cloud Scheduler job"
   value       = google_cloud_scheduler_job.weekly_retraining_check.name
 }
+
+output "pubsub_topic_name" {
+  description = "Google Cloud Pub/Sub topic for streaming transactions"
+  value       = google_pubsub_topic.transactions_topic.name
+}
+
+output "pubsub_subscription_name" {
+  description = "Google Cloud Pub/Sub worker subscription name"
+  value       = google_pubsub_subscription.worker_subscription.name
+}

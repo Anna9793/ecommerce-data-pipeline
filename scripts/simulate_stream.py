@@ -85,13 +85,28 @@ def insert_transactions_to_bq(rows: list, project_id: str = "anna-ml-pipeline") 
     logging.info("Streaming successfully completed.")
     return len(rows)
 
+def publish_transactions_to_pubsub(rows: list, project_id: str = "anna-ml-pipeline", topic: str = "retail-transactions-topic") -> int:
+    """Publishes transaction events to Google Cloud Pub/Sub topic."""
+    from src.pubsub_publisher import TransactionPublisher
+    publisher = TransactionPublisher(project_id=project_id, topic_name=topic)
+    logging.info("Publishing %d transactions via Google Cloud Pub/Sub topic: %s", len(rows), topic)
+    message_ids = publisher.publish_batch(rows)
+    logging.info("Pub/Sub ingestion complete. %d messages acknowledged.", len(message_ids))
+    return len(message_ids)
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Simulate real-time transactions ingestion stream.")
-    parser.add_argument("--mode", type=str, default="standard", choices=["standard", "drift_cancellations", "drift_velocity"])
+    parser.add_argument("--mode", type=str, default="standard", choices=["standard", "drift_cancellations", "drift_velocity", "pubsub"])
     parser.add_argument("--records", type=int, default=10)
+    parser.add_argument("--use-pubsub", action="store_true", help="Publish stream to Google Cloud Pub/Sub instead of direct BigQuery insert")
     args = parser.parse_args()
     
     project = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-    mock_rows = generate_mock_transactions(mode=args.mode, num_records=args.records)
-    insert_transactions_to_bq(mock_rows, project_id=project)
+    sim_mode = "standard" if args.mode == "pubsub" else args.mode
+    mock_rows = generate_mock_transactions(mode=sim_mode, num_records=args.records)
+    
+    if args.use_pubsub or args.mode == "pubsub":
+        publish_transactions_to_pubsub(mock_rows, project_id=project)
+    else:
+        insert_transactions_to_bq(mock_rows, project_id=project)
