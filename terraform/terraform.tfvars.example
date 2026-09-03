@@ -1,0 +1,11 @@
+# ============================================================
+# Example Variable Values for Terraform Deployment
+# Copy this file to 'terraform.tfvars' to customize for your GCP environment
+# ============================================================
+
+project_id      = "anna-ml-pipeline"
+region          = "us-central1"
+environment     = "production"
+gcs_bucket_name = "anna-ml-pipeline-bucket"
+container_image = "us-central1-docker.pkg.dev/anna-ml-pipeline/ecommerce-ml-pipeline/pipeline-image:latest"
+scheduler_cron  = "0 0 * * 0"

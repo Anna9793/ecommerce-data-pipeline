@@ -139,6 +139,17 @@ graph TD
     *   **Local Mode (`USE_BIGQUERY=false`)**: Queries local **PostgreSQL** `online_customer_features` table.
 *   **Cron Automation**: A **Google Cloud Scheduler** HTTP job triggers the `/monitoring/check-and-retrain` webhook weekly (`0 0 * * 0`) using OIDC Compute Engine service account token authentication.
 
+### 2.9. Infrastructure as Code (Terraform Layer) (Phase 16)
+*   **Location**: [terraform/](file:///Users/Anna/ecommerce-data-pipeline/terraform)
+*   **Declarative Provisioning**: Full HCL-based provisioning of all Google Cloud Platform components:
+    *   `main.tf`: Enables required Google APIs automatically.
+    *   `storage.tf`: Creates GCS model bucket with lifecycle versioning.
+    *   `bigquery.tf`: Creates `retail_data` dataset, time-partitioned tables, and `rfm_features` view.
+    *   `firestore.tf`: Enables Cloud Firestore native NoSQL mode.
+    *   `cloud_run.tf`: Deploys serverless backend and dashboard with memory sizing (`1Gi`) and public IAM invoker policies.
+    *   `scheduler.tf`: Configures the weekly model evaluation cron job.
+*   **Environment Agnostic**: Parameterized via `variables.tf` and `terraform.tfvars.example` for multi-environment deployments (`dev`, `staging`, `production`).
+
 ---
 
 ## 3. Key Design Decisions & Rationales
@@ -166,4 +177,8 @@ graph TD
 ### 3.6. Stateful Graph Orchestration vs. Static Pipelines (Phase 15)
 *   **Decision**: Implemented `langgraph` StateGraph for agent collaboration with cyclic revision loops rather than static sequential function calls.
 *   **Rationale**: Real-world generative marketing copy requires automated quality assurance. If a compliance critic rejects a draft (e.g., tone is too aggressive or a discount code is missing for an at-risk customer), LangGraph enables autonomous self-correction by dynamically re-routing back to the copywriter node with actionable feedback before returning to the user.
+
+### 3.7. Infrastructure as Code (IaC) vs. ClickOps (Phase 16)
+*   **Decision**: Provisioned all cloud infrastructure using Terraform rather than manual configuration in the GCP Console.
+*   **Rationale**: Guarantees environment parity between development and production, prevents configuration drift, enables disaster recovery in under 2 minutes, and provides a clear Git-audited trail of all architectural changes.
 
