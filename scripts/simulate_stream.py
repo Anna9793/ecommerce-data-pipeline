@@ -1,7 +1,11 @@
 import os
+import sys
 import random
 import logging
 from datetime import datetime
+
+# Ensure project root is in Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from google.cloud import bigquery
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -109,8 +113,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simulate real-time transactions ingestion stream.")
     parser.add_argument("--mode", type=str, default="standard", choices=["standard", "drift_cancellations", "drift_velocity", "pubsub"])
     parser.add_argument("--tenant", type=str, default="giftshop_uk", choices=["giftshop_uk", "nordic_tech", "shopify"])
-    parser.add_argument("--records", type=int, default=10)
+    parser.add_argument("--records", "--limit", "-n", "--count", "--num-records", dest="records", type=int, default=10, help="Number of records to simulate (alias: --limit, -n, --count)")
     parser.add_argument("--use-pubsub", action="store_true", help="Publish stream to Google Cloud Pub/Sub instead of direct BigQuery insert")
+    parser.add_argument("--dry-run", action="store_true", help="Normalize and print sample records locally without attempting GCP network calls")
     args = parser.parse_args()
     
     project = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
@@ -123,14 +128,23 @@ if __name__ == "__main__":
         logging.info("Simulating UCI transactions for tenant: GiftShop UK...")
         raw_rows = generate_mock_transactions(mode=sim_mode, num_records=args.records)
     
-    if args.use_pubsub or args.mode == "pubsub":
+    from src.schema_adapters import SchemaAdapterFactory
+    canonical_rows = [SchemaAdapterFactory.normalize(r).to_dict() for r in raw_rows]
+    logging.info("✅ Normalized %d transactions via SchemaAdapterFactory.", len(canonical_rows))
+
+    if args.dry_run:
+        import json
+        print("\n--- [DRY RUN: Normalized Canonical Transactions Preview] ---")
+        for i, row in enumerate(canonical_rows[:5], 1):
+            print(f"[{i}] {json.dumps(row, indent=2)}")
+        if len(canonical_rows) > 5:
+            print(f"... and {len(canonical_rows) - 5} more records.")
+        print("------------------------------------------------------------\n")
+    elif args.use_pubsub or args.mode == "pubsub":
         publish_transactions_to_pubsub(raw_rows, project_id=project)
     else:
-        # In local/direct mode, normalize using SchemaAdapterFactory before inserting
-        from src.schema_adapters import SchemaAdapterFactory
-        canonical_rows = [SchemaAdapterFactory.normalize(r).to_dict() for r in raw_rows]
-        logging.info("Normalized %d transactions via SchemaAdapterFactory.", len(canonical_rows))
         try:
             insert_transactions_to_bq(canonical_rows, project_id=project)
         except Exception as e:
-            logging.info("Simulation completed locally: %s", e)
+            logging.info("Note: BigQuery streaming skipped in offline/local mode (%s)", e)
+
