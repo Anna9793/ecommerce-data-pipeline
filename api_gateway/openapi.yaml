@@ -1,0 +1,285 @@
+swagger: "2.0"
+info:
+  title: "Enterprise E-Commerce Intelligence API"
+  description: "Unified API Gateway for Customer Segmentation, Predictive Churn, LangGraph AI Marketing, pgvector Semantic RAG, and MLOps Retraining."
+  version: "1.0.0"
+
+host: "api-gateway.endpoints.anna-ml-pipeline.cloud.goog"
+schemes:
+  - "https"
+produces:
+  - "application/json"
+consumes:
+  - "application/json"
+
+# ============================================================
+# Security Definitions (API Key Ingress Protection)
+# ============================================================
+securityDefinitions:
+  api_key_header:
+    type: "apiKey"
+    name: "x-api-key"
+    in: "header"
+  api_key_query:
+    type: "apiKey"
+    name: "key"
+    in: "query"
+
+# ============================================================
+# API Endpoint Routes & Backend Forwarding Rules
+# ============================================================
+paths:
+  /v1/health:
+    get:
+      summary: "Service Health Check"
+      operationId: "getHealth"
+      x-google-backend:
+        address: "https://ecommerce-backend-api-xyz-uc.a.run.app/health"
+        path_translation: "CONSTANT_ADDRESS"
+      responses:
+        200:
+          description: "Service is healthy and operational."
+          schema:
+            type: "object"
+            properties:
+              status:
+                type: "string"
+                example: "healthy"
+              environment:
+                type: "string"
+                example: "production"
+
+  /v1/predict/churn:
+    post:
+      summary: "Predict Customer Churn Probability"
+      description: "Scores customer churn likelihood using real-time calibrated Logistic Regression inference with explainability factors."
+      operationId: "predictChurn"
+      security:
+        - api_key_header: []
+        - api_key_query: []
+      parameters:
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            $ref: "#/definitions/ChurnPredictRequest"
+      x-google-backend:
+        address: "https://ecommerce-backend-api-xyz-uc.a.run.app/predict/churn"
+        path_translation: "CONSTANT_ADDRESS"
+      responses:
+        200:
+          description: "Successful churn prediction response."
+          schema:
+            $ref: "#/definitions/ChurnPredictResponse"
+        400:
+          description: "Invalid input payload or missing fields."
+        401:
+          description: "Unauthorized: Missing or invalid API Key."
+
+  /v1/predict/campaign:
+    post:
+      summary: "Generate Multi-Agent Marketing Campaign"
+      description: "Generates personalized promotional marketing copy and discount strategy using Gemini 1.5 with Pydantic JSON schemas."
+      operationId: "generateCampaign"
+      security:
+        - api_key_header: []
+        - api_key_query: []
+      parameters:
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            $ref: "#/definitions/CampaignGenerateRequest"
+      x-google-backend:
+        address: "https://ecommerce-backend-api-xyz-uc.a.run.app/predict/campaign"
+        path_translation: "CONSTANT_ADDRESS"
+      responses:
+        200:
+          description: "Structured multi-agent marketing campaign."
+          schema:
+            $ref: "#/definitions/CampaignGenerateResponse"
+
+  /v1/predict/campaign-graph/{customer_id}:
+    get:
+      summary: "Autonomous LangGraph Marketing Copilot"
+      description: "Runs cyclic LangGraph StateGraph assembly line with self-correcting Critic feedback loops."
+      operationId: "generateCampaignGraph"
+      security:
+        - api_key_header: []
+        - api_key_query: []
+      parameters:
+        - name: "customer_id"
+          in: "path"
+          required: true
+          type: "string"
+          description: "Unique Customer Identifier"
+      x-google-backend:
+        address: "https://ecommerce-backend-api-xyz-uc.a.run.app/predict/campaign-graph/{customer_id}"
+        path_translation: "APPEND_PATH_TO_ADDRESS"
+      responses:
+        200:
+          description: "LangGraph validated marketing campaign with review audit trail."
+          schema:
+            type: "object"
+
+  /v1/rag/advisor:
+    post:
+      summary: "Conversational Hybrid RAG Product Advisor"
+      description: "Performs 768d pgvector cosine similarity search + budget filtering and generates Gemini recommendations."
+      operationId: "productAdvisorRag"
+      security:
+        - api_key_header: []
+        - api_key_query: []
+      parameters:
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            $ref: "#/definitions/RagAdvisorRequest"
+      x-google-backend:
+        address: "https://ecommerce-backend-api-xyz-uc.a.run.app/rag/advisor"
+        path_translation: "CONSTANT_ADDRESS"
+      responses:
+        200:
+          description: "Top catalog candidate products and AI shopping justifications."
+          schema:
+            $ref: "#/definitions/RagAdvisorResponse"
+
+  /v1/monitoring/check-and-retrain:
+    post:
+      summary: "Trigger Closed-Loop Drift Check & Retraining"
+      description: "Evaluates Kolmogorov-Smirnov statistical drift and conditionally triggers Vertex AI retraining."
+      operationId: "checkAndRetrain"
+      security:
+        - api_key_header: []
+      x-google-backend:
+        address: "https://ecommerce-backend-api-xyz-uc.a.run.app/monitoring/check-and-retrain"
+        path_translation: "CONSTANT_ADDRESS"
+      responses:
+        200:
+          description: "Monitoring status and drift check outcome."
+
+# ============================================================
+# Definitions / Data Contract Models
+# ============================================================
+definitions:
+  ChurnPredictRequest:
+    type: "object"
+    required:
+      - "recency"
+      - "frequency"
+      - "avg_order_value"
+    properties:
+      customer_id:
+        type: "string"
+        example: "17850"
+      recency:
+        type: "number"
+        example: 45.0
+      frequency:
+        type: "number"
+        example: 3.0
+      avg_order_value:
+        type: "number"
+        example: 120.50
+      spending_velocity:
+        type: "number"
+        example: 1.15
+      cancellation_rate:
+        type: "number"
+        example: 0.05
+      preferred_shopping_hour:
+        type: "integer"
+        example: 14
+
+  ChurnPredictResponse:
+    type: "object"
+    properties:
+      churn_probability:
+        type: "number"
+        example: 0.725
+      churn_prediction:
+        type: "integer"
+        example: 1
+      risk_category:
+        type: "string"
+        example: "High Risk"
+      recommended_action:
+        type: "string"
+        example: "WINBACK20"
+
+  CampaignGenerateRequest:
+    type: "object"
+    required:
+      - "customer_id"
+    properties:
+      customer_id:
+        type: "string"
+        example: "17850"
+      churn_probability:
+        type: "number"
+        example: 0.75
+      spending_velocity:
+        type: "number"
+        example: 0.45
+      cancellation_rate:
+        type: "number"
+        example: 0.35
+
+  CampaignGenerateResponse:
+    type: "object"
+    properties:
+      customer_id:
+        type: "string"
+        example: "17850"
+      target_channel:
+        type: "string"
+        example: "Email"
+      offer_code:
+        type: "string"
+        example: "WINBACK20"
+      email_subject:
+        type: "string"
+        example: "We miss you! Take 20% off your next order"
+      email_body:
+        type: "string"
+        example: "Dear valued customer..."
+      compliance_approved:
+        type: "boolean"
+        example: true
+
+  RagAdvisorRequest:
+    type: "object"
+    required:
+      - "query"
+    properties:
+      query:
+        type: "string"
+        example: "vintage decorative lanterns under 25 euros for a garden party"
+      max_price:
+        type: "number"
+        example: 25.0
+      top_k:
+        type: "integer"
+        example: 3
+
+  RagAdvisorResponse:
+    type: "object"
+    properties:
+      query:
+        type: "string"
+      response:
+        type: "string"
+      products:
+        type: "array"
+        items:
+          type: "object"
+          properties:
+            stock_code:
+              type: "string"
+            description:
+              type: "string"
+            unit_price:
+              type: "number"
+            similarity:
+              type: "number"

@@ -17,6 +17,9 @@ locals {
     "pubsub.googleapis.com",
     "dataflow.googleapis.com",
     "composer.googleapis.com",
+    "apigateway.googleapis.com",
+    "servicemanagement.googleapis.com",
+    "servicecontrol.googleapis.com",
     "artifactregistry.googleapis.com",
     "iam.googleapis.com",
     "cloudresourcemanager.googleapis.com"

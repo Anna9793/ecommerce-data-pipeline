@@ -166,6 +166,14 @@ graph TD
     4.  `sync_online_feature_store` & `sync_product_vectors`: Synchronizes the Online Feature Store (Firestore/PostgreSQL) and pgvector semantic embeddings concurrently.
     5.  `evaluate_statistical_drift_branch`: Runs a 2-sample Kolmogorov-Smirnov test; branches to `trigger_vertex_ml_pipeline` if drift $p < 0.05$.
 
+### 2.12. Unified Secure Ingress (Google Cloud API Gateway & OpenAPI) (Phase 20)
+*   **Location**: [api_gateway/openapi.yaml](file:///Users/Anna/ecommerce-data-pipeline/api_gateway/openapi.yaml) & [terraform/api_gateway.tf](file:///Users/Anna/ecommerce-data-pipeline/terraform/api_gateway.tf)
+*   **Edge Ingress Layer**: Deploys a Google Cloud API Gateway instance configured via a declarative OpenAPI 2.0/3.0 contract.
+*   **Features**:
+    *   API Key authentication (`x-api-key`) enforced at Google's global network edge.
+    *   `x-google-backend` dispatching to Cloud Run serverless microservices.
+    *   Rate limiting, DDoS protection, and multi-tenant URL mapping (`/v1/predict/churn`, `/v1/predict/campaign-graph/{customer_id}`, `/v1/rag/advisor`).
+
 ---
 
 ## 3. Key Design Decisions & Rationales
@@ -213,4 +221,8 @@ graph TD
 ### 3.11. Cloud Composer (Airflow) as Platform Conductor vs. Vertex AI (Kubeflow) as ML Engine (Phase 19)
 *   **Decision**: Established Apache Airflow on Cloud Composer as the top-level platform orchestrator for daily ETL, data quality audits, and feature store syncing, while delegating model training and evaluation gates to Vertex AI Pipelines (Kubeflow).
 *   **Rationale**: Separates data pipeline orchestration (multi-system integrations, data contracts, and daily schedules) from containerized ML training workloads (GPU/TPU resource allocation, experiment tracking, and model registry governance). Airflow serves as the master conductor that only triggers Vertex AI when statistical feature drift is formally detected.
+
+### 3.12. API Gateway Edge Security & Contract Enforcement vs. Direct Service Exposure (Phase 20)
+*   **Decision**: Deployed Google Cloud API Gateway as the single reverse proxy ingress point backed by an explicit OpenAPI 2.0/3.0 specification, rather than exposing Cloud Run backend service URLs directly to public clients.
+*   **Rationale**: Provides edge-level API key authorization and rate limiting before traffic reaches backend containers (protecting against DDoS and FinOps token exhaustion), decouples internal microservice routing from public clients, and enables multi-tenant client onboarding through standardized contracts.
 

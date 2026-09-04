@@ -41,3 +41,13 @@ output "pubsub_dead_letter_topic_name" {
   description = "Google Cloud Pub/Sub Dead Letter Queue topic name"
   value       = google_pubsub_topic.dead_letter_topic.name
 }
+
+output "api_gateway_hostname" {
+  description = "Google Cloud API Gateway default hostname"
+  value       = google_api_gateway_gateway.gateway.default_hostname
+}
+
+output "api_gateway_url" {
+  description = "Google Cloud API Gateway base HTTPS invocation URL"
+  value       = "https://${google_api_gateway_gateway.gateway.default_hostname}"
+}
