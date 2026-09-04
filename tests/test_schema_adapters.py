@@ -145,7 +145,12 @@ def test_to_bigquery_row_mapping():
     assert "UnitPrice" in bq_row
     assert "CustomerID" in bq_row
     assert "Country" in bq_row
-    assert bq_row["CustomerID"] == "astrid@nordic.se"
+    assert isinstance(bq_row["CustomerID"], float)
     assert bq_row["InvoiceNo"] == "#1008"
     assert bq_row["UnitPrice"] == 89.50
     assert bq_row["StockCode"] == "SKU-SWEATER"
+
+    # Also test numeric ID preservation
+    uci_tx = CanonicalTransaction(customer_id="17850", invoice_no="581492", amount=10.0, quantity=1, unit_price=10.0)
+    uci_bq = uci_tx.to_bigquery_row()
+    assert uci_bq["CustomerID"] == 17850.0
