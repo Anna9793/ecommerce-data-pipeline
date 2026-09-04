@@ -29,7 +29,6 @@ class CanonicalTransaction(BaseModel):
 
     def to_bigquery_row(self) -> Dict[str, Any]:
         """Maps canonical fields to the BigQuery retail_data.transactions table schema."""
-        import re
         country_map = {
             "giftshop_uk": "United Kingdom",
             "nordic_tech": "Sweden",
@@ -37,26 +36,14 @@ class CanonicalTransaction(BaseModel):
             "olist": "Brazil",
             "olist_marketplace": "Brazil"
         }
-        
-        # Convert CustomerID to numeric float if legacy BigQuery column is FLOAT64
-        raw_id = str(self.customer_id).strip()
-        if raw_id.replace(".", "", 1).isdigit():
-            bq_customer_id = float(raw_id)
-        else:
-            digits = re.findall(r"\d+", raw_id)
-            if digits:
-                bq_customer_id = float("".join(digits)[:7])
-            else:
-                bq_customer_id = float(abs(hash(raw_id)) % 80000 + 10000)
-
         return {
-            "InvoiceNo": self.invoice_no,
-            "StockCode": self.stock_code,
-            "Description": self.description,
+            "InvoiceNo": str(self.invoice_no),
+            "StockCode": str(self.stock_code),
+            "Description": str(self.description),
             "Quantity": -abs(self.quantity) if self.is_cancel else abs(self.quantity),
-            "InvoiceDate": self.invoice_date,
-            "UnitPrice": self.unit_price,
-            "CustomerID": bq_customer_id,
+            "InvoiceDate": str(self.invoice_date),
+            "UnitPrice": float(self.unit_price),
+            "CustomerID": str(self.customer_id).strip(),
             "Country": country_map.get(self.tenant_id, "United Kingdom")
         }
 
