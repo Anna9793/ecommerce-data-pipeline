@@ -20,15 +20,18 @@ class TransactionConsumer:
         self.subscriber = pubsub_v1.SubscriberClient()
         self.topic_path = f"projects/{self.project_id}/topics/retail-transactions-topic"
         logging.info("Initialized Pub/Sub Consumer for subscription: %s", self.subscription_path)
+        self._ensure_subscription_exists()
 
     def _ensure_subscription_exists(self):
         """Creates subscription if it does not exist in the GCP project."""
         try:
-            self.subscriber.get_subscription(subscription=self.subscription_path)
+            self.subscriber.get_subscription(request={"subscription": self.subscription_path})
         except Exception:
             try:
                 logging.info("Subscription %s does not exist. Auto-creating...", self.subscription_path)
-                self.subscriber.create_subscription(name=self.subscription_path, topic=self.topic_path)
+                self.subscriber.create_subscription(
+                    request={"name": self.subscription_path, "topic": self.topic_path}
+                )
                 logging.info("✅ Created Pub/Sub subscription: %s", self.subscription_path)
             except Exception as e:
                 logging.warning("Could not auto-create subscription %s: %s", self.subscription_path, e)

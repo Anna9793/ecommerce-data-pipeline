@@ -27,11 +27,11 @@ class TransactionPublisher:
     def _ensure_topic_exists(self):
         """Creates topic if it does not exist in the GCP project."""
         try:
-            self.publisher.get_topic(topic=self.topic_path)
+            self.publisher.get_topic(request={"topic": self.topic_path})
         except Exception:
             try:
                 logging.info("Topic %s does not exist. Auto-creating...", self.topic_path)
-                self.publisher.create_topic(name=self.topic_path)
+                self.publisher.create_topic(request={"name": self.topic_path})
                 logging.info("✅ Created Pub/Sub topic: %s", self.topic_path)
             except Exception as e:
                 logging.warning("Could not auto-create topic %s: %s", self.topic_path, e)
