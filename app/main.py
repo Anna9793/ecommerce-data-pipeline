@@ -189,7 +189,8 @@ def product_advisor_endpoint(request: ProductAdvisorRequest):
         result = advisor_service.advise(
             query_text=request.query,
             budget_max=request.budget_max,
-            top_k=request.top_k or 4
+            top_k=request.top_k or 4,
+            tenant_id=request.tenant_id or "giftshop_uk"
         )
         return result
     except Exception as e:

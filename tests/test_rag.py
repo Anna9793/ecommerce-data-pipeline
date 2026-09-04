@@ -84,9 +84,34 @@ def test_product_advisor_service_advise(mock_search, mock_gen_model, mock_embed_
     
     from app.rag_service import ProductAdvisorService
     service = ProductAdvisorService()
-    advice = service.advise("party decor", budget_max=10.0, top_k=1)
+    advice = service.advise("party decor", budget_max=10.0, top_k=1, tenant_id="giftshop_uk")
     
     assert advice["user_query"] == "party decor"
     assert len(advice["recommendations"]) == 1
     assert advice["recommendations"][0]["why_recommended"] == "Vibrant party bunting adds instant festive energy."
     assert "shopping_tip" in advice
+
+@patch("app.rag_service.vertexai.init")
+@patch("app.rag_service.TextEmbeddingModel.from_pretrained")
+@patch("app.rag_service.GenerativeModel")
+def test_product_advisor_service_nordic_tenant(mock_gen_model, mock_embed_model, mock_vertex):
+    from app.rag_service import ProductAdvisorService
+    service = ProductAdvisorService()
+    
+    # Test local/deterministic fallback search for NordicWear & Tech
+    results = service.search_products("noise cancelling headphones", budget_max=160.0, top_k=2, tenant_id="nordic_tech")
+    
+    assert len(results) > 0
+    assert any("Headphones" in p["description"] or "Audio" in p["category"] or "SKU-TECH" in p["stock_code"] for p in results)
+    assert all(p["unit_price"] <= 160.0 for p in results)
+
+    # Test full advise workflow for Nordic tenant
+    mock_model_instance = mock_gen_model.return_value
+    mock_response = mock_model_instance.generate_content.return_value
+    mock_response.text = '{"user_query": "headphones", "intro_message": "Welcome to NordicWear & Tech! Here are our ANC headphones:", "recommendations": [{"stock_code": "SKU-TECH-001", "description": "Nordic Pro ANC Wireless Headphones", "category": "Smart Audio", "unit_price": 149.00, "similarity": 0.94, "why_recommended": "Industry-leading active noise cancellation designed in Scandinavia."}], "shopping_tip": "Enable spatial audio in settings."}'
+
+    advice = service.advise("headphones", budget_max=150.0, top_k=1, tenant_id="nordic_tech")
+    assert advice["tenant_id"] == "nordic_tech"
+    assert "NordicWear" in advice["store_name"]
+    assert len(advice["recommendations"]) == 1
+    assert advice["recommendations"][0]["stock_code"] == "SKU-TECH-001"

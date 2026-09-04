@@ -486,20 +486,31 @@ with tab4:
 
 # TAB 5: PRODUCT ADVISOR CHATBOT (RAG + PGVECTOR)
 with tab5:
-    st.subheader("🛍️ Product Advisor Chatbot (RAG with pgvector)")
-    st.write("Ask natural questions about our boutique catalog. The assistant searches 768-dimensional embeddings in **PostgreSQL (`pgvector`)** with real-time budget filtering and uses **Gemini** for personalized recommendations.")
+    store_title = "NordicWear & Tech (Shopify)" if active_store == "nordic_tech" else "GiftShop UK (Vintage Retail)"
+    st.subheader(f"🛍️ Product Advisor Chatbot — {store_title}")
+    st.write(f"Ask natural questions about **{store_title}**. The assistant searches catalog vector embeddings with real-time budget filtering and uses **Gemini** for personalized recommendations.")
 
-    # Store Departments Directory
-    with st.expander("🏪 **Explore Our Store Departments & Catalog Specialties**", expanded=True):
-        st.markdown("""
-        Our catalog features curated lifestyle, home styling, and gift collections:
-        * 🏠 **Home Decor & Lighting**: Hanging lanterns, romantic T-light holders, wall clocks, ambient candles, decorative mirrors.
-        * ☕ **Kitchen & Dining**: Regency 3-tier cakestands, vintage tea sets, ceramic mugs, cutlery, retro dining accessories.
-        * 🎄 **Holiday & Seasonal**: Handcrafted Christmas decorations, paper chain kits, winter festive gifts.
-        * 👝 **Storage & Accessories**: Vintage tote bags, trinket tins, vanity storage, stylish cases.
-        * 🎉 **Party & Celebration**: Festive bunting, party garlands, celebration accessories, greeting supplies.
-        * 🧸 **Kids & Novelty Toys**: Playful gifts, wooden toys, vintage pencil sets, children's novelties.
-        """)
+    # Dynamic Store Departments Directory
+    with st.expander(f"🏪 **Explore {store_title} Departments & Catalog Specialties**", expanded=True):
+        if active_store == "nordic_tech":
+            st.markdown("""
+            Our Scandinavian catalog features high-performance activewear, audio, and workspace technology:
+            * 🎧 **Smart Audio & Acoustics**: Nordic Pro ANC Wireless Headphones, Studio Monitor Earbuds.
+            * 🏃 **Performance Activewear**: Merino Wool Thermal Hoodies, Trail Running Caps, Anti-Blister Compression Socks.
+            * 🏔️ **All-Weather Mountain Apparel**: Gore-Tex All-Weather Mountain Parkas, Technical Outerwear.
+            * ⌚ **Smart Wearables & Gadgets**: UltraLight Titanium Smartwatches, Smart LED Temperature Water Bottles.
+            * ⌨️ **Ergonomic Workspace & Gaming**: Mechanical RGB Hot-Swap Keyboards, Ergonomic Mice, Minimalist Aluminum Laptop Stands.
+            """)
+        else:
+            st.markdown("""
+            Our boutique catalog features curated lifestyle, home styling, and gift collections:
+            * 🏠 **Home Decor & Lighting**: Hanging lanterns, romantic T-light holders, wall clocks, ambient candles, decorative mirrors.
+            * ☕ **Kitchen & Dining**: Regency 3-tier cakestands, vintage tea sets, ceramic mugs, cutlery, retro dining accessories.
+            * 🎄 **Holiday & Seasonal**: Handcrafted Christmas decorations, paper chain kits, winter festive gifts.
+            * 👝 **Storage & Accessories**: Vintage tote bags, trinket tins, vanity storage, stylish cases.
+            * 🎉 **Party & Celebration**: Festive bunting, party garlands, celebration accessories, greeting supplies.
+            * 🧸 **Kids & Novelty Toys**: Playful gifts, wooden toys, vintage pencil sets, children's novelties.
+            """)
 
     # Top search controls
     col_filters, col_presets = st.columns([1, 2])
@@ -509,7 +520,9 @@ with tab5:
             use_budget = st.toggle("Apply Maximum Budget", value=True)
             budget_max = None
             if use_budget:
-                budget_max = st.slider("Max Budget ($)", min_value=5.0, max_value=100.0, value=25.0, step=5.0)
+                max_slider_val = 250.0 if active_store == "nordic_tech" else 100.0
+                default_budget = 150.0 if active_store == "nordic_tech" else 25.0
+                budget_max = st.slider("Max Budget ($)", min_value=5.0, max_value=max_slider_val, value=default_budget, step=5.0)
             top_k_val = st.selectbox("Products to Retrieve", [2, 3, 4, 6], index=2)
 
     with col_presets:
@@ -517,12 +530,20 @@ with tab5:
             st.markdown("#### 💡 Quick Search Ideas")
             col_b1, col_b2, col_b3 = st.columns(3)
             quick_query = None
-            if col_b1.button("🎄 Cozy Winter Gifts", use_container_width=True):
-                quick_query = "I need a warm and cozy holiday gift for a winter evening under $25."
-            if col_b2.button("☕ Vintage Kitchenware", use_container_width=True):
-                quick_query = "Show me vintage retro kitchenware, tea sets, and cute dining accessories."
-            if col_b3.button("🎉 Party & Bunting", use_container_width=True):
-                quick_query = "What do you have for party decorations, garlands, and festive celebrations?"
+            if active_store == "nordic_tech":
+                if col_b1.button("🎧 ANC Headphones", use_container_width=True):
+                    quick_query = "I need high-performance noise cancelling wireless headphones for travel under $150."
+                if col_b2.button("🧥 Thermal Winter Hoodie", use_container_width=True):
+                    quick_query = "Show me merino wool thermal hoodies or mountain jackets for cold outdoor weather."
+                if col_b3.button("⌨️ Ergonomic Desk Gear", use_container_width=True):
+                    quick_query = "What do you have for ergonomic workspace setups, mechanical keyboards, and laptop stands?"
+            else:
+                if col_b1.button("🎄 Cozy Winter Gifts", use_container_width=True):
+                    quick_query = "I need a warm and cozy holiday gift for a winter evening under $25."
+                if col_b2.button("☕ Vintage Kitchenware", use_container_width=True):
+                    quick_query = "Show me vintage retro kitchenware, tea sets, and cute dining accessories."
+                if col_b3.button("🎉 Party & Bunting", use_container_width=True):
+                    quick_query = "What do you have for party decorations, garlands, and festive celebrations?"
 
     # Initialize chat history
     if "advisor_chat_history" not in st.session_state:
@@ -554,7 +575,7 @@ with tab5:
                     st.success(f"✨ **Shopping Tip:** {data['shopping_tip']}")
 
     # User chat input
-    user_input = st.chat_input("Ask for product advice (e.g. 'I need a cozy gift for winter under $20')...")
+    user_input = st.chat_input(f"Ask for product advice at {store_title}...")
     active_prompt = quick_query or user_input
 
     if active_prompt:
@@ -563,14 +584,15 @@ with tab5:
         with st.chat_message("user"):
             st.write(active_prompt)
 
-        # Query RAG Advisor Endpoint
+        # Query RAG Advisor Endpoint with active tenant
         with st.chat_message("assistant"):
-            with st.spinner("Searching PostgreSQL pgvector embeddings and generating recommendations with Gemini..."):
+            with st.spinner(f"Searching {store_title} catalog and generating recommendations with Gemini..."):
                 try:
                     payload = {
                         "query": active_prompt,
                         "budget_max": float(budget_max) if budget_max else None,
-                        "top_k": int(top_k_val)
+                        "top_k": int(top_k_val),
+                        "tenant_id": active_store
                     }
                     resp = requests.post(f"{API_URL}/rag/advisor", json=payload)
                     if resp.status_code == 200:

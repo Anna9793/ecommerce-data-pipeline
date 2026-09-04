@@ -25,3 +25,4 @@ class ProductAdvisorRequest(BaseModel):
     query: str = Field(..., description="Customer natural language search query")
     budget_max: Optional[float] = Field(None, description="Optional maximum price filter")
     top_k: Optional[int] = Field(4, description="Number of products to retrieve")
+    tenant_id: Optional[str] = Field("giftshop_uk", description="Tenant / Store identifier (giftshop_uk, nordic_tech, olist)")
