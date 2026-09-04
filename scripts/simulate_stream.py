@@ -94,19 +94,43 @@ def publish_transactions_to_pubsub(rows: list, project_id: str = "anna-ml-pipeli
     logging.info("Pub/Sub ingestion complete. %d messages acknowledged.", len(message_ids))
     return len(message_ids)
 
+def generate_shopify_transactions(num_records: int = 10) -> list:
+    """Loads realistic Shopify transactions from data/raw/shopify_nordic_store.csv."""
+    import pandas as pd
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "shopify_nordic_store.csv")
+    if os.path.exists(csv_path):
+        df = pd.read_csv(csv_path)
+        sample = df.sample(min(num_records, len(df)), replace=True)
+        return sample.to_dict(orient="records")
+    return generate_mock_transactions(num_records=num_records)
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Simulate real-time transactions ingestion stream.")
     parser.add_argument("--mode", type=str, default="standard", choices=["standard", "drift_cancellations", "drift_velocity", "pubsub"])
+    parser.add_argument("--tenant", type=str, default="giftshop_uk", choices=["giftshop_uk", "nordic_tech", "shopify"])
     parser.add_argument("--records", type=int, default=10)
     parser.add_argument("--use-pubsub", action="store_true", help="Publish stream to Google Cloud Pub/Sub instead of direct BigQuery insert")
     args = parser.parse_args()
     
     project = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
     sim_mode = "standard" if args.mode == "pubsub" else args.mode
-    mock_rows = generate_mock_transactions(mode=sim_mode, num_records=args.records)
+    
+    if args.tenant in ("nordic_tech", "shopify"):
+        logging.info("Simulating Shopify transactions for tenant: NordicWear & Tech...")
+        raw_rows = generate_shopify_transactions(num_records=args.records)
+    else:
+        logging.info("Simulating UCI transactions for tenant: GiftShop UK...")
+        raw_rows = generate_mock_transactions(mode=sim_mode, num_records=args.records)
     
     if args.use_pubsub or args.mode == "pubsub":
-        publish_transactions_to_pubsub(mock_rows, project_id=project)
+        publish_transactions_to_pubsub(raw_rows, project_id=project)
     else:
-        insert_transactions_to_bq(mock_rows, project_id=project)
+        # In local/direct mode, normalize using SchemaAdapterFactory before inserting
+        from src.schema_adapters import SchemaAdapterFactory
+        canonical_rows = [SchemaAdapterFactory.normalize(r).to_dict() for r in raw_rows]
+        logging.info("Normalized %d transactions via SchemaAdapterFactory.", len(canonical_rows))
+        try:
+            insert_transactions_to_bq(canonical_rows, project_id=project)
+        except Exception as e:
+            logging.info("Simulation completed locally: %s", e)

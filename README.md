@@ -2,12 +2,13 @@
 
 [![CI/CD Pipeline](https://github.com/Anna9793/ecommerce-data-pipeline/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anna9793/ecommerce-data-pipeline/actions)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Unit Tests](https://img.shields.io/badge/tests-48%2F48%20passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/tests-54%2F54%20passing-brightgreen.svg)]()
 [![Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20BigQuery%20%7C%20Vertex%20AI-orange.svg)](https://cloud.google.com/)
 [![IaC](https://img.shields.io/badge/IaC-Terraform-623CE4.svg)](https://www.terraform.io/)
 [![Streaming](https://img.shields.io/badge/Streaming-Pub%2FSub%20%7C%20Dataflow%20(Beam)-FF6F00.svg)](https://cloud.google.com/dataflow)
 [![Orchestration](https://img.shields.io/badge/Orchestration-Airflow%20%7C%20Composer-017CEE.svg)](https://airflow.apache.org/)
 [![API Gateway](https://img.shields.io/badge/Ingress-Cloud%20API%20Gateway%20%7C%20OpenAPI-009688.svg)](https://cloud.google.com/api-gateway)
+[![Multi-Tenant](https://img.shields.io/badge/Architecture-Multi--Tenant%20%7C%20Shopify%20Adapter-8A2BE2.svg)]()
 [![AI Agents](https://img.shields.io/badge/GenAI-LangGraph%20%7C%20pgvector%20%7C%20Gemini-4285F4.svg)](https://cloud.google.com/vertex-ai)
 
 A production-grade, end-to-end **Data Engineering, MLOps, and Agentic GenAI Platform** built on Google Cloud Platform (GCP). The platform automates customer segmentation, predictive churn scoring, statistical drift detection, closed-loop model retraining, event-driven streaming ingestion, multi-agent marketing campaign generation, and hybrid semantic product search.
@@ -20,12 +21,18 @@ A production-grade, end-to-end **Data Engineering, MLOps, and Agentic GenAI Plat
 graph TD
     %% Ingress & API Gateway Layer
     subgraph Ingress_Layer [1. Edge Security & Ingress Layer]
-        Clients[External Clients / Mobile Apps / Webhooks] -->|HTTPS with API Key| Gateway["Google Cloud API Gateway<br/>(OpenAPI 3.0 Contract & Rate Limiting)"]
+        Clients[Multi-Tenant Clients: Shopify / Mobile / Web] -->|HTTPS with API Key| Gateway["Google Cloud API Gateway<br/>(OpenAPI 3.0 Contract & Rate Limiting)"]
+    end
+
+    %% Schema Normalization & Adapter Layer
+    subgraph Adapter_Layer [2. Schema Normalization & Adapter Factory]
+        Gateway --> Factory["SchemaAdapterFactory<br/>(ShopifyAdapter, UciRetailAdapter, OlistAdapter)"]
+        Factory --> Canonical["CanonicalTransaction (Pydantic Universal Contract)"]
     end
 
     %% Streaming Ingestion & Processing Layer
-    subgraph Ingestion_Stream [2. Streaming Ingestion & ETL Layer]
-        Source[Checkout / Stream Simulator] -->|JSON Events| Topic[("GCP Pub/Sub: retail-transactions-topic")]
+    subgraph Ingestion_Stream [3. Streaming Ingestion & ETL Layer]
+        Canonical --> Topic[("GCP Pub/Sub: retail-transactions-topic")]
         Topic -->|DLQ Policy: 5 Retries| PubSub_DLQ[("Pub/Sub DLQ: dead-letter-topic")]
         Topic -->|Native Subscription| BQ_Raw[("BigQuery: retail_data.transactions")]
         Topic -->|Stream Pull| Beam["Apache Beam on Dataflow<br/>(5-Min Windowing & Velocity)"]
@@ -34,12 +41,12 @@ graph TD
     end
 
     %% Master Orchestration Layer
-    subgraph Orchestration_Layer [3. Master Enterprise Orchestrator (Cloud Composer / Airflow)]
+    subgraph Orchestration_Layer [4. Master Enterprise Orchestrator (Cloud Composer / Airflow)]
         Airflow["Airflow Master DAG (Daily @ 00:00 UTC)<br/>1. Sensors → 2. Data Quality → 3. RFM Features<br/>4. Sync Feature Store & pgvector → 5. K-S Drift Check"]
     end
 
     %% Serving & Storage Layer
-    subgraph Serving_Layer [4. Low-Latency Serving & Feature Store]
+    subgraph Serving_Layer [5. Low-Latency Serving & Feature Store]
         Gateway -->|Reverse Proxy /v1/*| API[FastAPI on Cloud Run]
         UI[Streamlit Dashboard UI] <-->|REST API| API
         API <-->|Sub-15ms Key-Value Lookup| FS[("Online Feature Store: Firestore / PostgreSQL")]
@@ -47,7 +54,7 @@ graph TD
     end
 
     %% Agentic GenAI & Hybrid RAG
-    subgraph GenAI_Engine [5. LangGraph Autonomous Multi-Agent & RAG]
+    subgraph GenAI_Engine [6. LangGraph Autonomous Multi-Agent & RAG]
         API --> LangGraph["LangGraph StateMachine<br/>(Analyst → Strategist → Copywriter → Critic)"]
         LangGraph -->|Rejection Feedback Loop| LangGraph
         LangGraph -->|Approved Campaign| UI
@@ -60,7 +67,7 @@ graph TD
     end
 
     %% Closed-Loop MLOps & Retraining
-    subgraph MLOps_Retraining [6. Closed-Loop MLOps & Retraining]
+    subgraph MLOps_Retraining [7. Closed-Loop MLOps & Retraining]
         Airflow -->|If Drift Detected p < 0.05| Vertex["Vertex AI Pipelines (Kubeflow/KFP)"]
         Vertex -->|Parallel Tasks| Train["Train XGBoost & KMeans"]
         Train --> Gate{"F1 Evaluation Gate"}
@@ -69,9 +76,9 @@ graph TD
     end
 
     %% Infrastructure as Code
-    subgraph IaC_Layer [7. Infrastructure as Code & CI/CD]
+    subgraph IaC_Layer [8. Infrastructure as Code & CI/CD]
         TF["Terraform (IaC Modules: BigQuery, GCS, Cloud Run, Pub/Sub, Dataflow, Composer, API Gateway)"] --> GCP_Cloud["Google Cloud Infrastructure"]
-        GHA["GitHub Actions CI/CD (OIDC Workload Identity Federation + 48 Tests)"] --> CloudRun_Deploy["Zero-Downtime Cloud Run Deployment"]
+        GHA["GitHub Actions CI/CD (OIDC Workload Identity Federation + 54 Tests)"] --> CloudRun_Deploy["Zero-Downtime Cloud Run Deployment"]
     end
 
     classDef stream fill:#FF6F00,stroke:#333,stroke-width:2px,color:#fff;
@@ -82,8 +89,9 @@ graph TD
     classDef ai fill:#34A853,stroke:#333,stroke-width:2px,color:#fff;
     classDef tf fill:#623CE4,stroke:#333,stroke-width:2px,color:#fff;
     class Clients,Gateway gw;
-    class Source,Beam stream;
+    class Factory,Canonical gw;
     class Topic,PubSub_DLQ pubsub;
+    class Beam stream;
     class Airflow airflow;
     class BQ_Raw,BQ_Agg,FS,BQ_RFM,GCS,API,UI gcp;
     class LangGraph,Gemini,RAG_API,Embed,PG_Vec ai;
@@ -92,7 +100,7 @@ graph TD
 
 ---
 
-## 🗺️ 20-Phase Architectural Roadmap
+## 🗺️ 21-Phase Architectural Roadmap
 
 | Phase | Category | Description | Key Technologies |
 | :---: | :--- | :--- | :--- |
@@ -116,6 +124,7 @@ graph TD
 | **18** | **Streaming ETL** | Real-time sliding window aggregations and Dual-Level Dead Letter Queues (DLQ). | `Apache Beam`, `Google Dataflow` |
 | **19** | **Master Orchestrator** | Master enterprise workflow orchestration, Data Quality gates, and drift triggers. | `Apache Airflow`, `Cloud Composer` |
 | **20** | **API Ingress** | Secure edge ingress, OpenAPI contract, rate limiting, and API key authorization. | `Google Cloud API Gateway`, `OpenAPI` |
+| **21** | **Multi-Tenancy** | Universal Canonical Data Model, Shopify/Olist adapters, and multi-store UI. | `Pydantic`, `Schema Adapters` |
 
 ---
 

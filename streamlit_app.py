@@ -28,9 +28,25 @@ if "last_churn_prediction" not in st.session_state:
 # Title
 st.set_page_config(page_title="E-commerce ML Dashboard", layout="wide")
 
-# Sidebar Ingestion Simulator Controls
+# Sidebar Ingestion Simulator & Multi-Tenant Controls
 with st.sidebar:
-    st.title("🔴 Ingestion Simulator")
+    st.title("🏪 Multi-Tenant Platform")
+    active_store = st.selectbox(
+        "Active Store / Tenant",
+        ["giftshop_uk", "nordic_tech"],
+        format_func=lambda x: {
+            "giftshop_uk": "🎁 GiftShop UK (Vintage Retail)",
+            "nordic_tech": "🎧 NordicWear & Tech (Shopify)"
+        }.get(x, x)
+    )
+    
+    if active_store == "nordic_tech":
+        st.info("🔹 **Adapter**: `ShopifyAdapter`\n🔹 **Format**: Shopify Order Export\n🔹 **Catalog**: Smart Audio & Activewear")
+    else:
+        st.info("🔹 **Adapter**: `UciRetailAdapter`\n🔹 **Format**: UCI Online Retail\n🔹 **Catalog**: Vintage Home & Gifts")
+        
+    st.divider()
+    st.title("🔴 Live Ingestion Simulator")
     st.write("Stream mock purchases/cancellations directly to BigQuery to simulate live retail changes.")
     
     sim_mode = st.selectbox(

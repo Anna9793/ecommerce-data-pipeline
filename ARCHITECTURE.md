@@ -174,6 +174,11 @@ graph TD
     *   `x-google-backend` dispatching to Cloud Run serverless microservices.
     *   Rate limiting, DDoS protection, and multi-tenant URL mapping (`/v1/predict/churn`, `/v1/predict/campaign-graph/{customer_id}`, `/v1/rag/advisor`).
 
+### 2.13. Multi-Tenant Schema Normalization & Adapter Layer (Phase 21)
+*   **Location**: [src/schema_adapters.py](file:///Users/Anna/ecommerce-data-pipeline/src/schema_adapters.py) & [data/raw/shopify_nordic_store.csv](file:///Users/Anna/ecommerce-data-pipeline/data/raw/shopify_nordic_store.csv)
+*   **Universal Canonical Data Contract**: Defines `CanonicalTransaction` Pydantic model (`tenant_id`, `customer_id`, `invoice_no`, `amount`, `quantity`, `is_cancel`, `timestamp`).
+*   **Adapter Factory Pattern**: Provides `ShopifyAdapter`, `UciRetailAdapter`, and `OlistAdapter` registered in `SchemaAdapterFactory` with dynamic schema auto-detection, allowing any external e-commerce platform to ingest streaming data seamlessly without backend refactoring.
+
 ---
 
 ## 3. Key Design Decisions & Rationales
@@ -225,4 +230,8 @@ graph TD
 ### 3.12. API Gateway Edge Security & Contract Enforcement vs. Direct Service Exposure (Phase 20)
 *   **Decision**: Deployed Google Cloud API Gateway as the single reverse proxy ingress point backed by an explicit OpenAPI 2.0/3.0 specification, rather than exposing Cloud Run backend service URLs directly to public clients.
 *   **Rationale**: Provides edge-level API key authorization and rate limiting before traffic reaches backend containers (protecting against DDoS and FinOps token exhaustion), decouples internal microservice routing from public clients, and enables multi-tenant client onboarding through standardized contracts.
+
+### 3.13. Canonical Data Model (CDM) & Schema Adapters vs. Hardcoded Ingestion (Phase 21)
+*   **Decision**: Introduced the Gang of Four (GoF) Adapter Pattern with `SchemaAdapterFactory` and `CanonicalTransaction` models to normalize incoming store payloads (Shopify, Olist, UCI) at the perimeter.
+*   **Rationale**: Adheres to the Open-Closed Principle (SOLID). Decouples core data engineering, Dataflow streaming transforms, BigQuery analytical views, and LangGraph GenAI agents from external schema variations, allowing new e-commerce clients to onboard in minutes with zero modifications to downstream pipeline infrastructure.
 

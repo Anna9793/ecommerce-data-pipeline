@@ -18,8 +18,8 @@ DEAD_LETTER_TAG = "dead_letter"
 
 class ParseTransactionDoFn(beam.DoFn):
     """
-    Parses JSON transaction string/bytes into structured dictionary.
-    Routes corrupted, malformed, or invalid records to the Dead-Letter Queue.
+    Parses JSON transaction string/bytes into CanonicalTransaction.
+    Normalizes multi-tenant schemas (Shopify, UCI, Olist) and routes corrupted records to DLQ.
     """
 
     def process(self, element) -> Iterable[Any]:
@@ -34,7 +34,8 @@ class ParseTransactionDoFn(beam.DoFn):
 
             data = json.loads(raw_str)
             
-            customer_id = data.get("CustomerID") or data.get("customer_id")
+            # Check for customer id across schemas
+            customer_id = data.get("CustomerID") or data.get("customer_id") or data.get("Email") or data.get("Customer ID")
             if not customer_id or str(customer_id).strip() in ("", "None", "nan"):
                 # Route missing Customer ID to Dead-Letter Queue
                 yield beam.pvalue.TaggedOutput(
@@ -48,8 +49,7 @@ class ParseTransactionDoFn(beam.DoFn):
                 )
                 return
                 
-            qty = int(data.get("Quantity", 1))
-            unit_price = float(data.get("UnitPrice", 0.0))
+            unit_price = float(data.get("UnitPrice") or data.get("Lineitem price") or data.get("price") or 0.0)
             
             if unit_price < 0:
                 # Route negative unit price to Dead-Letter Queue
@@ -64,21 +64,11 @@ class ParseTransactionDoFn(beam.DoFn):
                 )
                 return
 
-            inv_no = str(data.get("InvoiceNo", ""))
-            is_cancel = inv_no.startswith("C") or qty < 0
+            # Normalize to Canonical Schema via Adapter Factory
+            from src.schema_adapters import SchemaAdapterFactory
+            canonical_tx = SchemaAdapterFactory.normalize(data)
             
-            # Main valid output
-            yield {
-                "customer_id": str(customer_id),
-                "invoice_no": inv_no,
-                "stock_code": str(data.get("StockCode", "")),
-                "description": str(data.get("Description", "")),
-                "quantity": abs(qty),
-                "unit_price": unit_price,
-                "amount": round(abs(qty) * unit_price, 2),
-                "is_cancel": is_cancel,
-                "invoice_date": str(data.get("InvoiceDate", datetime.utcnow().isoformat()))
-            }
+            yield canonical_tx.to_dict()
         except Exception as e:
             # Route unparseable / syntax errors to Dead-Letter Queue
             logging.warning("Routing corrupted transaction to Dead-Letter Queue: %s", e)
