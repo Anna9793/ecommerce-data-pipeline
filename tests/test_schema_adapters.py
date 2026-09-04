@@ -127,3 +127,25 @@ def test_factory_dynamic_registration():
     assert tx.customer_id == "test@woo.com"
     assert tx.invoice_no == "WOO-99"
     assert tx.amount == 50.0
+
+def test_to_bigquery_row_mapping():
+    shopify_json = {
+        "Name": "#1008",
+        "Email": "astrid@nordic.se",
+        "Lineitem price": 89.50,
+        "Lineitem quantity": 2,
+        "Lineitem name": "Wool Sweater",
+        "Lineitem sku": "SKU-SWEATER"
+    }
+    tx = SchemaAdapterFactory.normalize(shopify_json)
+    bq_row = tx.to_bigquery_row()
+
+    assert "InvoiceNo" in bq_row
+    assert "StockCode" in bq_row
+    assert "UnitPrice" in bq_row
+    assert "CustomerID" in bq_row
+    assert "Country" in bq_row
+    assert bq_row["CustomerID"] == "astrid@nordic.se"
+    assert bq_row["InvoiceNo"] == "#1008"
+    assert bq_row["UnitPrice"] == 89.50
+    assert bq_row["StockCode"] == "SKU-SWEATER"

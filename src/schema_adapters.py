@@ -27,6 +27,26 @@ class CanonicalTransaction(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         return self.model_dump() if hasattr(self, "model_dump") else self.dict()
 
+    def to_bigquery_row(self) -> Dict[str, Any]:
+        """Maps canonical fields to the BigQuery retail_data.transactions table schema."""
+        country_map = {
+            "giftshop_uk": "United Kingdom",
+            "nordic_tech": "Sweden",
+            "shopify": "Sweden",
+            "olist": "Brazil",
+            "olist_marketplace": "Brazil"
+        }
+        return {
+            "InvoiceNo": self.invoice_no,
+            "StockCode": self.stock_code,
+            "Description": self.description,
+            "Quantity": -abs(self.quantity) if self.is_cancel else abs(self.quantity),
+            "InvoiceDate": self.invoice_date,
+            "UnitPrice": self.unit_price,
+            "CustomerID": self.customer_id,
+            "Country": country_map.get(self.tenant_id, "United Kingdom")
+        }
+
 # ============================================================
 # 2. Base Adapter Interface
 # ============================================================

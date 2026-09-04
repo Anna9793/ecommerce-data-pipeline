@@ -129,7 +129,9 @@ if __name__ == "__main__":
         raw_rows = generate_mock_transactions(mode=sim_mode, num_records=args.records)
     
     from src.schema_adapters import SchemaAdapterFactory
-    canonical_rows = [SchemaAdapterFactory.normalize(r).to_dict() for r in raw_rows]
+    canonical_objects = [SchemaAdapterFactory.normalize(r) for r in raw_rows]
+    canonical_rows = [obj.to_dict() for obj in canonical_objects]
+    bq_rows = [obj.to_bigquery_row() for obj in canonical_objects]
     logging.info("✅ Normalized %d transactions via SchemaAdapterFactory.", len(canonical_rows))
 
     if args.dry_run:
@@ -144,7 +146,7 @@ if __name__ == "__main__":
         publish_transactions_to_pubsub(raw_rows, project_id=project)
     else:
         try:
-            insert_transactions_to_bq(canonical_rows, project_id=project)
+            insert_transactions_to_bq(bq_rows, project_id=project)
         except Exception as e:
             logging.info("Note: BigQuery streaming skipped in offline/local mode (%s)", e)
 
