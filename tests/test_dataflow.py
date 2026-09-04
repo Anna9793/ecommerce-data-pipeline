@@ -1,6 +1,6 @@
 import json
 import pytest
-import apache_beam as beam
+beam = pytest.importorskip("apache_beam")
 from apache_beam.testing.test_pipeline import TestPipeline
 from apache_beam.testing.util import assert_that, equal_to
 from src.dataflow_pipeline import (

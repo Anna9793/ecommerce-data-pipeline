@@ -1,0 +1,4 @@
+# Dependencies for Cloud Composer (Airflow) and Cloud Dataflow (Apache Beam)
+apache-airflow>=2.8.0
+apache-airflow-providers-google>=10.10.0
+apache-beam[gcp]>=2.55.0
