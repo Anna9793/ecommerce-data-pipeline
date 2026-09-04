@@ -385,9 +385,6 @@ with tab3:
                             
                 else:
                     st.error(f"Failed to generate campaign. Server returned status code: {response.status_code}")
-                    st.error(response.text)
-            except Exception as e:
-                st.error(f"Error connecting to FastAPI API: {str(e)}")se.text)
             except Exception as e:
                 st.error(f"Error connecting to FastAPI API: {str(e)}")
 
