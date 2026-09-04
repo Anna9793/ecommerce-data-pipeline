@@ -103,3 +103,41 @@ class TransactionConsumer:
         streaming_pull_future = self.subscriber.subscribe(self.subscription_path, callback=handler)
         logging.info("Listening for messages on %s...", self.subscription_path)
         return streaming_pull_future
+
+    def pull_batch(self, max_messages: int = 10, timeout: float = 10.0) -> list:
+        """Synchronously pulls and acknowledges a batch of messages from the subscription."""
+        try:
+            response = self.subscriber.pull(
+                request={"subscription": self.subscription_path, "max_messages": max_messages},
+                timeout=timeout
+            )
+            
+            if not response.received_messages:
+                logging.info("No unread messages currently in subscription: %s", self.subscription_name)
+                return []
+
+            transactions = []
+            ack_ids = []
+
+            for received_message in response.received_messages:
+                tx = self.process_message_payload(received_message.message.data)
+                customer_id = tx.get("CustomerID") or tx.get("customer_id") or tx.get("Customer ID")
+                
+                if customer_id:
+                    self._update_online_feature_store(customer_id, tx)
+                
+                transactions.append(tx)
+                ack_ids.append(received_message.ack_id)
+
+            # Acknowledge all received messages
+            self.subscriber.acknowledge(
+                request={"subscription": self.subscription_path, "ack_ids": ack_ids}
+            )
+            logging.info("✅ Successfully pulled and acknowledged %d messages from Pub/Sub.", len(transactions))
+            return transactions
+        except Exception as e:
+            if "DeadlineExceeded" in str(type(e).__name__) or "timed out" in str(e).lower():
+                logging.info("No messages received within timeout window (%ss).", timeout)
+                return []
+            logging.error("Error pulling batch messages: %s", e)
+            return []
