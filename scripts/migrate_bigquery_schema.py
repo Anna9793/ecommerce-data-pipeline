@@ -32,9 +32,14 @@ def migrate_transactions_schema(project_id: str = "anna-ml-pipeline") -> None:
         logging.error("Failed to inspect table %s: %s", table_id, e)
         return
 
-    # 2. Execute Migration DDL
-    ddl_query = f"""
-    CREATE OR REPLACE TABLE `{table_id}`
+    # 2. Step 1: Create new partitioned & clustered staging table with cleaned STRING CustomerID
+    staging_table_id = f"{project_id}.retail_data.transactions_migrated_staging"
+    
+    # Drop staging table if left over from a previous run
+    client.query(f"DROP TABLE IF EXISTS `{staging_table_id}`").result()
+
+    ddl_create_staging = f"""
+    CREATE TABLE `{staging_table_id}`
     PARTITION BY DATE(InvoiceDate)
     CLUSTER BY CustomerID, Country AS
     SELECT 
@@ -49,12 +54,24 @@ def migrate_transactions_schema(project_id: str = "anna-ml-pipeline") -> None:
     FROM `{table_id}`
     """
     
-    logging.info("Executing BigQuery DDL schema migration...")
-    query_job = client.query(ddl_query)
-    query_job.result()  # Wait for query to complete
-    logging.info("✅ DDL query completed successfully.")
+    logging.info("1/3 Creating partitioned staging table: %s...", staging_table_id)
+    client.query(ddl_create_staging).result()
+    
+    # Verify staging table count
+    staging_count = list(client.query(f"SELECT COUNT(1) AS total FROM `{staging_table_id}`").result())[0].total
+    logging.info("Staging table created with %d rows (original had %d rows).", staging_count, pre_count)
+    
+    if staging_count != pre_count:
+        logging.error("❌ Row count mismatch! Aborting migration to protect data.")
+        return
 
-    # 3. Verify post-migration state
+    # 3. Step 2: Drop old unpartitioned table and rename staging table to transactions
+    logging.info("2/3 Replacing original table with migrated partitioned table...")
+    client.query(f"DROP TABLE `{table_id}`").result()
+    client.query(f"ALTER TABLE `{staging_table_id}` RENAME TO transactions").result()
+    logging.info("✅ Table successfully replaced and renamed.")
+
+    # 4. Step 3: Verify post-migration state
     new_table = client.get_table(table_id)
     new_schema = {field.name: field.field_type for field in new_table.schema}
     post_count_query = f"SELECT COUNT(1) AS total_rows FROM `{table_id}`"
@@ -64,7 +81,7 @@ def migrate_transactions_schema(project_id: str = "anna-ml-pipeline") -> None:
     logging.info("Post-migration row count: %d", post_count)
 
     if post_count == pre_count and new_schema.get("CustomerID") == "STRING":
-        logging.info("🎉 Migration 100%% verified! Zero data loss. CustomerID is now STRING.")
+        logging.info("🎉 Migration 100%% verified! Zero data loss. CustomerID is now STRING with Day Partitioning.")
     else:
         logging.warning("⚠️ Verification mismatch: Pre=%d, Post=%d, Type=%s", pre_count, post_count, new_schema.get("CustomerID"))
 
