@@ -18,7 +18,20 @@ class TransactionConsumer:
         self.subscription_name = subscription_name
         self.subscription_path = f"projects/{self.project_id}/subscriptions/{self.subscription_name}"
         self.subscriber = pubsub_v1.SubscriberClient()
+        self.topic_path = f"projects/{self.project_id}/topics/retail-transactions-topic"
         logging.info("Initialized Pub/Sub Consumer for subscription: %s", self.subscription_path)
+
+    def _ensure_subscription_exists(self):
+        """Creates subscription if it does not exist in the GCP project."""
+        try:
+            self.subscriber.get_subscription(subscription=self.subscription_path)
+        except Exception:
+            try:
+                logging.info("Subscription %s does not exist. Auto-creating...", self.subscription_path)
+                self.subscriber.create_subscription(name=self.subscription_path, topic=self.topic_path)
+                logging.info("✅ Created Pub/Sub subscription: %s", self.subscription_path)
+            except Exception as e:
+                logging.warning("Could not auto-create subscription %s: %s", self.subscription_path, e)
 
     def process_message_payload(self, message_data: bytes) -> dict:
         """Parses and validates incoming message bytes."""

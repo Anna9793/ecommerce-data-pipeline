@@ -24,17 +24,37 @@ class TransactionPublisher:
         self.publisher = pubsub_v1.PublisherClient(batch_settings=batch_settings)
         logging.info("Initialized Pub/Sub Publisher for topic: %s", self.topic_path)
 
+    def _ensure_topic_exists(self):
+        """Creates topic if it does not exist in the GCP project."""
+        try:
+            self.publisher.get_topic(topic=self.topic_path)
+        except Exception:
+            try:
+                logging.info("Topic %s does not exist. Auto-creating...", self.topic_path)
+                self.publisher.create_topic(name=self.topic_path)
+                logging.info("✅ Created Pub/Sub topic: %s", self.topic_path)
+            except Exception as e:
+                logging.warning("Could not auto-create topic %s: %s", self.topic_path, e)
+
     def publish_transaction(self, transaction: Dict[str, Any], attributes: Optional[Dict[str, str]] = None) -> str:
         """Publishes a single JSON transaction event to Pub/Sub."""
         payload_bytes = json.dumps(transaction, default=str).encode("utf-8")
         attrs = attributes or {}
         
-        future = self.publisher.publish(self.topic_path, payload_bytes, **attrs)
-        message_id = future.result(timeout=10)
-        return message_id
+        try:
+            future = self.publisher.publish(self.topic_path, payload_bytes, **attrs)
+            message_id = future.result(timeout=10)
+            return message_id
+        except Exception as e:
+            if "404" in str(e) or "NotFound" in str(type(e).__name__):
+                self._ensure_topic_exists()
+                future = self.publisher.publish(self.topic_path, payload_bytes, **attrs)
+                return future.result(timeout=10)
+            raise
 
     def publish_batch(self, transactions: List[Dict[str, Any]]) -> List[str]:
-        """Publishes a batch of transactions concurrently."""
+        """Publishes a batch of transactions concurrently with self-healing topic creation."""
+        self._ensure_topic_exists()
         futures = []
         for tx in transactions:
             payload_bytes = json.dumps(tx, default=str).encode("utf-8")
