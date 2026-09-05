@@ -235,3 +235,7 @@ graph TD
 *   **Decision**: Introduced the Gang of Four (GoF) Adapter Pattern with `SchemaAdapterFactory` and `CanonicalTransaction` models to normalize incoming store payloads (Shopify, Olist, UCI) at the perimeter.
 *   **Rationale**: Adheres to the Open-Closed Principle (SOLID). Decouples core data engineering, Dataflow streaming transforms, BigQuery analytical views, and LangGraph GenAI agents from external schema variations, allowing new e-commerce clients to onboard in minutes with zero modifications to downstream pipeline infrastructure.
 
+### 3.14. Modern Packaging (`pyproject.toml` & `uv`) vs. Legacy `requirements.txt` (Phase 22)
+*   **Decision**: Standardized all dependency management, build configuration, and tooling metadata under PEP 517/621 `pyproject.toml` combined with Astral's Rust-based `uv` package resolver and multi-stage Docker builds.
+*   **Rationale**: Eliminates legacy fragmented configuration (`setup.py`, `setup.cfg`, `requirements.txt`, `pytest.ini`). `uv` provides 10x-100x faster package resolution and deterministic builds, preventing subtle transitive dependency drift between local notebooks, Cloud Run containers, and automated CI/CD runners.
+

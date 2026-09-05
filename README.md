@@ -2,11 +2,12 @@
 
 [![CI/CD Pipeline](https://github.com/Anna9793/ecommerce-data-pipeline/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anna9793/ecommerce-data-pipeline/actions)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Unit Tests](https://img.shields.io/badge/tests-54%2F54%20passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/tests-56%2F56%20passing-brightgreen.svg)]()
 [![Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20BigQuery%20%7C%20Vertex%20AI-orange.svg)](https://cloud.google.com/)
 [![IaC](https://img.shields.io/badge/IaC-Terraform-623CE4.svg)](https://www.terraform.io/)
 [![Streaming](https://img.shields.io/badge/Streaming-Pub%2FSub%20%7C%20Dataflow%20(Beam)-FF6F00.svg)](https://cloud.google.com/dataflow)
 [![Orchestration](https://img.shields.io/badge/Orchestration-Airflow%20%7C%20Composer-017CEE.svg)](https://airflow.apache.org/)
+[![Packaging](https://img.shields.io/badge/Packaging-pyproject.toml%20%7C%20uv-DE5FE9.svg)](https://github.com/astral-sh/uv)
 [![API Gateway](https://img.shields.io/badge/Ingress-Cloud%20API%20Gateway%20%7C%20OpenAPI-009688.svg)](https://cloud.google.com/api-gateway)
 [![Multi-Tenant](https://img.shields.io/badge/Architecture-Multi--Tenant%20%7C%20Shopify%20Adapter-8A2BE2.svg)]()
 [![AI Agents](https://img.shields.io/badge/GenAI-LangGraph%20%7C%20pgvector%20%7C%20Gemini-4285F4.svg)](https://cloud.google.com/vertex-ai)
@@ -78,7 +79,7 @@ graph TD
     %% Infrastructure as Code
     subgraph IaC_Layer [8. Infrastructure as Code & CI/CD]
         TF["Terraform (IaC Modules: BigQuery, GCS, Cloud Run, Pub/Sub, Dataflow, Composer, API Gateway)"] --> GCP_Cloud["Google Cloud Infrastructure"]
-        GHA["GitHub Actions CI/CD (OIDC Workload Identity Federation + 54 Tests)"] --> CloudRun_Deploy["Zero-Downtime Cloud Run Deployment"]
+        GHA["GitHub Actions CI/CD (OIDC Workload Identity Federation + 56 Tests)"] --> CloudRun_Deploy["Zero-Downtime Cloud Run Deployment"]
     end
 
     classDef stream fill:#FF6F00,stroke:#333,stroke-width:2px,color:#fff;
@@ -100,7 +101,7 @@ graph TD
 
 ---
 
-## 🗺️ 21-Phase Architectural Roadmap
+## 🗺️ 22-Phase Architectural Roadmap
 
 | Phase | Category | Description | Key Technologies |
 | :---: | :--- | :--- | :--- |
@@ -125,6 +126,7 @@ graph TD
 | **19** | **Master Orchestrator** | Master enterprise workflow orchestration, Data Quality gates, and drift triggers. | `Apache Airflow`, `Cloud Composer` |
 | **20** | **API Ingress** | Secure edge ingress, OpenAPI contract, rate limiting, and API key authorization. | `Google Cloud API Gateway`, `OpenAPI` |
 | **21** | **Multi-Tenancy** | Universal Canonical Data Model, Shopify/Olist adapters, and multi-store UI. | `Pydantic`, `Schema Adapters` |
+| **22** | **Modern Packaging & Fast Dependencies** | Modern packaging standard with `pyproject.toml` (PEP 517/621) and Rust-powered `uv` package resolver. | `uv`, `pyproject.toml`, `Docker Multi-Stage` |
 
 ---
 
@@ -147,6 +149,7 @@ The application provides a unified UI in Streamlit ([streamlit_app.py](file:///U
 *   **Generative AI & LLMOps**: LangGraph, LangChain, Google Vertex AI (Gemini 1.5 Flash, `text-embedding-004`), Pydantic v2.
 *   **Databases & Vector Engines**: PostgreSQL 15, `pgvector` (HNSW indexing), Google Cloud Firestore.
 *   **Streaming & Processing**: Apache Beam (Python SDK), Google Cloud Dataflow, Google Cloud Pub/Sub.
+*   **Packaging & Dependency Management**: `pyproject.toml` (PEP 517/621), `uv` (Astral Rust package resolver).
 *   **Infrastructure as Code & CI/CD**: Terraform (`>= 1.5.0`), GitHub Actions (OIDC authentication), Docker Multi-Stage.
 
 ---
@@ -164,7 +167,11 @@ The application provides a unified UI in Streamlit ([streamlit_app.py](file:///U
 git clone https://github.com/Anna9793/ecommerce-data-pipeline.git
 cd ecommerce-data-pipeline
 
-# Create virtual environment & install dependencies
+# Option A: Modern setup with uv (Recommended - 10x-100x faster)
+uv venv
+uv pip install -e ".[dev,ml]"
+
+# Option B: Traditional pip setup
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -173,7 +180,7 @@ pip install -r requirements.txt
 docker compose up -d
 ```
 
-### 3. Run Automated Unit Tests (38 Passing)
+### 3. Run Automated Unit Tests (56 Passing)
 ```bash
 PYTHONPATH=. pytest
 ```

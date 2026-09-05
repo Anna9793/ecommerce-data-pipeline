@@ -1,17 +1,17 @@
 FROM python:3.11-slim AS builder
 
+# Install uv from Astral's official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 WORKDIR /app
 
-# Upgrade pip and install build dependencies if needed
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-
-COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies using uv for high-performance builds
+COPY requirements.txt pyproject.toml ./
+RUN uv pip install --system --no-cache -r requirements.txt
 
 COPY . .
 
-# Run unit tests inside the container
+# Run unit tests inside the container during build
 FROM builder AS testrunner
 ENV USE_BIGQUERY=false
 RUN PYTHONPATH=. pytest && touch .test_passed
