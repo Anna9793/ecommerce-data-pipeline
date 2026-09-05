@@ -51,3 +51,14 @@ output "api_gateway_url" {
   description = "Google Cloud API Gateway base HTTPS invocation URL"
   value       = "https://${google_api_gateway_gateway.gateway.default_hostname}"
 }
+
+output "dataproc_cluster_name" {
+  description = "Name of the Google Cloud Dataproc PySpark cluster"
+  value       = google_dataproc_cluster.pyspark_cluster.name
+}
+
+output "dataproc_cluster_region" {
+  description = "Region of the Dataproc PySpark cluster"
+  value       = google_dataproc_cluster.pyspark_cluster.region
+}
+

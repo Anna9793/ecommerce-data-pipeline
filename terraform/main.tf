@@ -16,6 +16,7 @@ locals {
     "firestore.googleapis.com",
     "pubsub.googleapis.com",
     "dataflow.googleapis.com",
+    "dataproc.googleapis.com",
     "composer.googleapis.com",
     "apigateway.googleapis.com",
     "servicemanagement.googleapis.com",

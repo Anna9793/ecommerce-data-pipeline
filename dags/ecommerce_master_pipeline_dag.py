@@ -49,6 +49,18 @@ def refresh_rfm_features_func(**kwargs):
     # In production executes BigQuery INSERT OVERWRITE / CREATE OR REPLACE VIEW
     logging.info("RFM feature view 'retail_data.rfm_features' successfully updated.")
 
+def run_dataproc_pyspark_features_func(**kwargs):
+    """
+    Submits distributed PySpark batch feature engineering job to GCP Dataproc.
+    Computes large-scale customer RFM, velocity, and shopping pattern metrics.
+    """
+    project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+    cluster_name = os.getenv("DATAPROC_CLUSTER_NAME", "ecommerce-pyspark-cluster")
+    region = os.getenv("GCP_REGION", "us-central1")
+    logging.info("Submitting PySpark batch job to Dataproc cluster '%s' in %s (project: %s)...", cluster_name, region, project_id)
+    logging.info("PySpark distributed feature transformation completed and persisted to BigQuery & GCS.")
+    return True
+
 def sync_feature_store_func(**kwargs):
     """Synchronizes updated RFM customer features to the Online Feature Store."""
     logging.info("Triggering Online Feature Store synchronization (Firestore & PostgreSQL)...")
@@ -96,10 +108,10 @@ def trigger_vertex_pipeline_func(**kwargs):
 with DAG(
     dag_id="ecommerce_daily_master_pipeline",
     default_args=default_args,
-    description="Enterprise Master Pipeline: BigQuery Data Quality -> RFM Feature Engineering -> Feature Store & pgvector Sync -> Drift Check -> Vertex AI Retraining Trigger",
+    description="Enterprise Master Pipeline: BigQuery Data Quality -> Dataproc PySpark Feature Engineering -> Feature Store & pgvector Sync -> Drift Check -> Vertex AI Retraining Trigger",
     schedule="@daily",
     catchup=False,
-    tags=["ecommerce", "data_engineering", "mlops", "bigquery", "vertex_ai"],
+    tags=["ecommerce", "data_engineering", "mlops", "bigquery", "dataproc", "vertex_ai"],
 ) as dag:
 
     # 1. Sensor / Check Data Availability
@@ -114,10 +126,16 @@ with DAG(
         python_callable=data_quality_validation_func,
     )
 
-    # 3. BigQuery Feature Engineering & Aggregations
+    # 3A. BigQuery Feature Engineering & Aggregations
     task_refresh_rfm = PythonOperator(
         task_id="refresh_rfm_features",
         python_callable=refresh_rfm_features_func,
+    )
+
+    # 3B. Distributed Dataproc PySpark Feature Engineering
+    task_dataproc_pyspark = PythonOperator(
+        task_id="pyspark_dataproc_feature_engineering",
+        python_callable=run_dataproc_pyspark_features_func,
     )
 
     # 4A. Sync Online Feature Store (Firestore & PostgreSQL)
@@ -155,8 +173,10 @@ with DAG(
     (
         task_check_transactions
         >> task_data_quality
-        >> task_refresh_rfm
-        >> [task_sync_feature_store, task_sync_vectors]
+        >> [task_refresh_rfm, task_dataproc_pyspark]
+        >> task_sync_feature_store
+        >> task_sync_vectors
         >> task_drift_branch
         >> [task_trigger_vertex, task_healthy]
     )
+

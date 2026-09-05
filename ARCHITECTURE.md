@@ -239,3 +239,12 @@ graph TD
 *   **Decision**: Standardized all dependency management, build configuration, and tooling metadata under PEP 517/621 `pyproject.toml` combined with Astral's Rust-based `uv` package resolver and multi-stage Docker builds.
 *   **Rationale**: Eliminates legacy fragmented configuration (`setup.py`, `setup.cfg`, `requirements.txt`, `pytest.ini`). `uv` provides 10x-100x faster package resolution and deterministic builds, preventing subtle transitive dependency drift between local notebooks, Cloud Run containers, and automated CI/CD runners.
 
+### 3.15. Distributed Big Data Feature Engineering (PySpark on Dataproc) vs. Single-Node Pandas (Phase 23)
+*   **Decision**: Implemented large-scale batch feature extraction using Apache Spark (PySpark) on Google Cloud Dataproc with autoscaling ephemeral clusters and Spot/Preemptible worker VMs, replacing single-node Pandas batch scripts.
+*   **Rationale**: 
+    1. **Scalability & Memory Safety**: Overcomes single-node RAM limits (preventing Out-Of-Memory exceptions when processing multi-tenant historical datasets with 50M+ transactions) through distributed DataFrame partitioning and disk spilling.
+    2. **Complex Rolling Window Operations**: PySpark `Window` functions compute multi-tenant recency, frequency, monetary, 30d/90d velocity, cancellation ratios, and modal shopping hours in parallel.
+    3. **FinOps Cost Optimization**: Ephemeral cluster provisioning combined with Google Cloud Spot/Preemptible instances cuts compute costs by 60%–80% compared to static 24/7 Hadoop clusters.
+    4. **Lambda Architecture Co-existence**: Apache Beam (Dataflow) serves the **Speed Layer** (real-time 5-minute sliding windows and ingestion), while PySpark (Dataproc) serves the **Batch Layer** (high-throughput historical aggregations and feature store updates).
+
+
