@@ -247,4 +247,12 @@ graph TD
     3. **FinOps Cost Optimization**: Ephemeral cluster provisioning combined with Google Cloud Spot/Preemptible instances cuts compute costs by 60%–80% compared to static 24/7 Hadoop clusters.
     4. **Lambda Architecture Co-existence**: Apache Beam (Dataflow) serves the **Speed Layer** (real-time 5-minute sliding windows and ingestion), while PySpark (Dataproc) serves the **Batch Layer** (high-throughput historical aggregations and feature store updates).
 
+### 3.16. Multi-Layered Data Versioning & Lineage vs. Static Snapshots (Phase 24)
+*   **Decision**: Implemented a comprehensive Data Versioning and Provenance architecture combining **DVC (Data Version Control)** for artifact/model data splits, **Google BigQuery Time Travel (`FOR SYSTEM_TIME AS OF`)** for point-in-time warehouse querying, and **Automated Lineage Manifests (`DataLineageTracker`)**.
+*   **Rationale**:
+    1. **Point-in-Time Reproducibility**: BigQuery's 7-day time travel allows instant debugging, auditing, and historical rollbacks without duplicating warehouse storage.
+    2. **Decoupled Large Data Versioning**: DVC hashes large training files stored in GCS (`gs://.../dvcstore`) while keeping Git commits lightweight and audit-friendly.
+    3. **End-to-End Governance**: Lineage manifests cryptographically link the source ingestion payload $\rightarrow$ BigQuery snapshot $\rightarrow$ PySpark feature schema $\rightarrow$ MLflow Model Run ID, fulfilling enterprise MLOps compliance and debugging requirements.
+
+
 

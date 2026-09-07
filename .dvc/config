@@ -1,0 +1,5 @@
+[core]
+    remote = gcs_storage
+    autostage = true
+['remote "gcs_storage"']
+    url = gs://anna-ml-pipeline-bucket/dvcstore

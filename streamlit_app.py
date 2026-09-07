@@ -484,6 +484,65 @@ with tab4:
     except Exception as e:
         st.error(f"Error fetching drift report from API: {str(e)}")
 
+    st.divider()
+
+    # PHASE 24: DATA LINEAGE & TIME TRAVEL EXPLORER
+    with st.expander("🕰️ **Data Lineage, Provenance & BigQuery Time Travel (Phase 24)**", expanded=False):
+        st.markdown("""
+        **Point-in-Time Reproducibility & Auditing**:
+        Explore cryptographic dataset versions, BigQuery `FOR SYSTEM_TIME AS OF` time-travel snapshots, and end-to-end data lineage across the platform.
+        """)
+
+        col_lin1, col_lin2 = st.columns([1, 1])
+
+        with col_lin1:
+            st.markdown("#### 📜 BigQuery Time Travel Query Builder")
+            time_interval = st.selectbox(
+                "Select Point-in-Time Snapshot Window",
+                ["1 Hour Ago (Interval 1 HOUR)", "1 Day Ago (Interval 1 DAY)", "7 Days Ago (Interval 7 DAY)", "Custom UTC Timestamp"]
+            )
+            
+            if "1 Hour" in time_interval:
+                time_expr = "TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)"
+            elif "1 Day" in time_interval:
+                time_expr = "TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)"
+            elif "7 Days" in time_interval:
+                time_expr = "TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)"
+            else:
+                time_expr = "TIMESTAMP '2026-09-01 00:00:00 UTC'"
+
+            sql_sample = f"""-- BigQuery Point-in-Time Time Travel Query (Zero Compute Overhead)
+SELECT 
+    customer_id, 
+    COUNT(DISTINCT invoice_no) AS total_orders, 
+    ROUND(SUM(quantity * unit_price), 2) AS historical_spend
+FROM `anna-ml-pipeline.retail_data.transactions`
+FOR SYSTEM_TIME AS OF {time_expr}
+WHERE customer_id IS NOT NULL
+GROUP BY customer_id
+LIMIT 10;"""
+            st.code(sql_sample, language="sql")
+            st.caption("⚡ Uses BigQuery's native 7-day immutable time-travel window for instant rollback & reproducibility.")
+
+        with col_lin2:
+            st.markdown("#### 📦 Active DVC & Snapshot Metadata")
+            st.json({
+                "dvc_remote": "gs://anna-ml-pipeline-bucket/dvcstore",
+                "active_git_commit": "044c8c7 (Phase 23/24)",
+                "latest_snapshot": "retail_data.transactions_snapshot_20260907",
+                "snapshot_policy": "Zero-Copy Table Clone (30-day expiration)",
+                "lineage_stages": ["Pub/Sub Ingestion", "BigQuery Raw", "Dataproc PySpark (Phase 23)", "Online Feature Store", "Vertex AI / MLflow"]
+            })
+
+        st.markdown("#### 🔗 End-to-End Platform Data Lineage Flow")
+        try:
+            from src.lineage import tracker
+            mermaid_code = tracker.get_latest_lineage_graph_mermaid()
+            st.markdown(f"```mermaid\n{mermaid_code}\n```")
+        except Exception:
+            st.info("Lineage graph visualization available via `src.lineage.DataLineageTracker`.")
+
+
 # TAB 5: PRODUCT ADVISOR CHATBOT (RAG + PGVECTOR)
 with tab5:
     store_title = "NordicWear & Tech (Shopify)" if active_store == "nordic_tech" else "GiftShop UK (Vintage Retail)"

@@ -1,0 +1,24 @@
+stages:
+  clean_and_validate:
+    cmd: python -c "from src.cleaning import run_cleaning; run_cleaning()"
+    deps:
+      - data/retail_raw.csv
+      - src/cleaning.py
+    outs:
+      - data/retail_cleaned.csv
+
+  pyspark_features:
+    cmd: python src/pyspark_feature_engineering.py --input data/retail_cleaned.csv --output data/rfm_customers_spark.parquet
+    deps:
+      - data/retail_cleaned.csv
+      - src/pyspark_feature_engineering.py
+    outs:
+      - data/rfm_customers_spark.parquet
+
+  train_churn_model:
+    cmd: python src/churn_training.py
+    deps:
+      - data/rfm_customers.csv
+      - src/churn_training.py
+    outs:
+      - models/churn_model.pkl
