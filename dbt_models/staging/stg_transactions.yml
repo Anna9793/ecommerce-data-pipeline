@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: stg_transactions
+    description: "Normalized and cleaned transaction line items from raw BigQuery tables."
+    columns:
+      - name: invoice_no
+        description: "6-digit integral number uniquely assigned to each transaction."
+        tests:
+          - not_null
+      - name: customer_id
+        description: "Unique identifier assigned to each customer."
+        tests:
+          - not_null
+      - name: unit_price
+        description: "Unit price per item in GBP."
+        tests:
+          - not_null
+      - name: invoice_date
+        description: "Timestamp when the transaction was generated."
+        tests:
+          - not_null
+      - name: is_cancellation
+        description: "Boolean flag identifying cancelled or returned orders."
+        tests:
+          - not_null

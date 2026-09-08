@@ -245,14 +245,21 @@ graph TD
     1. **Scalability & Memory Safety**: Overcomes single-node RAM limits (preventing Out-Of-Memory exceptions when processing multi-tenant historical datasets with 50M+ transactions) through distributed DataFrame partitioning and disk spilling.
     2. **Complex Rolling Window Operations**: PySpark `Window` functions compute multi-tenant recency, frequency, monetary, 30d/90d velocity, cancellation ratios, and modal shopping hours in parallel.
     3. **FinOps Cost Optimization**: Ephemeral cluster provisioning combined with Google Cloud Spot/Preemptible instances cuts compute costs by 60%–80% compared to static 24/7 Hadoop clusters.
-    4. **Lambda Architecture Co-existence**: Apache Beam (Dataflow) serves the **Speed Layer** (real-time 5-minute sliding windows and ingestion), while PySpark (Dataproc) serves the **Batch Layer** (high-throughput historical aggregations and feature store updates).
-
 ### 3.16. Multi-Layered Data Versioning & Lineage vs. Static Snapshots (Phase 24)
 *   **Decision**: Implemented a comprehensive Data Versioning and Provenance architecture combining **DVC (Data Version Control)** for artifact/model data splits, **Google BigQuery Time Travel (`FOR SYSTEM_TIME AS OF`)** for point-in-time warehouse querying, and **Automated Lineage Manifests (`DataLineageTracker`)**.
 *   **Rationale**:
     1. **Point-in-Time Reproducibility**: BigQuery's 7-day time travel allows instant debugging, auditing, and historical rollbacks without duplicating warehouse storage.
     2. **Decoupled Large Data Versioning**: DVC hashes large training files stored in GCS (`gs://.../dvcstore`) while keeping Git commits lightweight and audit-friendly.
     3. **End-to-End Governance**: Lineage manifests cryptographically link the source ingestion payload $\rightarrow$ BigQuery snapshot $\rightarrow$ PySpark feature schema $\rightarrow$ MLflow Model Run ID, fulfilling enterprise MLOps compliance and debugging requirements.
+
+### 3.17. Warehouse-Native Semantic Modeling & Data Contracts (dbt on BigQuery) vs. Raw Ad-Hoc SQL (Phase 25)
+*   **Decision**: Implemented **dbt (data build tool)** for BigQuery to govern the Medallion Architecture (`staging` $\rightarrow$ `intermediate` $\rightarrow$ `marts`), enforce SQL data contracts (uniqueness, not-null, categorical accepted values), and expose semantic RFM aggregations for BI consumption (Looker Studio / Tableau).
+*   **Rationale**:
+    1. **ELT & In-Warehouse Compute**: Shifts data transformation workload directly into Google BigQuery's massively parallel compute engine, eliminating client-side memory bottlenecks.
+    2. **Contract Enforcement at the Warehouse Layer**: Automated schema and semantic tests validate data integrity prior to BI and ML ingestion, preventing broken dashboards and silent data corruption.
+    3. **Medallion Lineage & Modularity**: Separates raw staging views (`stg_transactions`), customer transaction rollups (`int_customer_orders_rollup`), and final business-facing dimension/fact marts (`fct_customer_rfm`), providing automated DAG documentation and lineage graphs.
+    4. **Complements PySpark and Pydantic**: Pydantic acts as the *ingress perimeter gate* (in Python RAM), PySpark acts as the *distributed heavy ML feature batch engine* (on Dataproc), and dbt acts as the *warehouse-native semantic analytics layer* (on BigQuery).
+
 
 
 

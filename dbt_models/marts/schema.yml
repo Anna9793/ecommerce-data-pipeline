@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: fct_customer_rfm
+    description: "Enterprise Semantic Mart: Customer RFM behavioral metrics, spending averages, and segmentation tiers for BI & Looker Studio."
+    columns:
+      - name: customer_id
+        description: "Primary key: Unique identifier for each customer."
+        tests:
+          - unique
+          - not_null
+      - name: recency
+        description: "Days between the customer's last order and the latest dataset timestamp."
+        tests:
+          - not_null
+      - name: frequency
+        description: "Total number of completed positive orders placed by the customer."
+        tests:
+          - not_null
+      - name: monetary
+        description: "Total monetary gross expenditure in GBP across all completed purchases."
+        tests:
+          - not_null
+      - name: avg_order_value
+        description: "Average gross spending per order (Monetary / Frequency)."
+        tests:
+          - not_null
+      - name: cancellation_rate
+        description: "Ratio of cancelled/returned orders over total attempted orders."
+        tests:
+          - not_null
+      - name: preferred_shopping_hour
+        description: "Modal hour of day (0-23) during which the customer orders most frequently."
+        tests:
+          - not_null
+      - name: rfm_segment_tier
+        description: "Business intelligence classification tier for customer lifecycle marketing."
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - 'Champions'
+                - 'Loyal Customers'
+                - 'Potential Loyalists'
+                - 'Active Shoppers'
+                - 'Lost Customers'
+                - 'At Risk'

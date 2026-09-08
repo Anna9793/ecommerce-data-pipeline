@@ -1,0 +1,23 @@
+ecommerce_bigquery_profile:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: anna-ml-pipeline
+      dataset: retail_data
+      threads: 4
+      timeout_seconds: 300
+      location: us-central1
+      priority: interactive
+
+    prod:
+      type: bigquery
+      method: service-account
+      project: anna-ml-pipeline
+      dataset: retail_data
+      keyfile: /etc/secrets/gcp-service-account.json
+      threads: 8
+      timeout_seconds: 600
+      location: us-central1
+      priority: batch

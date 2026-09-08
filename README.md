@@ -2,10 +2,11 @@
 
 [![CI/CD Pipeline](https://github.com/Anna9793/ecommerce-data-pipeline/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anna9793/ecommerce-data-pipeline/actions)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Unit Tests](https://img.shields.io/badge/tests-66%2F66%20passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/tests-71%2F71%20passing-brightgreen.svg)]()
 [![Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20BigQuery%20%7C%20Vertex%20AI%20%7C%20Dataproc-orange.svg)](https://cloud.google.com/)
 [![IaC](https://img.shields.io/badge/IaC-Terraform-623CE4.svg)](https://www.terraform.io/)
 [![Big Data](https://img.shields.io/badge/Big%20Data-PySpark%20%7C%20Dataproc-E25A1C.svg)](https://spark.apache.org/)
+[![dbt](https://img.shields.io/badge/Modeling-dbt%20%7C%20BigQuery-FF694B.svg)](https://www.getdbt.com/)
 [![Data Versioning](https://img.shields.io/badge/Versioning-DVC%20%7C%20Time%20Travel-9cf.svg)](https://dvc.org/)
 [![Streaming](https://img.shields.io/badge/Streaming-Pub%2FSub%20%7C%20Dataflow%20(Beam)-FF6F00.svg)](https://cloud.google.com/dataflow)
 [![Orchestration](https://img.shields.io/badge/Orchestration-Airflow%20%7C%20Composer-017CEE.svg)](https://airflow.apache.org/)
@@ -45,18 +46,26 @@ graph TD
 
     %% Master Orchestration Layer
     subgraph Orchestration_Layer [4. Master Enterprise Orchestrator (Cloud Composer / Airflow)]
-        Airflow["Airflow Master DAG (Daily @ 00:00 UTC)<br/>1. Sensors → 2. Data Quality → 3. PySpark on Dataproc<br/>4. Sync Feature Store & pgvector → 5. K-S Drift Check"]
+        Airflow["Airflow Master DAG (Daily @ 00:00 UTC)<br/>1. Sensors → 2. Data Quality → 3. PySpark on Dataproc<br/>4. dbt Semantic Marts → 5. Sync Feature Store & pgvector → 6. Drift Check"]
+    end
+
+    %% Warehouse Modeling & dbt Semantic Layer
+    subgraph Warehouse_Layer [5. BigQuery & dbt Semantic Modeling (Phase 25)]
+        BQ_Raw --> dbt_stg["dbt Staging (stg_transactions)"]
+        dbt_stg --> dbt_int["dbt Intermediate (int_customer_orders_rollup)"]
+        dbt_int --> dbt_marts[("dbt Marts: fct_customer_rfm<br/>(Schema Contracts & Tests)")]
+        dbt_marts --> BI["BI Dashboards & Looker Studio"]
     end
 
     %% Distributed Big Data Feature Engineering & Versioning
-    subgraph BigData_Engine [5. Distributed PySpark Engine & Data Lineage (Phase 23/24)]
+    subgraph BigData_Engine [6. Distributed PySpark Engine & Data Lineage (Phase 23/24)]
         Airflow --> Dataproc["Dataproc Ephemeral Cluster<br/>(PySpark Windowing, RFM, 30d/90d Velocity, Spot VMs)"]
         Dataproc -->|Parquet & BigQuery Connector| BQ_RFM[("BigQuery: rfm_features View")]
         Airflow -.->|Lineage Manifest & DVC| DVC[("DVC & BQ Snapshots<br/>reports/lineage_manifest.json")]
     end
 
     %% Serving & Storage Layer
-    subgraph Serving_Layer [6. Low-Latency Serving & Feature Store]
+    subgraph Serving_Layer [7. Low-Latency Serving & Feature Store]
         Gateway -->|Reverse Proxy /v1/*| API[FastAPI on Cloud Run]
         UI[Streamlit Dashboard UI] <-->|REST API| API
         API <-->|Sub-15ms Key-Value Lookup| FS[("Online Feature Store: Firestore / PostgreSQL")]
@@ -64,7 +73,7 @@ graph TD
     end
 
     %% Agentic GenAI & Hybrid RAG
-    subgraph GenAI_Engine [7. LangGraph Autonomous Multi-Agent & RAG]
+    subgraph GenAI_Engine [8. LangGraph Autonomous Multi-Agent & RAG]
         API --> LangGraph["LangGraph StateMachine<br/>(Analyst → Strategist → Copywriter → Critic)"]
         LangGraph -->|Rejection Feedback Loop| LangGraph
         LangGraph -->|Approved Campaign| UI
@@ -77,7 +86,7 @@ graph TD
     end
 
     %% Closed-Loop MLOps & Retraining
-    subgraph MLOps_Retraining [8. Closed-Loop MLOps & Retraining]
+    subgraph MLOps_Retraining [9. Closed-Loop MLOps & Retraining]
         Airflow -->|If Drift Detected p < 0.05| Vertex["Vertex AI Pipelines (Kubeflow/KFP)"]
         Vertex -->|Parallel Tasks| Train["Train XGBoost & KMeans"]
         Train --> Gate{"F1 Evaluation Gate"}
@@ -86,15 +95,16 @@ graph TD
     end
 
     %% Infrastructure as Code
-    subgraph IaC_Layer [9. Infrastructure as Code & CI/CD]
+    subgraph IaC_Layer [10. Infrastructure as Code & CI/CD]
         TF["Terraform (IaC Modules: Dataproc, BigQuery, GCS, Cloud Run, Pub/Sub, Dataflow, Composer, API Gateway)"] --> GCP_Cloud["Google Cloud Infrastructure"]
-        GHA["GitHub Actions CI/CD (OIDC Workload Identity Federation + 66 Tests)"] --> CloudRun_Deploy["Zero-Downtime Cloud Run Deployment"]
+        GHA["GitHub Actions CI/CD (OIDC Workload Identity Federation + 71 Tests)"] --> CloudRun_Deploy["Zero-Downtime Cloud Run Deployment"]
     end
 
     classDef stream fill:#FF6F00,stroke:#333,stroke-width:2px,color:#fff;
     classDef pubsub fill:#FBBC04,stroke:#333,stroke-width:2px,color:#000;
     classDef airflow fill:#017CEE,stroke:#333,stroke-width:2px,color:#fff;
     classDef spark fill:#E25A1C,stroke:#333,stroke-width:2px,color:#fff;
+    classDef dbt fill:#FF694B,stroke:#333,stroke-width:2px,color:#fff;
     classDef dvc fill:#9cf,stroke:#333,stroke-width:2px,color:#000;
     classDef gw fill:#009688,stroke:#333,stroke-width:2px,color:#fff;
     classDef gcp fill:#4285F4,stroke:#333,stroke-width:2px,color:#fff;
@@ -106,15 +116,16 @@ graph TD
     class Beam stream;
     class Airflow airflow;
     class Dataproc spark;
+    class dbt_stg,dbt_int,dbt_marts dbt;
     class DVC dvc;
-    class BQ_Raw,BQ_Agg,FS,BQ_RFM,GCS,API,UI gcp;
+    class BQ_Raw,BQ_Agg,FS,BQ_RFM,GCS,API,UI,BI gcp;
     class LangGraph,Gemini,RAG_API,Embed,PG_Vec ai;
     class TF,GHA tf;
 ```
 
 ---
 
-## 🗺️ 24-Phase Architectural Roadmap
+## 🗺️ 25-Phase Architectural Roadmap
 
 | Phase | Category | Description | Key Technologies |
 | :---: | :--- | :--- | :--- |
@@ -142,6 +153,7 @@ graph TD
 | **22** | **Modern Packaging & Fast Dependencies** | Modern packaging standard with `pyproject.toml` (PEP 517/621) and Rust-powered `uv` package resolver. | `uv`, `pyproject.toml`, `Docker Multi-Stage` |
 | **23** | **Distributed Big Data Feature Engineering** | Scalable batch customer feature computation and windowing on Google Cloud Dataproc. | `Apache Spark`, `PySpark`, `GCP Dataproc` |
 | **24** | **Data Versioning & Lineage** | Point-in-time reproducibility, BigQuery Time Travel (`FOR SYSTEM_TIME AS OF`), DVC, and lineage manifests. | `DVC`, `BigQuery Time Travel`, `Data Lineage` |
+| **25** | **dbt Semantic Modeling & Data Contracts** | Modular SQL transformations (`staging` $\rightarrow$ `intermediate` $\rightarrow$ `marts`), schema tests, and BI semantic layer on BigQuery. | `dbt`, `BigQuery`, `SQL Analytics` |
 
 ---
 
