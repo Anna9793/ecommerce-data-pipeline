@@ -2,11 +2,12 @@
 
 [![CI/CD Pipeline](https://github.com/Anna9793/ecommerce-data-pipeline/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anna9793/ecommerce-data-pipeline/actions)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Unit Tests](https://img.shields.io/badge/tests-71%2F71%20passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/tests-77%2F77%20passing-brightgreen.svg)]()
 [![Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20BigQuery%20%7C%20Vertex%20AI%20%7C%20Dataproc-orange.svg)](https://cloud.google.com/)
 [![IaC](https://img.shields.io/badge/IaC-Terraform-623CE4.svg)](https://www.terraform.io/)
 [![Big Data](https://img.shields.io/badge/Big%20Data-PySpark%20%7C%20Dataproc-E25A1C.svg)](https://spark.apache.org/)
 [![dbt](https://img.shields.io/badge/Modeling-dbt%20%7C%20BigQuery-FF694B.svg)](https://www.getdbt.com/)
+[![Event-Driven AI](https://img.shields.io/badge/Agentic%20AI-Pub%2FSub%20%2B%20LangGraph-4285F4.svg)](https://cloud.google.com/pubsub)
 [![Data Versioning](https://img.shields.io/badge/Versioning-DVC%20%7C%20Time%20Travel-9cf.svg)](https://dvc.org/)
 [![Streaming](https://img.shields.io/badge/Streaming-Pub%2FSub%20%7C%20Dataflow%20(Beam)-FF6F00.svg)](https://cloud.google.com/dataflow)
 [![Orchestration](https://img.shields.io/badge/Orchestration-Airflow%20%7C%20Composer-017CEE.svg)](https://airflow.apache.org/)
@@ -125,7 +126,7 @@ graph TD
 
 ---
 
-## 🗺️ 25-Phase Architectural Roadmap
+## 🗺️ 26-Phase Architectural Roadmap
 
 | Phase | Category | Description | Key Technologies |
 | :---: | :--- | :--- | :--- |
@@ -154,6 +155,7 @@ graph TD
 | **23** | **Distributed Big Data Feature Engineering** | Scalable batch customer feature computation and windowing on Google Cloud Dataproc. | `Apache Spark`, `PySpark`, `GCP Dataproc` |
 | **24** | **Data Versioning & Lineage** | Point-in-time reproducibility, BigQuery Time Travel (`FOR SYSTEM_TIME AS OF`), DVC, and lineage manifests. | `DVC`, `BigQuery Time Travel`, `Data Lineage` |
 | **25** | **dbt Semantic Modeling & Data Contracts** | Modular SQL transformations (`staging` $\rightarrow$ `intermediate` $\rightarrow$ `marts`), schema tests, and BI semantic layer on BigQuery. | `dbt`, `BigQuery`, `SQL Analytics` |
+| **26** | **Event-Driven Agentic AI Retention** | Sub-second churn/cancellation detection via Pub/Sub streaming, autonomous LangGraph self-correcting marketing campaigns, and Firestore offer persistence. | `Pub/Sub`, `LangGraph`, `Firestore`, `Event-Driven AI` |
 
 ---
 

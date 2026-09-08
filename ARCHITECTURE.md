@@ -260,6 +260,13 @@ graph TD
     3. **Medallion Lineage & Modularity**: Separates raw staging views (`stg_transactions`), customer transaction rollups (`int_customer_orders_rollup`), and final business-facing dimension/fact marts (`fct_customer_rfm`), providing automated DAG documentation and lineage graphs.
     4. **Complements PySpark and Pydantic**: Pydantic acts as the *ingress perimeter gate* (in Python RAM), PySpark acts as the *distributed heavy ML feature batch engine* (on Dataproc), and dbt acts as the *warehouse-native semantic analytics layer* (on BigQuery).
 
+### 3.18. Event-Driven Agentic AI Retention Intervention (Pub/Sub + LangGraph + Firestore) vs. Static Batch Marketing (Phase 26)
+*   **Decision**: Implemented a streaming **Retention Worker (`src/retention_worker.py`)** that listens on Google Cloud Pub/Sub (`retail-transactions-sub`), detects high-churn risk / cancellation signals in sub-seconds, triggers autonomous LangGraph multi-agent retention workflows (`MarketingGraphOrchestrator`), and persists personalized discount offers directly into the Online Feature Store (Firestore / PostgreSQL) and outbound Pub/Sub dispatch topics.
+*   **Rationale**:
+    1. **Zero Customer Attrition Lag**: Traditional batch marketing jobs run every 24 hours—by the time a batch job flags a churned customer, the customer has already departed. Event-driven streaming generates and saves tailored win-back campaigns within seconds of an order cancellation or churn threshold breach.
+    2. **Closed-Loop Feature Store & Agent Convergence**: Connects low-latency streaming infrastructure with generative AI state machines. The worker retrieves the customer's fresh profile from Firestore, runs multi-agent critic loops (Analyst $\rightarrow$ Strategist $\rightarrow$ Copywriter $\leftrightarrow$ Critic), and stores the finalized offer back to Firestore's `retention_offers` collection for real-time CRM / mobile app consumption.
+
+
 
 
 
