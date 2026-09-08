@@ -138,8 +138,22 @@ def sync_feature_store():
             else:
                 df[col] = 0.0
                 
-    # Clean customer_id formatting (prevent floats like 12345.0, cast to clean strings)
-    df["customer_id"] = df["customer_id"].apply(lambda x: str(int(float(x))) if pd.notnull(x) and str(x) != "nan" else "")
+    # Clean customer_id formatting (safely handles numeric floats like 12345.0, ints, and string IDs like 'GUEST')
+    def clean_cust_id(val):
+        if pd.isna(val):
+            return ""
+        s = str(val).strip()
+        if s.lower() in ("nan", "none", ""):
+            return ""
+        try:
+            f = float(s)
+            if f.is_integer():
+                return str(int(f))
+            return s
+        except (ValueError, TypeError):
+            return s
+
+    df["customer_id"] = df["customer_id"].apply(clean_cust_id)
     df = df[df["customer_id"] != ""]
     
     # 2. Sync to appropriate Online Feature Store
