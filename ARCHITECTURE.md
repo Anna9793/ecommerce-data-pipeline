@@ -266,13 +266,13 @@ graph TD
     1. **Zero Customer Attrition Lag**: Traditional batch marketing jobs run every 24 hours—by the time a batch job flags a churned customer, the customer has already departed. Event-driven streaming generates and saves tailored win-back campaigns within seconds of an order cancellation or churn threshold breach.
     2. **Closed-Loop Feature Store & Agent Convergence**: Connects low-latency streaming infrastructure with generative AI state machines. The worker retrieves the customer's fresh profile from Firestore, runs multi-agent critic loops (Analyst $\rightarrow$ Strategist $\rightarrow$ Copywriter $\leftrightarrow$ Critic), and stores the finalized offer back to Firestore's `retention_offers` collection for real-time CRM / mobile app consumption.
 
-### 3.19. Enterprise MCP Server, Agent-to-Agent (A2A) Protocol & Google Workspace Bridge (Phase 27)
-*   **Decision**: Implemented an **Enterprise Model Context Protocol (MCP) Server (`src/mcp_server.py`)**, an **A2A Interoperability Dispatcher (`src/a2a_orchestrator.py`)**, a **Google Workspace Add-on (`scripts/workspace_addon.js` & `appsscript.json`)**, and **Google Cloud Identity-Aware Proxy (IAP) Zero-Trust Security (`app/iap_middleware.py`)**.
+### 3.19. Enterprise Model Context Protocol (MCP) Server, Agent-to-Agent (A2A) Bus & Zero-Trust IAP Security (Phase 27)
+*   **Decision**: Implemented an **Enterprise Model Context Protocol (MCP) Server (`src/mcp_server.py`)**, an **A2A Interoperability Dispatcher (`src/a2a_orchestrator.py`)**, and **Google Cloud Identity-Aware Proxy (IAP) Zero-Trust Security (`app/iap_middleware.py`)**.
 *   **Rationale**:
-    1. **Standardized Tool Exposure (MCP)**: Implements JSON-RPC 2.0 (`tools/list`, `tools/call`, `resources/read`) to allow any external LLM or agent to safely query BigQuery RFM features, score churn models, run vector similarity search, and escalate tickets.
+    1. **Standardized Tool Exposure (MCP)**: Implements JSON-RPC 2.0 (`tools/list`, `tools/call`, `resources/read`) with declarative Pydantic schemas to allow any external LLM or agent to safely query BigQuery RFM features, score churn models, run vector similarity search, and escalate tickets.
     2. **Decentralized Multi-Agent Federation (A2A)**: Separates internal micro-orchestration (LangGraph cyclic state machines) from macro inter-departmental agent collaboration (Support $\leftrightarrow$ Marketing $\leftrightarrow$ Risk/Ops).
-    3. **Business User Accessibility (Google Workspace)**: Enables marketing analysts and support agents to query live customer intelligence and AI retention copy directly from Google Sheets (`=AI_CUSTOMER_SUMMARY()`) and Gmail via Google Apps Script.
-    4. **Zero-Trust Enterprise Security (Google IAP)**: Validates Google-signed cryptographic JWT assertions and user email headers, enforcing granular Role-Based Access Control (RBAC) across Cloud Run backend microservices.
+    3. **Zero-Trust Enterprise Security (Google IAP)**: Validates Google-signed cryptographic JWT assertions and user email headers, enforcing granular Role-Based Access Control (RBAC) across Cloud Run backend microservices.
+
 
 
 

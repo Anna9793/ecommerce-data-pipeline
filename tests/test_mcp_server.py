@@ -173,16 +173,5 @@ def test_iap_security_missing_credentials_rejection():
         assert "401" in str(exc_info.value) or "Unauthorized" in str(exc_info.value)
 
 
-# =============================================================================
-# 4. Google Workspace Add-on Manifest Test
-# =============================================================================
 
-def test_appsscript_manifest_validity():
-    """Validates that appsscript.json contains valid JSON and required OAuth scopes."""
-    with open("appsscript.json", "r") as f:
-        manifest = json.load(f)
 
-    assert manifest["runtimeVersion"] == "V8"
-    assert "oauthScopes" in manifest
-    assert "https://www.googleapis.com/auth/spreadsheets.currentonly" in manifest["oauthScopes"]
-    assert manifest["addOns"]["common"]["name"] == "E-Commerce AI Retention Copilot"
