@@ -26,18 +26,18 @@ A production-grade, end-to-end **Data Engineering, MLOps, and Agentic GenAI Plat
 ```mermaid
 graph TD
     %% Ingress & API Gateway Layer
-    subgraph Ingress_Layer [1. Edge Security & Ingress Layer]
+    subgraph Ingress_Layer ["1. Edge Security & Ingress Layer"]
         Clients[Multi-Tenant Clients: Shopify / Mobile / Web] -->|HTTPS with API Key| Gateway["Google Cloud API Gateway<br/>(OpenAPI 3.0 Contract & Rate Limiting)"]
     end
 
     %% Schema Normalization & Adapter Layer
-    subgraph Adapter_Layer [2. Schema Normalization & Adapter Factory]
+    subgraph Adapter_Layer ["2. Schema Normalization & Adapter Factory"]
         Gateway --> Factory["SchemaAdapterFactory<br/>(ShopifyAdapter, UciRetailAdapter, OlistAdapter)"]
         Factory --> Canonical["CanonicalTransaction (Pydantic Universal Contract)"]
     end
 
     %% Streaming Ingestion & Processing Layer
-    subgraph Ingestion_Stream [3. Streaming Ingestion & ETL Layer]
+    subgraph Ingestion_Stream ["3. Streaming Ingestion & ETL Layer"]
         Canonical --> Topic[("GCP Pub/Sub: retail-transactions-topic")]
         Topic -->|DLQ Policy: 5 Retries| PubSub_DLQ[("Pub/Sub DLQ: dead-letter-topic")]
         Topic -->|Native Subscription| BQ_Raw[("BigQuery: retail_data.transactions<br/>(7-Day Time Travel Enabled)")]
@@ -47,12 +47,12 @@ graph TD
     end
 
     %% Master Orchestration Layer
-    subgraph Orchestration_Layer [4. Master Enterprise Orchestrator (Cloud Composer / Airflow)]
+    subgraph Orchestration_Layer ["4. Master Enterprise Orchestrator (Cloud Composer / Airflow)"]
         Airflow["Airflow Master DAG (Daily @ 00:00 UTC)<br/>1. Sensors → 2. Data Quality → 3. PySpark on Dataproc<br/>4. dbt Semantic Marts → 5. Sync Feature Store & pgvector → 6. Drift Check"]
     end
 
     %% Warehouse Modeling & dbt Semantic Layer
-    subgraph Warehouse_Layer [5. BigQuery & dbt Semantic Modeling (Phase 25)]
+    subgraph Warehouse_Layer ["5. BigQuery & dbt Semantic Modeling (Phase 25)"]
         BQ_Raw --> dbt_stg["dbt Staging (stg_transactions)"]
         dbt_stg --> dbt_int["dbt Intermediate (int_customer_orders_rollup)"]
         dbt_int --> dbt_marts[("dbt Marts: fct_customer_rfm<br/>(Schema Contracts & Tests)")]
@@ -60,14 +60,14 @@ graph TD
     end
 
     %% Distributed Big Data Feature Engineering & Versioning
-    subgraph BigData_Engine [6. Distributed PySpark Engine & Data Lineage (Phase 23/24)]
+    subgraph BigData_Engine ["6. Distributed PySpark Engine & Data Lineage (Phase 23/24)"]
         Airflow --> Dataproc["Dataproc Ephemeral Cluster<br/>(PySpark Windowing, RFM, 30d/90d Velocity, Spot VMs)"]
         Dataproc -->|Parquet & BigQuery Connector| BQ_RFM[("BigQuery: rfm_features View")]
         Airflow -.->|Lineage Manifest & DVC| DVC[("DVC & BQ Snapshots<br/>reports/lineage_manifest.json")]
     end
 
     %% Serving & Storage Layer
-    subgraph Serving_Layer [7. Low-Latency Serving & Feature Store]
+    subgraph Serving_Layer ["7. Low-Latency Serving & Feature Store"]
         Gateway -->|Reverse Proxy /v1/*| API[FastAPI on Cloud Run]
         UI[Streamlit Dashboard UI] <-->|REST API| API
         API <-->|Sub-15ms Key-Value Lookup| FS[("Online Feature Store: Firestore / PostgreSQL")]
@@ -75,7 +75,7 @@ graph TD
     end
 
     %% Agentic GenAI & Hybrid RAG
-    subgraph GenAI_Engine [8. LangGraph Autonomous Multi-Agent & RAG]
+    subgraph GenAI_Engine ["8. LangGraph Autonomous Multi-Agent & RAG"]
         API --> LangGraph["LangGraph StateMachine<br/>(Analyst → Strategist → Copywriter → Critic)"]
         LangGraph -->|Rejection Feedback Loop| LangGraph
         LangGraph -->|Approved Campaign| UI
@@ -88,7 +88,7 @@ graph TD
     end
 
     %% Closed-Loop MLOps & Retraining
-    subgraph MLOps_Retraining [9. Closed-Loop MLOps & Retraining]
+    subgraph MLOps_Retraining ["9. Closed-Loop MLOps & Retraining"]
         Airflow -->|If Drift Detected p < 0.05| Vertex["Vertex AI Pipelines (Kubeflow/KFP)"]
         Vertex -->|Parallel Tasks| Train["Train XGBoost & KMeans"]
         Train --> Gate{"F1 Evaluation Gate"}
@@ -97,9 +97,9 @@ graph TD
     end
 
     %% Infrastructure as Code
-    subgraph IaC_Layer [10. Infrastructure as Code & CI/CD]
+    subgraph IaC_Layer ["10. Infrastructure as Code & CI/CD"]
         TF["Terraform (IaC Modules: Dataproc, BigQuery, GCS, Cloud Run, Pub/Sub, Dataflow, Composer, API Gateway)"] --> GCP_Cloud["Google Cloud Infrastructure"]
-        GHA["GitHub Actions CI/CD (OIDC Workload Identity Federation + 71 Tests)"] --> CloudRun_Deploy["Zero-Downtime Cloud Run Deployment"]
+        GHA["GitHub Actions CI/CD (OIDC Workload Identity Federation + 84 Tests)"] --> CloudRun_Deploy["Zero-Downtime Cloud Run Deployment"]
     end
 
     classDef stream fill:#FF6F00,stroke:#333,stroke-width:2px,color:#fff;
