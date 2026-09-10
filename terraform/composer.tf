@@ -30,16 +30,13 @@ resource "google_project_iam_member" "composer_bigquery_admin" {
 # ============================================================
 
 resource "google_composer_environment" "airflow_environment" {
-  name   = "ecommerce-airflow-composer"
-  region = var.region
+  provider = google-beta
+  name     = "ecommerce-airflow-composer"
+  region   = var.region
 
   config {
     node_config {
       service_account = google_service_account.composer_sa.email
-    }
-
-    data_lineage_integration {
-      enabled = true
     }
 
     software_config {

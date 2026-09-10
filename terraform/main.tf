@@ -3,6 +3,11 @@ provider "google" {
   region  = var.region
 }
 
+provider "google-beta" {
+  project = var.project_id
+  region  = var.region
+}
+
 # ============================================================
 # Enable Essential GCP APIs
 # ============================================================
@@ -30,7 +35,7 @@ locals {
 }
 
 resource "google_project_service" "enabled_apis" {
-  for_each                   = toset(locals.gcp_services)
+  for_each                   = toset(local.gcp_services)
   project                    = var.project_id
   service                    = each.key
   disable_dependent_services = false
