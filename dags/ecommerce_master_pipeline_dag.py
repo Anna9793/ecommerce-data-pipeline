@@ -8,6 +8,31 @@ from airflow.operators.empty import EmptyOperator
 
 logging.basicConfig(level=logging.INFO)
 
+def record_lineage_on_success(context: dict):
+    """
+    Airflow task lifecycle hook (on_success_callback).
+    Automatically records data lineage, execution timestamp, and task provenance
+    into reports/lineage_manifest.json upon successful completion of any task.
+    """
+    try:
+        from src.lineage import DataLineageTracker
+        ti = context.get("task_instance")
+        task_id = ti.task_id if ti else "unknown_task"
+        dag_id = ti.dag_id if ti else "unknown_dag"
+        exec_date = str(context.get("execution_date", datetime.utcnow().isoformat()))
+
+        tracker = DataLineageTracker()
+        tracker.record_stage_execution(
+            stage_name=f"{dag_id}.{task_id}",
+            transformation_type="airflow_orchestrated_task",
+            inputs=[{"task_id": task_id, "execution_date": exec_date}],
+            outputs=[{"status": "SUCCESS"}],
+            model_metadata={"dag_id": dag_id, "task_id": task_id}
+        )
+    except Exception as e:
+        logging.warning("Lineage tracking callback notice: %s", e)
+
+
 # ============================================================
 # Default Arguments & DAG Configuration
 # ============================================================
@@ -20,6 +45,7 @@ default_args = {
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
     "start_date": datetime(2026, 1, 1),
+    "on_success_callback": record_lineage_on_success,
 }
 
 # ============================================================

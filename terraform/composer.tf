@@ -7,6 +7,10 @@ resource "google_composer_environment" "airflow_environment" {
   region = var.region
 
   config {
+    data_lineage_integration {
+      enabled = true
+    }
+
     software_config {
       image_version = "composer-2-airflow-2"
 

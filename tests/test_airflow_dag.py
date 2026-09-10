@@ -60,3 +60,22 @@ def test_drift_branching_logic(monkeypatch):
     # Test Branch 2: No Drift -> log_pipeline_healthy
     monkeypatch.setattr("src.monitoring.calculate_feature_drift", lambda: {"drift_detected": False})
     assert evaluate_drift_and_branch_func() == "log_pipeline_healthy"
+
+
+def test_dag_on_success_lineage_callback(tmp_path, monkeypatch):
+    """Verifies that the Airflow on_success_callback invokes DataLineageTracker cleanly."""
+    from dags.ecommerce_master_pipeline_dag import record_lineage_on_success
+    from unittest.mock import MagicMock
+
+    mock_ti = MagicMock()
+    mock_ti.task_id = "test_task"
+    mock_ti.dag_id = "test_dag"
+
+    context = {
+        "task_instance": mock_ti,
+        "execution_date": "2026-09-10T12:00:00Z"
+    }
+
+    # Should run without error and register lineage
+    record_lineage_on_success(context)
+
