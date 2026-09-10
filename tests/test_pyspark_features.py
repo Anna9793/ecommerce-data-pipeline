@@ -1,11 +1,12 @@
 import pytest
 import os
 from unittest.mock import MagicMock, patch
-from dags.ecommerce_master_pipeline_dag import dag, run_dataproc_pyspark_features_func
 
 
 def test_airflow_dag_contains_dataproc_pyspark_task():
     """Verify that the Airflow Master DAG contains the Dataproc PySpark feature task."""
+    pytest.importorskip("airflow")
+    from dags.ecommerce_master_pipeline_dag import dag
     task_ids = [t.task_id for t in dag.tasks]
     assert "pyspark_dataproc_feature_engineering" in task_ids
     
@@ -17,6 +18,8 @@ def test_airflow_dag_contains_dataproc_pyspark_task():
 
 def test_run_dataproc_pyspark_callable():
     """Verify that the Dataproc Airflow callable executes without errors."""
+    pytest.importorskip("airflow")
+    from dags.ecommerce_master_pipeline_dag import run_dataproc_pyspark_features_func
     result = run_dataproc_pyspark_features_func()
     assert result is True
 
