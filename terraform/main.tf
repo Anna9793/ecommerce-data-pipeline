@@ -18,6 +18,8 @@ locals {
     "dataflow.googleapis.com",
     "dataproc.googleapis.com",
     "composer.googleapis.com",
+    "datalineage.googleapis.com",
+    "dataplex.googleapis.com",
     "apigateway.googleapis.com",
     "servicemanagement.googleapis.com",
     "servicecontrol.googleapis.com",
