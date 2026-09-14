@@ -104,10 +104,11 @@ graph TD
 *   **Structured Outputs**: Utilizes **Pydantic Schemas** (`StrategyPlan`, `CopywriterDraft`, `CriticReview`) with Gemini's `response_mime_type="application/json"` and `response_schema` parameters, eliminating fragile manual string parsing (`.split()`, `.replace()`).
 *   **UI Collaboration Board**: Displays interactive expanders in Tab 3 of Streamlit showing the step-by-step intermediate thoughts of each agent.
 
-### 2.4. Hybrid RAG Product Advisor with `pgvector` (Phase 14)
+### 2.4. Hybrid RAG Product Advisor with `pgvector` & Connection Pooling (Phase 14)
 *   **Location**: [app/rag_service.py](file:///Users/Anna/ecommerce-data-pipeline/app/rag_service.py), [scripts/sync_product_vectors.py](file:///Users/Anna/ecommerce-data-pipeline/scripts/sync_product_vectors.py), and [app/db_postgres.py](file:///Users/Anna/ecommerce-data-pipeline/app/db_postgres.py).
 *   **Contextual Multi-Attribute Embeddings**: Enriches raw products with category classifications and style/seasonal tags (*Title + Category + Price + Seasonal Tags*) before generating **768-dimensional embeddings** via Vertex AI `text-embedding-004`.
 *   **pgvector & HNSW Indexing**: Stored natively in PostgreSQL `product_catalog_vectors` with an **HNSW cosine index** (`USING hnsw (embedding vector_cosine_ops)`) for sub-millisecond retrieval.
+*   **Threaded Connection Pooling**: Production-grade database connection management implemented using `psycopg2.pool.ThreadedConnectionPool` (pool size: 1–20 concurrent connections). Reuses existing TCP sockets, eliminates connection establishment latency, and safely handles multithreaded concurrent queries across FastAPI and background workers with robust `try...finally: release_connection()` lifecycle guarantees.
 *   **Hybrid Search & Budget Filtering**: Executes parameterized SQL queries that simultaneously enforce budget constraints (`unit_price <= max_budget`) and rank by cosine distance (`<=>`).
 *   **Conversational Chatbot with RAG Guardrails**: In Tab 5 of Streamlit, a conversational assistant explains *why* each candidate item was selected and gracefully handles out-of-domain requests (e.g. sports equipment or electronics) by clarifying store specialties.
 

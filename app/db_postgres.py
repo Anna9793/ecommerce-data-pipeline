@@ -1,18 +1,62 @@
 import os
 import logging
 import psycopg2
+from psycopg2 import pool
 from dotenv import load_dotenv
 
 load_dotenv()
 
+_connection_pool = None
+
+def get_pool():
+    global _connection_pool
+    if _connection_pool is None:
+        try:
+            _connection_pool = pool.ThreadedConnectionPool(
+                minconn=1,
+                maxconn=20,
+                dbname=os.getenv("POSTGRES_DB", "postgres"),
+                user=os.getenv("POSTGRES_USER", "postgres"),
+                password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+                host=os.getenv("POSTGRES_HOST", "localhost"),
+                port=os.getenv("POSTGRES_PORT", "5432"),
+            )
+            logging.info("ThreadedConnectionPool initialized successfully (minconn=1, maxconn=20).")
+        except Exception as e:
+            logging.warning("Could not initialize ThreadedConnectionPool: %s. Using direct connections.", e)
+            _connection_pool = None
+    return _connection_pool
+
 def get_connection():
+    """Fetches an active, pre-established connection from the thread-safe connection pool."""
+    pool_inst = get_pool()
+    if pool_inst:
+        try:
+            return pool_inst.getconn()
+        except Exception as e:
+            logging.warning("Failed to get connection from pool: %s. Falling back to direct connect.", e)
     return psycopg2.connect(
-        dbname=os.getenv("POSTGRES_DB"),
-        user=os.getenv("POSTGRES_USER"),
-        password=os.getenv("POSTGRES_PASSWORD"),
-        host=os.getenv("POSTGRES_HOST"),
-        port=os.getenv("POSTGRES_PORT"),
+        dbname=os.getenv("POSTGRES_DB", "postgres"),
+        user=os.getenv("POSTGRES_USER", "postgres"),
+        password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+        host=os.getenv("POSTGRES_HOST", "localhost"),
+        port=os.getenv("POSTGRES_PORT", "5432"),
     )
+
+def release_connection(conn):
+    """Releases an open connection back to the ThreadedConnectionPool for reuse."""
+    if conn:
+        pool_inst = get_pool()
+        if pool_inst and hasattr(pool_inst, "putconn"):
+            try:
+                pool_inst.putconn(conn)
+                return
+            except Exception:
+                pass
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 def insert_prediction(record):
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
@@ -66,7 +110,7 @@ def insert_prediction(record):
         if cursor:
             cursor.close()
         if conn:
-            conn.close()
+            release_connection(conn)
 
 def insert_churn_prediction(record):
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
@@ -118,7 +162,7 @@ def insert_churn_prediction(record):
         if cursor:
             cursor.close()
         if conn:
-            conn.close()
+            release_connection(conn)
 
 def insert_prediction_bigquery(record):
     from google.cloud import bigquery
@@ -241,7 +285,7 @@ def get_online_features(customer_id: str) -> dict:
             if cursor:
                 cursor.close()
             if conn:
-                conn.close()
+                release_connection(conn)
                 
     return None
 
@@ -277,7 +321,7 @@ def init_pgvector_table():
         if cursor:
             cursor.close()
         if conn:
-            conn.close()
+            release_connection(conn)
 
 def search_product_catalog_pgvector(query_vector: list, budget_max: float = None, top_k: int = 4) -> list:
     """
@@ -332,7 +376,7 @@ def search_product_catalog_pgvector(query_vector: list, budget_max: float = None
         if cursor:
             cursor.close()
         if conn:
-            conn.close()
+            release_connection(conn)
 
 
 

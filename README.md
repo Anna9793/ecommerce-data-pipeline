@@ -2,7 +2,7 @@
 
 [![CI/CD Pipeline](https://github.com/Anna9793/ecommerce-data-pipeline/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anna9793/ecommerce-data-pipeline/actions)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Unit Tests](https://img.shields.io/badge/tests-84%2F84%20passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/tests-85%2F85%20passing-brightgreen.svg)]()
 [![Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20BigQuery%20%7C%20Vertex%20AI%20%7C%20Dataproc-orange.svg)](https://cloud.google.com/)
 [![IaC](https://img.shields.io/badge/IaC-Terraform-623CE4.svg)](https://www.terraform.io/)
 [![Big Data](https://img.shields.io/badge/Big%20Data-PySpark%20%7C%20Dataproc-E25A1C.svg)](https://spark.apache.org/)
@@ -99,7 +99,7 @@ graph TD
     %% Infrastructure as Code
     subgraph IaC_Layer ["10. Infrastructure as Code & CI/CD"]
         TF["Terraform (IaC Modules: Dataproc, BigQuery, GCS, Cloud Run, Pub/Sub, Dataflow, Composer, API Gateway)"] --> GCP_Cloud["Google Cloud Infrastructure"]
-        GHA["GitHub Actions CI/CD (OIDC Workload Identity Federation + 84 Tests)"] --> CloudRun_Deploy["Zero-Downtime Cloud Run Deployment"]
+        GHA["GitHub Actions CI/CD (OIDC Workload Identity Federation + 85 Tests)"] --> CloudRun_Deploy["Zero-Downtime Cloud Run Deployment"]
     end
 
     classDef stream fill:#FF6F00,stroke:#333,stroke-width:2px,color:#fff;
@@ -144,7 +144,7 @@ graph TD
 | **11** | **Automation** | Closed-loop automated model evaluation cron job triggering serverless retraining. | `Cloud Scheduler`, `OIDC` |
 | **12** | **Feature Store** | Dual-backend low-latency Online Feature Store (<15ms key-value queries). | `Firestore (NoSQL)`, `PostgreSQL` |
 | **13** | **Multi-Agent GenAI**| 4-Agent collaborative marketing assembly line with Pydantic JSON schema constraints. | `Vertex AI Gemini`, `Pydantic` |
-| **14** | **Vector Search / RAG**| Contextual multi-attribute semantic search and conversational advisor with HNSW index. | `pgvector`, `HNSW`, `text-embedding-004` |
+| **14** | **Vector Search / RAG**| Contextual multi-attribute semantic search, Threaded Connection Pooling, and conversational advisor with HNSW index. | `pgvector`, `psycopg2.pool`, `HNSW`, `text-embedding-004` |
 | **15** | **Agentic Workflows** | Stateful multi-agent graph with automated self-correcting Critic feedback loops. | `LangGraph`, `StateGraph` |
 | **16** | **IaC (Terraform)** | Full declarative provisioning of all GCP datasets, buckets, Cloud Run, and IAM roles. | `Terraform (IaC)`, `HCL` |
 | **17** | **Event Streaming** | Decoupled event-driven streaming ingestion with fan-out Pub/Sub subscriptions. | `Google Cloud Pub/Sub` |
