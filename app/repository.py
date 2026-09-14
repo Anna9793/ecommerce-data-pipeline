@@ -27,12 +27,16 @@ def get_total_predictions():
         return int(val) if val is not None else 0
 
     conn = get_connection()
+    cursor = conn.cursor()
     try:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM predictions;")
-            count = cursor.fetchone()[0]
-            return int(count)
+        cursor.execute("SELECT COUNT(*) FROM predictions;")
+        count = cursor.fetchone()[0]
+        return int(count)
     finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
         release_connection(conn)
 
 def get_average_response_time():
@@ -42,12 +46,16 @@ def get_average_response_time():
         return int(val) if val is not None else 0
 
     conn = get_connection()
+    cursor = conn.cursor()
     try:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT AVG(response_time_ms) FROM predictions;")
-            avg_response = cursor.fetchone()[0]
-            return int(avg_response) if avg_response is not None else 0
+        cursor.execute("SELECT AVG(response_time_ms) FROM predictions;")
+        avg_response = cursor.fetchone()[0]
+        return int(avg_response) if avg_response is not None else 0
     finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
         release_connection(conn)
 
 def get_predictions_by_model_version():
@@ -140,12 +148,16 @@ def get_total_churn_predictions():
         return int(val) if val is not None else 0
 
     conn = get_connection()
+    cursor = conn.cursor()
     try:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM churn_predictions;")
-            count = cursor.fetchone()[0]
-            return int(count)
+        cursor.execute("SELECT COUNT(*) FROM churn_predictions;")
+        count = cursor.fetchone()[0]
+        return int(count)
     finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
         release_connection(conn)
 
 def get_average_churn_probability():
@@ -155,12 +167,16 @@ def get_average_churn_probability():
         return float(val) if val is not None else 0.0
 
     conn = get_connection()
+    cursor = conn.cursor()
     try:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT AVG(churn_probability) FROM churn_predictions;")
-            avg = cursor.fetchone()[0]
-            return float(avg) if avg is not None else 0.0
+        cursor.execute("SELECT AVG(churn_probability) FROM churn_predictions;")
+        avg = cursor.fetchone()[0]
+        return float(avg) if avg is not None else 0.0
     finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
         release_connection(conn)
 
 def get_latest_churn_predictions(limit=10):
