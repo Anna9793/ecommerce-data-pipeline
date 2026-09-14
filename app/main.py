@@ -302,3 +302,35 @@ def check_and_retrain():
             status_code=500,
             detail=f"Failed to check and retrain: {str(e)}"
         )
+
+@app.get("/recommend/two-tower/{customer_id}")
+def recommend_two_tower_get(customer_id: str, top_k: int = 4):
+    try:
+        from app.two_tower_service import TwoTowerRecommenderService
+        service = TwoTowerRecommenderService()
+        return service.recommend_for_customer(customer_id=customer_id, top_k=top_k)
+    except Exception as e:
+        logging.exception("Error generating Two-Tower recommendations")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Two-Tower recommendation failed: {str(e)}"
+        )
+
+@app.post("/recommend/two-tower")
+def recommend_two_tower_post(request: dict):
+    try:
+        from app.two_tower_service import TwoTowerRecommenderService
+        service = TwoTowerRecommenderService()
+        customer_id = request.get("customer_id", "custom_user")
+        top_k = int(request.get("top_k", 4))
+        return service.recommend_for_customer(
+            customer_id=customer_id,
+            custom_features=request,
+            top_k=top_k
+        )
+    except Exception as e:
+        logging.exception("Error generating Two-Tower custom recommendations")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Two-Tower custom recommendation failed: {str(e)}"
+        )

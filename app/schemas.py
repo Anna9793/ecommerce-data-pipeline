@@ -26,3 +26,13 @@ class ProductAdvisorRequest(BaseModel):
     budget_max: Optional[float] = Field(None, description="Optional maximum price filter")
     top_k: Optional[int] = Field(4, description="Number of products to retrieve")
     tenant_id: Optional[str] = Field("giftshop_uk", description="Tenant / Store identifier (giftshop_uk, nordic_tech, olist)")
+
+class TwoTowerRecommendationRequest(BaseModel):
+    customer_id: Optional[str] = Field(None, description="Customer ID for feature lookup")
+    recency: Optional[float] = None
+    frequency: Optional[float] = None
+    avg_order_value: Optional[float] = None
+    spending_velocity: Optional[float] = None
+    cancellation_rate: Optional[float] = None
+    preferred_shopping_hour: Optional[int] = None
+    top_k: Optional[int] = Field(4, description="Number of recommendations to return")

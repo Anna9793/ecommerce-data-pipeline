@@ -2,8 +2,9 @@
 
 [![CI/CD Pipeline](https://github.com/Anna9793/ecommerce-data-pipeline/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anna9793/ecommerce-data-pipeline/actions)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Unit Tests](https://img.shields.io/badge/tests-85%2F85%20passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/tests-91%2F91%20passing-brightgreen.svg)]()
 [![Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20BigQuery%20%7C%20Vertex%20AI%20%7C%20Dataproc-orange.svg)](https://cloud.google.com/)
+[![Deep Learning](https://img.shields.io/badge/Deep%20Learning-PyTorch%20%7C%20Two--Tower-EE4C2C.svg)](https://pytorch.org/)
 [![IaC](https://img.shields.io/badge/IaC-Terraform-623CE4.svg)](https://www.terraform.io/)
 [![Big Data](https://img.shields.io/badge/Big%20Data-PySpark%20%7C%20Dataproc-E25A1C.svg)](https://spark.apache.org/)
 [![dbt](https://img.shields.io/badge/Modeling-dbt%20%7C%20BigQuery-FF694B.svg)](https://www.getdbt.com/)
@@ -158,6 +159,7 @@ graph TD
 | **25** | **dbt Semantic Modeling & Data Contracts** | Modular SQL transformations (`staging` $\rightarrow$ `intermediate` $\rightarrow$ `marts`), schema tests, and BI semantic layer on BigQuery. | `dbt`, `BigQuery`, `SQL Analytics` |
 | **26** | **Event-Driven Agentic AI Retention** | Sub-second churn/cancellation detection via Pub/Sub streaming, autonomous LangGraph self-correcting marketing campaigns, and Firestore offer persistence. | `Pub/Sub`, `LangGraph`, `Firestore`, `Event-Driven AI` |
 | **27** | **Enterprise MCP, A2A & Zero-Trust Security** | Standard Model Context Protocol (MCP JSON-RPC 2.0), decentralized Agent-to-Agent (A2A) bus, Jira escalation connector, and Google IAP security. | `MCP Server`, `A2A Bus`, `Pydantic`, `Google IAP` |
+| **28** | **Deep Learning Two-Tower Neural Retrieval** | PyTorch Dual-Encoder (User Tower & Item Tower), joint 64d latent space, unit-norm L2 embeddings, and pgvector cosine recommendation serving. | `PyTorch`, `Deep Learning`, `Two-Tower`, `pgvector` |
 
 ---
 

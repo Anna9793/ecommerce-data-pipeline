@@ -274,6 +274,13 @@ graph TD
     2. **Decentralized Multi-Agent Federation (A2A)**: Separates internal micro-orchestration (LangGraph cyclic state machines) from macro inter-departmental agent collaboration (Support $\leftrightarrow$ Marketing $\leftrightarrow$ Risk/Ops).
     3. **Zero-Trust Enterprise Security (Google IAP)**: Validates Google-signed cryptographic JWT assertions and user email headers, enforcing granular Role-Based Access Control (RBAC) across Cloud Run backend microservices.
 
+### 3.20. Two-Tower Deep Learning Recommendation Architecture (PyTorch & pgvector) vs. Heuristic Filtering (Phase 28)
+*   **Decision**: Implemented a **Dual-Encoder Two-Tower Deep Learning Architecture in PyTorch (`src/two_tower_recommender.py`, `app/two_tower_service.py`)** comprising a dedicated *User Tower* (mapping customer RFM, velocity, and shopping preferences to 64d embeddings) and an *Item Tower* (mapping product price, categories, and tags to 64d embeddings), serving real-time cosine recommendations via `pgvector` and FastAPI (`/recommend/two-tower`).
+*   **Rationale**:
+    1. **Non-Linear Interaction Representation**: Deep neural networks with batch normalization and non-linear activations capture complex multi-attribute user-item interactions far beyond linear collaborative filtering or manual rule-based heuristics.
+    2. **Sub-Millisecond Candidate Retrieval**: Pre-computes and indexes catalog representations as unit-norm vectors in PostgreSQL `pgvector` with HNSW indices. At serving time, the User Tower generates the customer's latent vector on the fly (`torch.no_grad()`), executing an instantaneous dot-product nearest-neighbor search.
+    3. **Agent & RAG Synergy**: The retrieved top candidate products directly feed into our LangGraph marketing copilot and conversational RAG advisor, ensuring personalized, highly relevant product suggestions.
+
 
 
 
