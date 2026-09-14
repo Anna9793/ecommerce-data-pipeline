@@ -35,19 +35,7 @@ def categorize_product(desc: str) -> tuple:
         
     return category, tags
 
-def get_db_connection():
-    db_host = os.getenv("POSTGRES_HOST", "localhost")
-    db_port = int(os.getenv("POSTGRES_PORT", 5433))
-    db_name = os.getenv("POSTGRES_DB", "ml_pipeline")
-    db_user = os.getenv("POSTGRES_USER", "postgres")
-    db_password = os.getenv("POSTGRES_PASSWORD", "passione")
-    return psycopg2.connect(
-        host=db_host,
-        port=db_port,
-        dbname=db_name,
-        user=db_user,
-        password=db_password
-    )
+from app.db_postgres import get_connection, release_connection
 
 def generate_embeddings_batch(texts: list) -> list:
     """Generates 768-dimensional embeddings using Vertex AI or deterministic fallback."""
@@ -142,8 +130,12 @@ def sync_product_vectors():
     
     # 4. Upsert into PostgreSQL pgvector table
     logging.info("Connecting to PostgreSQL to populate pgvector table 'product_catalog_vectors'...")
+    conn = get_connection()
+    if not conn:
+        logging.error("Could not obtain PostgreSQL connection for vector sync.")
+        return
+        
     try:
-        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Ensure pgvector extension and table exist
@@ -190,12 +182,12 @@ def sync_product_vectors():
         
         execute_batch(cursor, upsert_query, records, page_size=100)
         conn.commit()
-        logging.info("✅ Successfully upserted %d product vector records into PostgreSQL pgvector table!", len(records))
-        
         cursor.close()
-        conn.close()
+        logging.info("✅ Successfully upserted %d product vector records into PostgreSQL pgvector table!", len(records))
     except Exception as e:
         logging.error("Failed to sync pgvector catalog to PostgreSQL: %s", e)
+    finally:
+        release_connection(conn)
 
 if __name__ == "__main__":
     sync_product_vectors()

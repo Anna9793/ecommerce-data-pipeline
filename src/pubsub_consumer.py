@@ -82,18 +82,20 @@ class TransactionConsumer:
                 logging.warning("Firestore feature store update failed: %s", e)
         else:
             try:
-                from app.db_postgres import get_db_connection
-                conn = get_db_connection()
+                from app.db_postgres import get_connection, release_connection
+                conn = get_connection()
                 if conn:
-                    with conn.cursor() as cur:
-                        cur.execute("""
-                            UPDATE online_customer_features
-                            SET recency = 0.0,
-                                frequency = frequency + 1
-                            WHERE customer_id = %s;
-                        """, (str(customer_id),))
-                        conn.commit()
-                    conn.close()
+                    try:
+                        with conn.cursor() as cur:
+                            cur.execute("""
+                                UPDATE online_customer_features
+                                SET recency = 0.0,
+                                    frequency = frequency + 1
+                                WHERE customer_id = %s;
+                            """, (str(customer_id),))
+                            conn.commit()
+                    finally:
+                        release_connection(conn)
             except Exception as e:
                 logging.warning("PostgreSQL feature store update failed: %s", e)
 
