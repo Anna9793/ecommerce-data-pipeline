@@ -60,54 +60,57 @@ def sync_to_firestore(df, project_id):
 
 def sync_to_postgres(df):
     try:
-        from app.db_postgres import get_connection
+        from app.db_postgres import get_connection, release_connection
         logging.info("Connecting to local PostgreSQL database...")
         conn = get_connection()
-        cursor = conn.cursor()
-        
-        logging.info("Upserting %d customer feature profiles to PostgreSQL...", len(df))
-        
-        # Prepare list of tuples
-        data_tuples = []
-        for idx, row in df.iterrows():
-            customer_id = str(row["customer_id"])
-            if not customer_id or customer_id == "nan":
-                continue
-            data_tuples.append((
-                customer_id,
-                float(row["recency"]),
-                int(row["frequency"]),
-                float(row["avg_order_value"]),
-                float(row["spending_velocity"]),
-                float(row["cancellation_rate"]),
-                int(row["preferred_shopping_hour"])
-            ))
+        if not conn:
+            logging.error("Could not obtain database connection for PostgreSQL sync.")
+            return False
             
-        # Execute batched upsert
-        query = """
-            INSERT INTO online_customer_features (
-                customer_id, recency, frequency, avg_order_value, spending_velocity, cancellation_rate, preferred_shopping_hour
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (customer_id) DO UPDATE SET
-                recency = EXCLUDED.recency,
-                frequency = EXCLUDED.frequency,
-                avg_order_value = EXCLUDED.avg_order_value,
-                spending_velocity = EXCLUDED.spending_velocity,
-                cancellation_rate = EXCLUDED.cancellation_rate,
-                preferred_shopping_hour = EXCLUDED.preferred_shopping_hour,
-                updated_at = CURRENT_TIMESTAMP
-        """
-        
-        # We can execute batch execution
-        from psycopg2.extras import execute_batch
-        execute_batch(cursor, query, data_tuples)
-        conn.commit()
-        
-        cursor.close()
-        conn.close()
-        logging.info("PostgreSQL sync complete! Synced %d profiles.", len(data_tuples))
-        return True
+        try:
+            cursor = conn.cursor()
+            logging.info("Upserting %d customer feature profiles to PostgreSQL...", len(df))
+            
+            # Prepare list of tuples
+            data_tuples = []
+            for idx, row in df.iterrows():
+                customer_id = str(row["customer_id"])
+                if not customer_id or customer_id == "nan":
+                    continue
+                data_tuples.append((
+                    customer_id,
+                    float(row["recency"]),
+                    int(row["frequency"]),
+                    float(row["avg_order_value"]),
+                    float(row["spending_velocity"]),
+                    float(row["cancellation_rate"]),
+                    int(row["preferred_shopping_hour"])
+                ))
+                
+            # Execute batched upsert
+            query = """
+                INSERT INTO online_customer_features (
+                    customer_id, recency, frequency, avg_order_value, spending_velocity, cancellation_rate, preferred_shopping_hour
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (customer_id) DO UPDATE SET
+                    recency = EXCLUDED.recency,
+                    frequency = EXCLUDED.frequency,
+                    avg_order_value = EXCLUDED.avg_order_value,
+                    spending_velocity = EXCLUDED.spending_velocity,
+                    cancellation_rate = EXCLUDED.cancellation_rate,
+                    preferred_shopping_hour = EXCLUDED.preferred_shopping_hour,
+                    updated_at = CURRENT_TIMESTAMP
+            """
+            
+            from psycopg2.extras import execute_batch
+            execute_batch(cursor, query, data_tuples)
+            conn.commit()
+            cursor.close()
+            logging.info("PostgreSQL sync complete! Synced %d profiles.", len(data_tuples))
+            return True
+        finally:
+            release_connection(conn)
     except Exception as e:
         logging.exception("Failed to sync customer feature profiles to PostgreSQL: %s", e)
         return False

@@ -89,45 +89,47 @@ class RetentionOfferStore:
 
         # 2. PostgreSQL Local Persistence
         try:
-            from app.db_postgres import get_connection
+            from app.db_postgres import get_connection, release_connection
             conn = get_connection()
             if conn:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS retention_offers (
-                            customer_id VARCHAR(64) PRIMARY KEY,
-                            trigger_reason VARCHAR(128),
-                            subject VARCHAR(256),
-                            body TEXT,
-                            segment VARCHAR(64),
-                            iterations_required INT,
-                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                            payload JSONB
-                        );
-                    """)
-                    cur.execute("""
-                        INSERT INTO retention_offers (customer_id, trigger_reason, subject, body, segment, iterations_required, payload)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (customer_id) DO UPDATE SET
-                            trigger_reason = EXCLUDED.trigger_reason,
-                            subject = EXCLUDED.subject,
-                            body = EXCLUDED.body,
-                            segment = EXCLUDED.segment,
-                            iterations_required = EXCLUDED.iterations_required,
-                            payload = EXCLUDED.payload,
-                            created_at = CURRENT_TIMESTAMP;
-                    """, (
-                        str(customer_id),
-                        trigger_reason,
-                        record["subject"],
-                        record["body"],
-                        record["segment"],
-                        record["iterations_required"],
-                        json.dumps(record)
-                    ))
-                    conn.commit()
-                conn.close()
-                logger.info("Saved retention offer for customer %s to PostgreSQL.", customer_id)
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            CREATE TABLE IF NOT EXISTS retention_offers (
+                                customer_id VARCHAR(64) PRIMARY KEY,
+                                trigger_reason VARCHAR(128),
+                                subject VARCHAR(256),
+                                body TEXT,
+                                segment VARCHAR(64),
+                                iterations_required INT,
+                                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                payload JSONB
+                            );
+                        """)
+                        cur.execute("""
+                            INSERT INTO retention_offers (customer_id, trigger_reason, subject, body, segment, iterations_required, payload)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (customer_id) DO UPDATE SET
+                                trigger_reason = EXCLUDED.trigger_reason,
+                                subject = EXCLUDED.subject,
+                                body = EXCLUDED.body,
+                                segment = EXCLUDED.segment,
+                                iterations_required = EXCLUDED.iterations_required,
+                                payload = EXCLUDED.payload,
+                                created_at = CURRENT_TIMESTAMP;
+                        """, (
+                            str(customer_id),
+                            trigger_reason,
+                            record["subject"],
+                            record["body"],
+                            record["segment"],
+                            record["iterations_required"],
+                            json.dumps(record)
+                        ))
+                        conn.commit()
+                    logger.info("Saved retention offer for customer %s to PostgreSQL.", customer_id)
+                finally:
+                    release_connection(conn)
         except Exception as e:
             logger.warning("PostgreSQL save_offer failed or skipped: %s", e)
 
