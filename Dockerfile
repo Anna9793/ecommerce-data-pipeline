@@ -5,16 +5,16 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-# Install dependencies using uv for high-performance builds
+# Install dependencies using uv for high-performance builds (with CPU-optimized PyTorch)
 COPY requirements.txt pyproject.toml ./
-RUN uv pip install --system --no-cache -r requirements.txt
+RUN uv pip install --system --no-cache --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 
 COPY . .
 
-# Run unit tests inside the container during build
+# Run unit tests inside the container during build in parallel
 FROM builder AS testrunner
 ENV USE_BIGQUERY=false
-RUN PYTHONPATH=. pytest && touch .test_passed
+RUN PYTHONPATH=. pytest -n auto && touch .test_passed
 
 # Final production runner
 FROM builder AS final
