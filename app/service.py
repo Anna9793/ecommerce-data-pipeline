@@ -11,31 +11,41 @@ mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
 PROD_MODEL_URI = "models:/customer_segmentation_model@production"
 PROD_CHURN_MODEL_URI = "models:/customer_churn_model@production"
 
-def load_model_from_gcs(model_name, force_download=False):
+def load_model_from_gcs(model_name: str, force_download: bool = False):
     from google.cloud import storage
     import joblib
-    
+
     project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
     bucket_name = os.getenv("GCS_BUCKET", "anna-ml-pipeline-bucket")
     local_path = f"/tmp/{model_name}"
-    
-    if force_download or not os.path.exists(local_path):
-        logging.info("Downloading %s from GCS bucket %s (force=%s)", model_name, bucket_name, force_download)
+    version_str = "gcs_v1"
+
+    try:
         storage_client = storage.Client(project=project_id)
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(f"models/{model_name}")
-        blob.download_to_filename(local_path)
-        
-    return joblib.load(local_path)
+
+        if force_download or not os.path.exists(local_path):
+            logging.info("Downloading %s from GCS bucket %s (force=%s)", model_name, bucket_name, force_download)
+            blob.download_to_filename(local_path)
+
+        # Extract dynamic version from GCS object generation and update timestamp
+        blob.reload()
+        updated_date = blob.updated.strftime("%Y%m%d") if blob.updated else "latest"
+        version_str = f"gcs_gen{blob.generation or '0'}_{updated_date}"
+    except Exception as e:
+        logging.warning("Could not fetch GCS metadata for %s: %s. Using fallback tag.", model_name, e)
+        version_str = "gcs_fallback_v1"
+
+    model = joblib.load(local_path)
+    return model, version_str
 
 def _load_all_models(force_download=False):
     try:
         if os.getenv("USE_BIGQUERY", "false").lower() == "true":
-            logging.info("Cloud mode active: loading models directly from GCS")
-            p_pipeline = load_model_from_gcs("customer_segmentation_model.pkl", force_download)
-            p_version = "gcs_v50"
-            p_churn_pipeline = load_model_from_gcs("customer_churn_model.pkl", force_download)
-            p_churn_version = "gcs_v4"
+            logging.info("Cloud mode active: loading models dynamically from GCS")
+            p_pipeline, p_version = load_model_from_gcs("customer_segmentation_model.pkl", force_download)
+            p_churn_pipeline, p_churn_version = load_model_from_gcs("customer_churn_model.pkl", force_download)
         else:
             # Local mode: load from MLflow
             p_pipeline = mlflow.sklearn.load_model(PROD_MODEL_URI)

@@ -65,7 +65,8 @@ def test_reload_models_endpoint(mock_reload):
     assert response.json()["status"] == "success"
     assert mock_reload.called
 
-def test_simulate_endpoint_local_mode():
+def test_simulate_endpoint_local_mode(monkeypatch):
+    monkeypatch.setenv("USE_BIGQUERY", "false")
     response = client.post("/simulate?mode=standard&num_records=10")
     assert response.status_code == 200
     assert "mocked" in response.json()["message"]
@@ -76,25 +77,25 @@ def test_monitoring_drift_endpoint():
     assert "status" in response.json()
     assert "drift_detected" in response.json()
 
+@patch("src.monitoring.calculate_feature_drift")
 @patch("scripts.train_on_vertex.submit_vertex_training_job")
-def test_monitoring_check_and_retrain_healthy(mock_submit):
+def test_monitoring_check_and_retrain_healthy(mock_submit, mock_drift):
+    mock_drift.return_value = {"drift_detected": False, "p_value": 0.5}
     response = client.post("/monitoring/check-and-retrain")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
     assert not mock_submit.called
 
+@patch("src.monitoring.calculate_feature_drift")
 @patch("scripts.train_on_vertex.submit_vertex_training_job")
-def test_monitoring_check_and_retrain_drifted(mock_submit):
+def test_monitoring_check_and_retrain_drifted(mock_submit, mock_drift):
+    mock_drift.return_value = {"drift_detected": True, "p_value": 0.01}
     mock_submit.return_value = "mock-vertex-job-name"
-    os.environ["TEST_DRIFT_ACTIVE"] = "true"
-    try:
-        response = client.post("/monitoring/check-and-retrain")
-        assert response.status_code == 200
-        assert response.json()["status"] == "drift_detected"
-        assert "console_url" in response.json()
-        assert mock_submit.called
-    finally:
-        os.environ["TEST_DRIFT_ACTIVE"] = "false"
+    response = client.post("/monitoring/check-and-retrain")
+    assert response.status_code == 200
+    assert response.json()["status"] == "drift_detected"
+    assert "console_url" in response.json()
+    assert mock_submit.called
 
 @patch("app.main.insert_churn_prediction")
 @patch("app.main.predict_churn_service")
