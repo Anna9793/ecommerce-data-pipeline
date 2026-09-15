@@ -3,7 +3,14 @@ import uuid
 import time
 import logging
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from app.schemas import PredictionRequest, ChurnPredictionRequest, ChurnPredictionResponse, ProductAdvisorRequest
+from app.schemas import (
+    PredictionRequest,
+    ChurnPredictionRequest,
+    ChurnPredictionResponse,
+    ProductAdvisorRequest,
+    ProductAdvisorResponse,
+    TwoTowerRecommendationRequest,
+)
 from app.service import predict_cluster, MODEL_VERSION, predict_churn_service, CHURN_MODEL_VERSION
 from app.db_postgres import insert_prediction, insert_churn_prediction
 
@@ -181,7 +188,7 @@ def generate_campaign_graph_endpoint(customer_id: str):
             detail=f"LangGraph campaign generation failed: {str(e)}"
         )
 
-@app.post("/rag/advisor")
+@app.post("/rag/advisor", response_model=ProductAdvisorResponse)
 def product_advisor_endpoint(request: ProductAdvisorRequest):
     try:
         from app.rag_service import ProductAdvisorService

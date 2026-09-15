@@ -23,20 +23,7 @@ def _get_pydantic_schema(model_cls):
         return model_cls.schema()
     return model_cls
 
-class RecommendedProduct(BaseModel):
-    stock_code: str = Field(description="Product SKU code")
-    description: str = Field(description="Product title")
-    category: str = Field(description="Product category")
-    unit_price: float = Field(description="Unit price in USD")
-    similarity: float = Field(description="Vector match similarity score between 0.0 and 1.0")
-    why_recommended: str = Field(description="1-2 sentences explaining why this matches the user's request")
-
-class ProductAdvisorResponse(BaseModel):
-    user_query: str = Field(description="Original user search request")
-    budget_applied: float = Field(default=0.0, description="Max budget constraint if applied, or 0.0 if not specified")
-    intro_message: str = Field(description="Warm, helpful 1-2 sentence assistant opening")
-    recommendations: List[RecommendedProduct] = Field(description="List of top matching products with justifications")
-    shopping_tip: str = Field(description="A helpful styling, gifting, or shopping tip")
+from app.schemas import RecommendedProduct, ProductAdvisorResponse
 
 # ==========================================
 # 2. Product Advisor RAG Service
