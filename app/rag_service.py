@@ -76,9 +76,9 @@ STORE_PROFILES = {
 # 2. Store Profile Resolver Helper
 # ==========================================
 
-def resolve_store_profile(tenant_id: Optional[str] = None) -> tuple[str, dict]:
+def _resolve_store_profile(tenant_id: Optional[str] = None) -> tuple[str, dict]:
     """
-    Resolves normalized tenant key and corresponding store profile dictionary (DRY helper).
+    Resolves normalized tenant key and corresponding store profile dictionary (internal helper).
     """
     tenant_key = "nordic_tech" if tenant_id in ("nordic_tech", "shopify") else "giftshop_uk"
     store_profile = STORE_PROFILES.get(tenant_key, STORE_PROFILES["giftshop_uk"])
@@ -121,7 +121,7 @@ class ProductAdvisorService:
 
     def search_products(self, query_text: str, budget_max: Optional[float] = None, top_k: int = 4, tenant_id: str = "giftshop_uk") -> list:
         """Retrieves top products filtered by tenant/store catalog and budget."""
-        tenant_key, store_profile = resolve_store_profile(tenant_id)
+        tenant_key, store_profile = _resolve_store_profile(tenant_id)
         
         query_vector = self.get_query_embedding(query_text)
         results = search_product_catalog_pgvector(query_vector, budget_max=budget_max, top_k=top_k)
@@ -155,7 +155,7 @@ class ProductAdvisorService:
         1. Retrieval: Vector search & catalog filtering for the store
         2. Reasoning: Gemini generates personalized justifications per product based on store identity
         """
-        tenant_key, store_profile = resolve_store_profile(tenant_id)
+        tenant_key, store_profile = _resolve_store_profile(tenant_id)
         
         retrieved_products = self.search_products(query_text, budget_max=budget_max, top_k=top_k, tenant_id=tenant_key)
         
