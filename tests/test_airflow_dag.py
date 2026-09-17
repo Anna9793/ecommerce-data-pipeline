@@ -10,15 +10,16 @@ def test_dag_loaded_without_errors():
     assert "ecommerce_daily_master_pipeline" in dagbag.dags
 
 def test_dag_structure_and_task_count():
-    """Verifies that the Master DAG contains all 9 expected pipeline tasks."""
+    """Verifies that the Master DAG contains all 10 expected pipeline tasks."""
     assert dag is not None
-    assert len(dag.tasks) == 9
+    assert len(dag.tasks) == 10
 
     expected_task_ids = {
         "check_raw_transactions",
         "validate_data_quality",
         "refresh_rfm_features",
         "pyspark_dataproc_feature_engineering",
+        "bqml_enrich_and_vectorize_catalog",
         "sync_online_feature_store",
         "sync_product_vectors",
         "evaluate_statistical_drift_branch",
@@ -34,6 +35,7 @@ def test_dag_dependencies_and_ordering():
     dq_task = dag.get_task("validate_data_quality")
     rfm_task = dag.get_task("refresh_rfm_features")
     pyspark_task = dag.get_task("pyspark_dataproc_feature_engineering")
+    bqml_task = dag.get_task("bqml_enrich_and_vectorize_catalog")
     sync_fs_task = dag.get_task("sync_online_feature_store")
     sync_vec_task = dag.get_task("sync_product_vectors")
     branch_task = dag.get_task("evaluate_statistical_drift_branch")
@@ -44,8 +46,10 @@ def test_dag_dependencies_and_ordering():
     assert dq_task in check_task.downstream_list
     assert rfm_task in dq_task.downstream_list
     assert pyspark_task in dq_task.downstream_list
+    assert bqml_task in dq_task.downstream_list
     assert sync_fs_task in rfm_task.downstream_list
     assert sync_fs_task in pyspark_task.downstream_list
+    assert sync_fs_task in bqml_task.downstream_list
     assert sync_vec_task in sync_fs_task.downstream_list
     assert branch_task in sync_vec_task.downstream_list
     assert trigger_vertex_task in branch_task.downstream_list
