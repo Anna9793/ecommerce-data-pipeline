@@ -124,11 +124,11 @@ class ProductAdvisorService:
         tenant_key, store_profile = _resolve_store_profile(tenant_id)
         
         query_vector = self.get_query_embedding(query_text)
-        results = search_product_catalog_pgvector(query_vector, budget_max=budget_max, top_k=top_k)
+        results = search_product_catalog_pgvector(query_vector, budget_max=budget_max, top_k=top_k, tenant_id=tenant_key)
         
-        # If pgvector returned results from default UK catalog but active store is Nordic, or if pgvector is offline
-        if tenant_key == "nordic_tech" or not results:
-            logging.info("Using multi-tenant catalog for '%s'...", tenant_key)
+        # If pgvector is offline or empty, use deterministic in-memory fallback
+        if not results:
+            logging.info("Using multi-tenant fallback catalog for '%s'...", tenant_key)
             catalog = store_profile["fallback_catalog"]
             if budget_max:
                 catalog = [p for p in catalog if p["unit_price"] <= budget_max]

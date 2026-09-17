@@ -48,19 +48,40 @@ def test_search_product_catalog_pgvector(mock_get_conn):
     mock_conn.cursor.return_value = mock_cursor
     
     mock_cursor.fetchall.return_value = [
-        ("85123A", "WHITE HANGING HEART T-LIGHT HOLDER", "Home Decor", 2.55, "Product: ...", 0.9123),
-        ("22423", "REGENCY CAKESTAND 3 TIER", "Kitchen", 12.75, "Product: ...", 0.8245)
+        ("85123A", "WHITE HANGING HEART T-LIGHT HOLDER", "Home Decor", 2.55, "Product: ...", 0.9123, "giftshop_uk"),
+        ("22423", "REGENCY CAKESTAND 3 TIER", "Kitchen", 12.75, "Product: ...", 0.8245, "giftshop_uk")
     ]
     
     from app.db_postgres import search_product_catalog_pgvector
     fake_vector = [0.1] * 768
-    results = search_product_catalog_pgvector(fake_vector, budget_max=15.0, top_k=2)
+    results = search_product_catalog_pgvector(fake_vector, budget_max=15.0, top_k=2, tenant_id="giftshop_uk")
     
     assert len(results) == 2
     assert results[0]["stock_code"] == "85123A"
     assert results[0]["unit_price"] == 2.55
     assert results[0]["similarity"] == 0.9123
+    assert results[0]["tenant_id"] == "giftshop_uk"
     assert mock_cursor.execute.called
+
+@patch("app.db_postgres.get_connection")
+def test_search_product_catalog_pgvector_nordic_tenant(mock_get_conn):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_get_conn.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    
+    mock_cursor.fetchall.return_value = [
+        ("SKU-TECH-001", "Nordic Pro ANC Wireless Headphones", "Smart Audio", 149.00, "Product: ...", 0.9412, "nordic_tech")
+    ]
+    
+    from app.db_postgres import search_product_catalog_pgvector
+    fake_vector = [0.1] * 768
+    results = search_product_catalog_pgvector(fake_vector, budget_max=160.0, top_k=1, tenant_id="nordic_tech")
+    
+    assert len(results) == 1
+    assert results[0]["stock_code"] == "SKU-TECH-001"
+    assert results[0]["tenant_id"] == "nordic_tech"
+    assert results[0]["similarity"] == 0.9412
 
 @patch("app.rag_service.vertexai.init")
 @patch("app.rag_service.TextEmbeddingModel.from_pretrained")

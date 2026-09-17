@@ -122,13 +122,34 @@ def sync_product_vectors():
         
     catalog["category"] = categories
     catalog["document_text"] = document_texts
+    catalog["tenant_id"] = "giftshop_uk"
     
-    # 3. Generate 768d Vector Embeddings
-    logging.info("Computing 768-dimensional contextual vector embeddings...")
-    embeddings = generate_embeddings_batch(document_texts)
-    catalog["embedding"] = embeddings
+    # 3. Add Nordic Tech Catalog Products
+    from app.rag_service import STORE_PROFILES
+    nordic_items = STORE_PROFILES.get("nordic_tech", {}).get("fallback_catalog", [])
+    nordic_rows = []
+    for item in nordic_items:
+        desc = item["description"]
+        cat = item["category"]
+        price = float(item["unit_price"])
+        doc_text = f"Product: {desc} | Category: {cat} | Price: ${price:.2f} | Store: NordicWear & Tech | Tags: Scandinavian acoustics, performance activewear, workspace gear"
+        nordic_rows.append({
+            "stock_code": item["stock_code"],
+            "description": desc,
+            "category": cat,
+            "unit_price": price,
+            "document_text": doc_text,
+            "tenant_id": "nordic_tech"
+        })
+    df_nordic = pd.DataFrame(nordic_rows)
+    all_catalog = pd.concat([catalog, df_nordic], ignore_index=True)
     
-    # 4. Upsert into PostgreSQL pgvector table
+    # 4. Generate 768d Vector Embeddings
+    logging.info("Computing 768-dimensional contextual vector embeddings for %d multi-tenant products...", len(all_catalog))
+    embeddings = generate_embeddings_batch(all_catalog["document_text"].tolist())
+    all_catalog["embedding"] = embeddings
+    
+    # 5. Upsert into PostgreSQL pgvector table
     logging.info("Connecting to PostgreSQL to populate pgvector table 'product_catalog_vectors'...")
     conn = get_connection()
     if not conn:
@@ -142,26 +163,31 @@ def sync_product_vectors():
         cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS product_catalog_vectors (
-                stock_code VARCHAR(50) PRIMARY KEY,
+                stock_code VARCHAR(50) NOT NULL,
+                tenant_id VARCHAR(50) NOT NULL DEFAULT 'giftshop_uk',
                 description TEXT NOT NULL,
                 category VARCHAR(100),
                 unit_price DOUBLE PRECISION NOT NULL,
                 document_text TEXT NOT NULL,
                 embedding vector(768),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (stock_code, tenant_id)
             );
             CREATE INDEX IF NOT EXISTS product_vector_idx 
             ON product_catalog_vectors 
             USING hnsw (embedding vector_cosine_ops);
+            CREATE INDEX IF NOT EXISTS idx_product_catalog_tenant 
+            ON product_catalog_vectors (tenant_id);
         """)
         conn.commit()
         
         # Prepare records
         records = []
-        for _, row in catalog.iterrows():
+        for _, row in all_catalog.iterrows():
             vec_str = "[" + ",".join(map(str, row["embedding"])) + "]"
             records.append((
                 str(row["stock_code"]),
+                str(row["tenant_id"]),
                 str(row["description"]),
                 str(row["category"]),
                 float(row["unit_price"]),
@@ -170,9 +196,9 @@ def sync_product_vectors():
             ))
             
         upsert_query = """
-            INSERT INTO product_catalog_vectors (stock_code, description, category, unit_price, document_text, embedding)
-            VALUES (%s, %s, %s, %s, %s, %s::vector)
-            ON CONFLICT (stock_code) DO UPDATE SET
+            INSERT INTO product_catalog_vectors (stock_code, tenant_id, description, category, unit_price, document_text, embedding)
+            VALUES (%s, %s, %s, %s, %s, %s, %s::vector)
+            ON CONFLICT (stock_code, tenant_id) DO UPDATE SET
                 description = EXCLUDED.description,
                 category = EXCLUDED.category,
                 unit_price = EXCLUDED.unit_price,
@@ -183,7 +209,7 @@ def sync_product_vectors():
         execute_batch(cursor, upsert_query, records, page_size=100)
         conn.commit()
         cursor.close()
-        logging.info("✅ Successfully upserted %d product vector records into PostgreSQL pgvector table!", len(records))
+        logging.info("✅ Successfully upserted %d multi-tenant product vector records into PostgreSQL pgvector table!", len(records))
     except Exception as e:
         logging.error("Failed to sync pgvector catalog to PostgreSQL: %s", e)
     finally:

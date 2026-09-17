@@ -2,7 +2,7 @@
 
 [![CI/CD Pipeline](https://github.com/Anna9793/ecommerce-data-pipeline/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anna9793/ecommerce-data-pipeline/actions)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Unit Tests](https://img.shields.io/badge/tests-91%2F91%20passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/tests-92%2F92%20passing-brightgreen.svg)]()
 [![Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20BigQuery%20%7C%20Vertex%20AI%20%7C%20Dataproc-orange.svg)](https://cloud.google.com/)
 [![Deep Learning](https://img.shields.io/badge/Deep%20Learning-PyTorch%20%7C%20Two--Tower-EE4C2C.svg)](https://pytorch.org/)
 [![IaC](https://img.shields.io/badge/IaC-Terraform-623CE4.svg)](https://www.terraform.io/)
@@ -215,9 +215,9 @@ pip install -r requirements.txt
 docker compose up -d
 ```
 
-### 3. Run Automated Unit Tests (66 Passing)
+### 3. Run Automated Unit Tests (92 Passing)
 ```bash
-PYTHONPATH=. pytest
+PYTHONPATH=. pytest -n auto
 ```
 
 ### 4. Launch Application
