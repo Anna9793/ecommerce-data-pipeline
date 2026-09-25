@@ -19,10 +19,28 @@ from app.service import (
     RFM_FEATURE_VERSION,
     CHURN_FEATURE_VERSION,
 )
-from app.db_postgres import insert_prediction, insert_churn_prediction
+from contextlib import asynccontextmanager
+from app.db_postgres import insert_prediction, insert_churn_prediction, close_pool
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    FastAPI Lifespan Context Manager implementing 12-Factor App Factor IX (Disposability).
+    Handles graceful resource initialization and clean connection teardown upon SIGTERM/shutdown.
+    """
+    logging.info("Starting up E-Commerce ML & AI Platform (12-Factor App Factor IX: Fast Startup)...")
+    yield
+    logging.info("Shutting down gracefully: closing PostgreSQL connection pools...")
+    close_pool()
+
+
+app = FastAPI(
+    title="E-Commerce ML & Agentic GenAI Platform",
+    description="Enterprise Multi-Tenant Data, MLOps and Agentic GenAI Recommendation Platform",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 @app.get("/")
 def health_check():

@@ -123,3 +123,12 @@ def test_predict_by_customer_id_via_feature_store(mock_get_features, mock_predic
     assert data["is_churn"] == 1
     assert data["churn_probability"] == 0.85
     mock_get_features.assert_called_once_with("12345")
+
+
+@patch("app.main.close_pool")
+def test_lifespan_graceful_shutdown(mock_close_pool):
+    """Verifies that FastAPI Lifespan context manager gracefully teardowns connection pools upon shutdown (Factor IX)."""
+    with TestClient(app) as c:
+        resp = c.get("/")
+        assert resp.status_code == 200
+    assert mock_close_pool.called

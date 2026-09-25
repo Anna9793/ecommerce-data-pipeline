@@ -27,6 +27,18 @@ def get_pool():
             _connection_pool = None
     return _connection_pool
 
+def close_pool():
+    """Gracefully closes all connections in the ThreadedConnectionPool (12-Factor App Factor IX: Disposability)."""
+    global _connection_pool
+    if _connection_pool is not None:
+        try:
+            _connection_pool.closeall()
+            logging.info("PostgreSQL ThreadedConnectionPool closed gracefully.")
+        except Exception as e:
+            logging.warning("Error closing ThreadedConnectionPool: %s", e)
+        finally:
+            _connection_pool = None
+
 def get_connection():
     """Fetches an active, pre-established connection from the thread-safe connection pool."""
     pool_inst = get_pool()
