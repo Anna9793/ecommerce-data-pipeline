@@ -282,12 +282,13 @@ graph TD
     2. **Sub-Millisecond Candidate Retrieval**: Pre-computes and indexes catalog representations as unit-norm vectors in PostgreSQL `pgvector` with HNSW indices. At serving time, the User Tower generates the customer's latent vector on the fly (`torch.no_grad()`), executing an instantaneous dot-product nearest-neighbor search.
     3. **Agent & RAG Synergy**: The retrieved top candidate products directly feed into our LangGraph marketing copilot and conversational RAG advisor, ensuring personalized, highly relevant product suggestions.
 
-### 3.21. In-Database BigQuery ML (Gemini 1.5 Flash & text-embedding-004) vs. Client-Side Python Heuristics (Phase 30)
-*   **Decision**: Replaced brittle, client-side regex heuristics (`categorize_product`) with an **In-Database BigQuery ML (BQML)** pipeline ([`sql/bqml_gemini_catalog_enrichment.sql`](file:///Users/Anna/ecommerce-data-pipeline/sql/bqml_gemini_catalog_enrichment.sql), [`src/bqml_enrichment.py`](file:///Users/Anna/ecommerce-data-pipeline/src/bqml_enrichment.py)) utilizing `ML.GENERATE_TEXT` with Gemini 1.5 Flash for automated taxonomy/tags extraction and `ML.GENERATE_EMBEDDING` with `text-embedding-004` for dense 768d vector embeddings.
+### 3.22. Twelve-Factor App Modern Configuration & Explicit Dependencies (Pydantic Settings & Unified Lineage) (Phase 31)
+*   **Decision**: Unified legacy static path scripts (`config/paths.py`) and scattered `os.getenv()` calls into a centralized **Pydantic Settings Architecture (`config/settings.py`, `.env.example`)** conforming to *The Twelve-Factor App* methodology (**Factor II: Dependencies** and **Factor III: Config**).
 *   **Rationale**:
-    1. **Zero Data Movement (In-Warehouse AI)**: Massive catalog enrichment is executed directly within Google BigQuery's distributed compute engine without downloading millions of rows to local RAM or chunking thousands of manual REST API requests.
-    2. **Structured JSON Mode**: Uses `response_mime_type = 'application/json'` in `ML.GENERATE_TEXT` to guarantee 100% compliant category classifications and search tags across multi-tenant stores (`giftshop_uk`, `nordic_tech`).
-    3. **Airflow Master DAG Integration**: A dedicated task (`bqml_enrich_and_vectorize_catalog`) runs daily inside the Master Orchestration DAG ([`dags/ecommerce_master_pipeline_dag.py`](file:///Users/Anna/ecommerce-data-pipeline/dags/ecommerce_master_pipeline_dag.py)), seamlessly bridging warehouse ELT with downstream PostgreSQL `pgvector` synchronization.
+    1. **Type-Safe Dynamic Configuration (Factor III)**: `Settings` automatically parses, coerces, and validates configuration from environment variables and `.env` files with strict type safety, safe local defaults (`USE_BIGQUERY=false`), and cached singleton access (`get_settings()`).
+    2. **Zero-Code Lineage Evolution**: Feature versions (`RFM_FEATURE_VERSION`, `CHURN_FEATURE_VERSION`) and model registries are centrally managed, allowing production lineage upgrades without modifying application logic.
+    3. **100% Backward Compatibility**: `config/paths.py` dynamically delegates to the central settings singleton, maintaining seamless compatibility with all legacy ingestion and reporting modules.
+
 
 
 
