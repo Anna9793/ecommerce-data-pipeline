@@ -17,13 +17,26 @@ def sync_product_vectors():
     """
     logging.info("Starting Multi-Tenant Product Catalog Vector Sync via BigQuery ML...")
     
-    # 1. Load unique products from local dataset (GiftShop UK)
-    csv_path = "data/processed/clean_retail.csv"
-    if os.path.exists(csv_path):
-        df = pd.read_csv(csv_path)
+    # 1. Load unique products (BigQuery in production vs CSV in local/CI)
+    if os.getenv("USE_BIGQUERY", "false").lower() == "true":
+        logging.info("Querying latest product transactions directly from BigQuery table...")
+        from google.cloud import bigquery
+        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+        client = bigquery.Client(project=project_id)
+        query = f"""
+            SELECT stock_code, description, unit_price, invoice_no
+            FROM `{project_id}.retail_data.transactions`
+            WHERE description IS NOT NULL AND unit_price > 0
+        """
+        df = client.query(query).to_dataframe()
     else:
-        csv_path = "data/raw/online_retail.csv"
-        df = pd.read_csv(csv_path)
+        logging.info("Loading product transactions from local CSV fallback...")
+        csv_path = "data/processed/clean_retail.csv"
+        if os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
+        else:
+            csv_path = "data/raw/online_retail.csv"
+            df = pd.read_csv(csv_path)
         
     df.columns = df.columns.str.lower()
     

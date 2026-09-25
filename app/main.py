@@ -11,7 +11,14 @@ from app.schemas import (
     ProductAdvisorResponse,
     TwoTowerRecommendationRequest,
 )
-from app.service import predict_cluster, MODEL_VERSION, predict_churn_service, CHURN_MODEL_VERSION
+from app.service import (
+    predict_cluster,
+    MODEL_VERSION,
+    predict_churn_service,
+    CHURN_MODEL_VERSION,
+    RFM_FEATURE_VERSION,
+    CHURN_FEATURE_VERSION,
+)
 from app.db_postgres import insert_prediction, insert_churn_prediction
 
 
@@ -28,40 +35,33 @@ def predict(request: PredictionRequest):
     try:
         customer_id = request.customer_id
         
-        # If any features are None, load from Online Feature Store
-        if request.recency is None or request.frequency is None or request.avg_order_value is None:
-            if not customer_id:
-                raise HTTPException(status_code=400, detail="Missing required features and no customer_id provided.")
-            
+        # 1. Resolve features: Direct inputs vs Online Feature Store lookup
+        if request.recency is not None and request.frequency is not None and request.avg_order_value is not None:
+            features = {
+                "recency": request.recency,
+                "frequency": request.frequency,
+                "avg_order_value": request.avg_order_value
+            }
+        elif customer_id:
             from app.db_postgres import get_online_features
             features = get_online_features(customer_id)
             if not features:
                 raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found in the Feature Store.")
-            
-            recency = features["recency"]
-            frequency = features["frequency"]
-            avg_order_value = features["avg_order_value"]
         else:
-            recency = request.recency
-            frequency = request.frequency
-            avg_order_value = request.avg_order_value
+            raise HTTPException(status_code=400, detail="Missing required features and no customer_id provided.")
 
-        features_dict = {
-            "recency": recency,
-            "frequency": frequency,
-            "avg_order_value": avg_order_value
-        }
-
-        cluster, label = predict_cluster(features_dict)
+        cluster, label = predict_cluster(features)
 
         record = {
             "request_id": str(uuid.uuid4()),
             "customer_id": customer_id,
-            **features_dict,
+            "recency": features["recency"],
+            "frequency": features["frequency"],
+            "avg_order_value": features["avg_order_value"],
             "cluster": cluster,
             "label": label,
             "model_version": str(MODEL_VERSION),
-            "feature_version": "rfm_v1",
+            "feature_version": str(RFM_FEATURE_VERSION),
             "response_time_ms": (time.time() - start) * 1000
         }
 
@@ -91,53 +91,43 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
     try:
         customer_id = request.customer_id
         
-        # If any features are None, load from Online Feature Store
+        # 1. Resolve features: Direct inputs vs Online Feature Store lookup
         feature_fields = [
             request.recency, request.frequency, request.avg_order_value, 
             request.spending_velocity, request.cancellation_rate, request.preferred_shopping_hour
         ]
-        if any(f is None for f in feature_fields):
-            if not customer_id:
-                raise HTTPException(status_code=400, detail="Missing required features and no customer_id provided.")
-            
+        if all(f is not None for f in feature_fields):
+            features = {
+                "recency": request.recency,
+                "frequency": request.frequency,
+                "avg_order_value": request.avg_order_value,
+                "spending_velocity": request.spending_velocity,
+                "cancellation_rate": request.cancellation_rate,
+                "preferred_shopping_hour": request.preferred_shopping_hour
+            }
+        elif customer_id:
             from app.db_postgres import get_online_features
             features = get_online_features(customer_id)
             if not features:
                 raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found in the Feature Store.")
-            
-            recency = features["recency"]
-            frequency = features["frequency"]
-            avg_order_value = features["avg_order_value"]
-            spending_velocity = features["spending_velocity"]
-            cancellation_rate = features["cancellation_rate"]
-            preferred_shopping_hour = features["preferred_shopping_hour"]
         else:
-            recency = request.recency
-            frequency = request.frequency
-            avg_order_value = request.avg_order_value
-            spending_velocity = request.spending_velocity
-            cancellation_rate = request.cancellation_rate
-            preferred_shopping_hour = request.preferred_shopping_hour
+            raise HTTPException(status_code=400, detail="Missing required features and no customer_id provided.")
 
-        features_dict = {
-            "recency": recency,
-            "frequency": frequency,
-            "avg_order_value": avg_order_value,
-            "spending_velocity": spending_velocity,
-            "cancellation_rate": cancellation_rate,
-            "preferred_shopping_hour": preferred_shopping_hour
-        }
-
-        is_churn, churn_probability = predict_churn_service(features_dict)
+        is_churn, churn_probability = predict_churn_service(features)
 
         record = {
             "request_id": str(uuid.uuid4()),
             "customer_id": customer_id,
-            **features_dict,
+            "recency": features["recency"],
+            "frequency": features["frequency"],
+            "avg_order_value": features["avg_order_value"],
+            "spending_velocity": features.get("spending_velocity", 1.0),
+            "cancellation_rate": features.get("cancellation_rate", 0.0),
+            "preferred_shopping_hour": features.get("preferred_shopping_hour", 12),
             "churn_probability": churn_probability,
             "is_churn": is_churn,
             "model_version": str(CHURN_MODEL_VERSION),
-            "feature_version": "rfm_v1",
+            "feature_version": str(CHURN_FEATURE_VERSION),
             "response_time_ms": (time.time() - start) * 1000
         }
 

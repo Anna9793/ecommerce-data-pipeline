@@ -159,5 +159,74 @@
       "dag_id": "test_dag",
       "task_id": "test_task"
     }
+  },
+  {
+    "record_id": "lin_20260917_184729",
+    "timestamp_utc": "2026-09-17T18:47:29.207555",
+    "stage_name": "test_dag.test_task",
+    "git_commit": "890c34c",
+    "dvc_tag": "dvc-v2026.09.17",
+    "transformation_type": "airflow_orchestrated_task",
+    "inputs": [
+      {
+        "task_id": "test_task",
+        "execution_date": "2026-09-10T12:00:00Z"
+      }
+    ],
+    "outputs": [
+      {
+        "status": "SUCCESS"
+      }
+    ],
+    "model_metadata": {
+      "dag_id": "test_dag",
+      "task_id": "test_task"
+    }
+  },
+  {
+    "record_id": "lin_20260923_205114",
+    "timestamp_utc": "2026-09-23T20:51:14.854842",
+    "stage_name": "test_dag.test_task",
+    "git_commit": "890c34c",
+    "dvc_tag": "dvc-v2026.09.23",
+    "transformation_type": "airflow_orchestrated_task",
+    "inputs": [
+      {
+        "task_id": "test_task",
+        "execution_date": "2026-09-10T12:00:00Z"
+      }
+    ],
+    "outputs": [
+      {
+        "status": "SUCCESS"
+      }
+    ],
+    "model_metadata": {
+      "dag_id": "test_dag",
+      "task_id": "test_task"
+    }
+  },
+  {
+    "record_id": "lin_20260925_080520",
+    "timestamp_utc": "2026-09-25T08:05:20.286426",
+    "stage_name": "test_dag.test_task",
+    "git_commit": "890c34c",
+    "dvc_tag": "dvc-v2026.09.25",
+    "transformation_type": "airflow_orchestrated_task",
+    "inputs": [
+      {
+        "task_id": "test_task",
+        "execution_date": "2026-09-10T12:00:00Z"
+      }
+    ],
+    "outputs": [
+      {
+        "status": "SUCCESS"
+      }
+    ],
+    "model_metadata": {
+      "dag_id": "test_dag",
+      "task_id": "test_task"
+    }
   }
 ]

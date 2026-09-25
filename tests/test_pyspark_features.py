@@ -2,6 +2,8 @@ import pytest
 import os
 from unittest.mock import MagicMock, patch
 
+pytestmark = pytest.mark.slow
+
 
 def test_airflow_dag_contains_dataproc_pyspark_task():
     """Verify that the Airflow Master DAG contains the Dataproc PySpark feature task."""

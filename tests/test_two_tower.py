@@ -5,6 +5,7 @@ Unit Tests for Phase 28: Two-Tower Deep Learning Recommender System (PyTorch).
 import os
 from unittest.mock import patch
 import pytest
+pytestmark = pytest.mark.slow
 import numpy as np
 import torch
 from fastapi.testclient import TestClient

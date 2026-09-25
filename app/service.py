@@ -11,6 +11,9 @@ mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
 PROD_MODEL_URI = "models:/customer_segmentation_model@production"
 PROD_CHURN_MODEL_URI = "models:/customer_churn_model@production"
 
+RFM_FEATURE_VERSION = os.getenv("RFM_FEATURE_VERSION", "rfm_v1")
+CHURN_FEATURE_VERSION = os.getenv("CHURN_FEATURE_VERSION", "churn_v2")
+
 def load_model_from_gcs(model_name: str, force_download: bool = False):
     from google.cloud import storage
     import joblib

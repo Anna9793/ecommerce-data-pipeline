@@ -185,23 +185,24 @@ class BigQueryMLEnrichmentService:
         df = df_products.copy()
         texts = df["document_text"].tolist()
 
-        try:
-            import vertexai
-            from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
-            vertexai.init(project=self.project_id, location="us-central1")
-            model = TextEmbeddingModel.from_pretrained("text-embedding-004")
-            
-            batch_size = 100
-            all_embeddings = []
-            for i in range(0, len(texts), batch_size):
-                batch = texts[i:i+batch_size]
-                inputs = [TextEmbeddingInput(t, "RETRIEVAL_DOCUMENT") for t in batch]
-                res = model.get_embeddings(inputs)
-                all_embeddings.extend([emb.values for emb in res])
-            df["embedding"] = all_embeddings
-            return df
-        except Exception as e:
-            logging.warning("Vertex AI / BQML embedding service in local fallback mode: %s", e)
+        if self.use_bigquery:
+            try:
+                import vertexai
+                from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
+                vertexai.init(project=self.project_id, location="us-central1")
+                model = TextEmbeddingModel.from_pretrained("text-embedding-004")
+                
+                batch_size = 100
+                all_embeddings = []
+                for i in range(0, len(texts), batch_size):
+                    batch = texts[i:i+batch_size]
+                    inputs = [TextEmbeddingInput(t, "RETRIEVAL_DOCUMENT") for t in batch]
+                    res = model.get_embeddings(inputs)
+                    all_embeddings.extend([emb.values for emb in res])
+                df["embedding"] = all_embeddings
+                return df
+            except Exception as e:
+                logging.warning("Vertex AI / BQML embedding service in local fallback mode: %s", e)
 
         # Deterministic normalized vector fallback (768 dimensions)
         embeddings = []

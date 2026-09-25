@@ -1,4 +1,5 @@
 import pytest
+pytestmark = pytest.mark.slow
 airflow = pytest.importorskip("airflow")
 from airflow.models import DagBag
 from dags.ecommerce_master_pipeline_dag import dag, evaluate_drift_and_branch_func
