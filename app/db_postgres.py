@@ -106,7 +106,7 @@ def insert_prediction(record):
             record["label"],
             record["model_version"],
             record["feature_version"],
-            record["response_time_ms"],
+            record.get("response_time_ms", None),
         ))
 
         conn.commit()
@@ -164,7 +164,7 @@ def insert_churn_prediction(record):
             record["is_churn"],
             record["model_version"],
             record["feature_version"],
-            record["response_time_ms"],
+            record.get("response_time_ms", None),
         ))
         conn.commit()
     except Exception:

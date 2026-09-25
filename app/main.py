@@ -77,8 +77,6 @@ def health_check():
 
 @app.post("/predict")
 def predict(request: PredictionRequest):
-    start = time.time()
-
     try:
         customer_id = request.customer_id
         
@@ -108,8 +106,7 @@ def predict(request: PredictionRequest):
             "cluster": cluster,
             "label": label,
             "model_version": str(MODEL_VERSION),
-            "feature_version": str(RFM_FEATURE_VERSION),
-            "response_time_ms": (time.time() - start) * 1000
+            "feature_version": str(RFM_FEATURE_VERSION)
         }
 
         insert_prediction(record)
@@ -133,8 +130,6 @@ def predict(request: PredictionRequest):
 
 @app.post("/predict/churn", response_model=ChurnPredictionResponse)
 def predict_churn_endpoint(request: ChurnPredictionRequest):
-    start = time.time()
-
     try:
         customer_id = request.customer_id
         
@@ -174,8 +169,7 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
             "churn_probability": churn_probability,
             "is_churn": is_churn,
             "model_version": str(CHURN_MODEL_VERSION),
-            "feature_version": str(CHURN_FEATURE_VERSION),
-            "response_time_ms": (time.time() - start) * 1000
+            "feature_version": str(CHURN_FEATURE_VERSION)
         }
 
         insert_churn_prediction(record)
