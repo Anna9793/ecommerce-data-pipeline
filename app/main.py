@@ -20,7 +20,12 @@ from app.service import (
     CHURN_FEATURE_VERSION,
 )
 from contextlib import asynccontextmanager
+from fastapi import Request
+from config.logging_config import setup_logging
 from app.db_postgres import insert_prediction, insert_churn_prediction, close_pool
+
+# Initialize 12-Factor Event Stream Logger (Factor XI)
+logger = setup_logging()
 
 
 @asynccontextmanager
@@ -29,9 +34,9 @@ async def lifespan(app: FastAPI):
     FastAPI Lifespan Context Manager implementing 12-Factor App Factor IX (Disposability).
     Handles graceful resource initialization and clean connection teardown upon SIGTERM/shutdown.
     """
-    logging.info("Starting up E-Commerce ML & AI Platform (12-Factor App Factor IX: Fast Startup)...")
+    logger.info("Starting up E-Commerce ML & AI Platform (12-Factor App Factor IX: Fast Startup)...")
     yield
-    logging.info("Shutting down gracefully: closing PostgreSQL connection pools...")
+    logger.info("Shutting down gracefully: closing PostgreSQL connection pools...")
     close_pool()
 
 
@@ -41,6 +46,30 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+
+@app.middleware("http")
+async def log_requests_middleware(request: Request, call_next):
+    """
+    Structured HTTP Request Logging Middleware (12-Factor App Factor XI: Logs as Event Streams).
+    Records method, path, response status, and processing duration for Cloud Logging observability.
+    """
+    start_time = time.time()
+    response = await call_next(request)
+    duration_ms = (time.time() - start_time) * 1000.0
+
+    logger.info(
+        f"{request.method} {request.url.path} completed with status {response.status_code} in {duration_ms:.2f}ms",
+        extra={
+            "http_method": request.method,
+            "http_path": request.url.path,
+            "status_code": response.status_code,
+            "latency_ms": round(duration_ms, 2),
+            "client_ip": request.client.host if request.client else "unknown"
+        }
+    )
+    return response
+
 
 @app.get("/")
 def health_check():

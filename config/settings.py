@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
     API_HOST: str = "0.0.0.0"
     TEST_DRIFT_ACTIVE: bool = False
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "text"
 
     # --------------------------------------------------------------------------
     # 5. Filesystem Directory Layout (Derived from project root)
