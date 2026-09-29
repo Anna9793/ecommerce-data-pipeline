@@ -7,6 +7,11 @@ class PredictionRequest(BaseModel):
     frequency: Optional[float] = None
     avg_order_value: Optional[float] = None
 
+class PredictionResponse(BaseModel):
+    customer_id: Optional[str] = Field(None, description="Customer identifier")
+    cluster: int = Field(description="Assigned RFM cluster index")
+    label: str = Field(description="Human-readable RFM segment label")
+
 class ChurnPredictionRequest(BaseModel):
     customer_id: Optional[str] = None
     recency: Optional[float] = None
@@ -51,4 +56,18 @@ class TwoTowerRecommendationRequest(BaseModel):
     cancellation_rate: Optional[float] = None
     preferred_shopping_hour: Optional[int] = None
     top_k: Optional[int] = Field(4, description="Number of recommendations to return")
+
+class TwoTowerProductRecommendation(BaseModel):
+    stock_code: str = Field(description="Product SKU code")
+    description: str = Field(description="Product title")
+    category: str = Field(description="Product category")
+    unit_price: float = Field(description="Unit price in USD")
+    affinity_score: float = Field(description="Normalized similarity score between 0.0 and 1.0")
+
+class TwoTowerRecommendationResponse(BaseModel):
+    customer_id: str = Field(description="Target Customer identifier")
+    engine: str = Field(description="Recommendation engine name")
+    embedding_dimension: int = Field(description="Latent embedding dimension")
+    user_embedding_norm: float = Field(description="L2 norm of the user embedding")
+    recommendations: List[TwoTowerProductRecommendation] = Field(description="Top recommended items")
 

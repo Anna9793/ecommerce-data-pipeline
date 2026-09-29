@@ -8,11 +8,13 @@ from fastapi.responses import JSONResponse
 
 from app.schemas import (
     PredictionRequest,
+    PredictionResponse,
     ChurnPredictionRequest,
     ChurnPredictionResponse,
     ProductAdvisorRequest,
     ProductAdvisorResponse,
     TwoTowerRecommendationRequest,
+    TwoTowerRecommendationResponse,
 )
 from app.service import (
     predict_cluster,
@@ -105,7 +107,7 @@ def health_check():
     return {"status": "healthy"}
 
 
-@app.post("/predict")
+@app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
     customer_id = request.customer_id
     
@@ -140,11 +142,11 @@ def predict(request: PredictionRequest):
 
     insert_prediction(record)
 
-    return {
-        "customer_id": customer_id or "unknown",
-        "cluster": cluster,
-        "label": label        
-    }
+    return PredictionResponse(
+        customer_id=customer_id or "unknown",
+        cluster=cluster,
+        label=label        
+    )
 
 
 @app.post("/predict/churn", response_model=ChurnPredictionResponse)
@@ -233,22 +235,31 @@ def product_advisor_endpoint(request: ProductAdvisorRequest):
 # Two-Tower Deep Learning Recommender Endpoints
 # ==============================================================================
 
-@app.get("/recommend/two-tower/{customer_id}")
+@app.get("/recommend/two-tower/{customer_id}", response_model=TwoTowerRecommendationResponse)
 def recommend_two_tower_get(customer_id: str, top_k: int = 4):
     from app.two_tower_service import TwoTowerRecommenderService
     service = TwoTowerRecommenderService()
     return service.recommend_for_customer(customer_id=customer_id, top_k=top_k)
 
 
-@app.post("/recommend/two-tower")
-def recommend_two_tower_post(request: dict):
+@app.post("/recommend/two-tower", response_model=TwoTowerRecommendationResponse)
+def recommend_two_tower_post(request: TwoTowerRecommendationRequest):
     from app.two_tower_service import TwoTowerRecommenderService
     service = TwoTowerRecommenderService()
-    customer_id = request.get("customer_id", "custom_user")
-    top_k = int(request.get("top_k", 4))
+    customer_id = request.customer_id or "custom_user"
+    top_k = int(request.top_k or 4)
+    custom_features = {
+        "recency": request.recency,
+        "frequency": request.frequency,
+        "avg_order_value": request.avg_order_value,
+        "spending_velocity": request.spending_velocity,
+        "cancellation_rate": request.cancellation_rate,
+        "preferred_shopping_hour": request.preferred_shopping_hour
+    }
+    custom_features = {k: v for k, v in custom_features.items() if v is not None}
     return service.recommend_for_customer(
         customer_id=customer_id,
-        custom_features=request,
+        custom_features=custom_features if custom_features else None,
         top_k=top_k
     )
 

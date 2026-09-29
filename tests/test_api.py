@@ -71,7 +71,9 @@ def test_simulate_endpoint_local_mode(monkeypatch):
     assert response.status_code == 200
     assert "mocked" in response.json()["message"]
 
-def test_monitoring_drift_endpoint():
+@patch("src.monitoring.calculate_feature_drift")
+def test_monitoring_drift_endpoint(mock_drift):
+    mock_drift.return_value = {"status": "success", "drift_detected": False, "features": {}}
     response = client.get("/monitoring/drift")
     assert response.status_code == 200
     assert "status" in response.json()
