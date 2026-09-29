@@ -7,7 +7,7 @@ from langgraph.graph import StateGraph, END
 from app.agent_service import MarketingAgentService, _get_pydantic_schema
 from vertexai.generative_models import GenerationConfig
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ==========================================
 # 1. Pydantic Schemas for LangGraph Nodes
@@ -83,7 +83,7 @@ class MarketingGraphOrchestrator:
     # Node 1: Behavioral Analyst Node
     # ----------------------------------------------------
     def _analyst_node(self, state: MarketingGraphState) -> Dict[str, Any]:
-        logging.info("Executing LangGraph Node: Analyst for customer %s", state["customer_id"])
+        logger.info("Executing LangGraph Node: Analyst for customer %s", state["customer_id"])
         profile = state["profile"]
         analysis = self.agent_service._run_analyst_agent(profile)
         
@@ -105,7 +105,7 @@ class MarketingGraphOrchestrator:
     # Node 2: Campaign Strategist Node
     # ----------------------------------------------------
     def _strategist_node(self, state: MarketingGraphState) -> Dict[str, Any]:
-        logging.info("Executing LangGraph Node: Strategist")
+        logger.info("Executing LangGraph Node: Strategist")
         profile = state["profile"]
         recs = state["recommended_products"]
         diagnosis = state.get("analysis_text", "")
@@ -130,7 +130,7 @@ class MarketingGraphOrchestrator:
     # ----------------------------------------------------
     def _copywriter_node(self, state: MarketingGraphState) -> Dict[str, Any]:
         iteration = state.get("iteration_count", 0) + 1
-        logging.info("Executing LangGraph Node: Copywriter (Cycle %d)", iteration)
+        logger.info("Executing LangGraph Node: Copywriter (Cycle %d)", iteration)
         
         profile = state["profile"]
         recs = state["recommended_products"]
@@ -178,7 +178,7 @@ class MarketingGraphOrchestrator:
             subject = data.get("subject", "Exclusive Recommendations For You")
             body = data.get("body", "Discover handpicked styles crafted for you.")
         except Exception as e:
-            logging.warning("Copywriter graph node failed: %s. Using default copy.", e)
+            logger.warning("Copywriter graph node failed: %s. Using default copy.", e)
             subject = "Curated picks for your home"
             body = f"Hello! We selected lovely items including {recs[0]['description'] if recs else 'our bestsellers'} for you."
 
@@ -203,7 +203,7 @@ class MarketingGraphOrchestrator:
     # ----------------------------------------------------
     def _critic_node(self, state: MarketingGraphState) -> Dict[str, Any]:
         iteration = state.get("iteration_count", 1)
-        logging.info("Executing LangGraph Node: Critic (Audit Cycle %d)", iteration)
+        logger.info("Executing LangGraph Node: Critic (Audit Cycle %d)", iteration)
         
         profile = state["profile"]
         subject = state.get("draft_subject", "")
@@ -240,7 +240,7 @@ class MarketingGraphOrchestrator:
             final_subject = data.get("final_subject", subject)
             final_body = data.get("final_body", body)
         except Exception as e:
-            logging.warning("Critic graph node failed: %s. Using safe approval fallback.", e)
+            logger.warning("Critic graph node failed: %s. Using safe approval fallback.", e)
             is_approved = True
             review_notes = "Audited against compliance rules. Approved."
             critique_feedback = "Approved."
@@ -273,21 +273,21 @@ class MarketingGraphOrchestrator:
         iteration = state.get("iteration_count", 0)
 
         if is_approved:
-            logging.info("Critic approved campaign on iteration %d. Transitioning to format_output.", iteration)
+            logger.info("Critic approved campaign on iteration %d. Transitioning to format_output.", iteration)
             return "format_output"
             
         if iteration >= 3:
-            logging.info("Max iterations (3) reached. Forcing completion to format_output.")
+            logger.info("Max iterations (3) reached. Forcing completion to format_output.")
             return "format_output"
 
-        logging.info("Critic requested revision (Iteration %d/3). Routing back to Copywriter!", iteration)
+        logger.info("Critic requested revision (Iteration %d/3). Routing back to Copywriter!", iteration)
         return "copywriter"
 
     # ----------------------------------------------------
     # Node 5: Format Final Output Node
     # ----------------------------------------------------
     def _format_output_node(self, state: MarketingGraphState) -> Dict[str, Any]:
-        logging.info("Executing LangGraph Node: Format Output")
+        logger.info("Executing LangGraph Node: Format Output")
         profile = state["profile"]
         subject = state.get("draft_subject", "Curated for You")
         body = state.get("draft_body", "Here are your recommendations.")

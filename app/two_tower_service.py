@@ -18,8 +18,7 @@ from src.two_tower_recommender import (
     EMBEDDING_DIM
 )
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("two_tower_service")
+logger = logging.getLogger(__name__)
 
 
 class TwoTowerRecommenderService:

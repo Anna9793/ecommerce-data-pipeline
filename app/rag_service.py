@@ -9,7 +9,7 @@ from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 from vertexai.generative_models import GenerativeModel, GenerationConfig
 from app.db_postgres import search_product_catalog_pgvector
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ==========================================
 # 1. Pydantic Structured Output Schemas
@@ -98,7 +98,7 @@ class ProductAdvisorService:
             self.embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
             self.gemini_model = GenerativeModel("gemini-1.5-flash")
         except Exception as e:
-            logging.warning("Vertex AI initialization skipped in local test mode: %s", e)
+            logger.warning("Vertex AI initialization skipped in local test mode: %s", e)
             self.embedding_model = None
             self.gemini_model = None
 
@@ -110,7 +110,7 @@ class ProductAdvisorService:
                 embeddings = self.embedding_model.get_embeddings(inputs)
                 return embeddings[0].values
             except Exception as e:
-                logging.warning("Vertex query embedding failed: %s. Using deterministic fallback.", e)
+                logger.warning("Vertex query embedding failed: %s. Using deterministic fallback.", e)
                 
         # Deterministic fallback embedding
         seed = sum(ord(c) for c in query_text) % 10000
@@ -128,7 +128,7 @@ class ProductAdvisorService:
         
         # If pgvector is offline or empty, use deterministic in-memory fallback
         if not results:
-            logging.info("Using multi-tenant fallback catalog for '%s'...", tenant_key)
+            logger.info("Using multi-tenant fallback catalog for '%s'...", tenant_key)
             catalog = store_profile["fallback_catalog"]
             if budget_max:
                 catalog = [p for p in catalog if p["unit_price"] <= budget_max]
@@ -215,7 +215,7 @@ class ProductAdvisorService:
                 "shopping_tip": data.get("shopping_tip", "Pair with coordinating accessories for maximum performance!")
             }
         except Exception as e:
-            logging.warning("Advisor LLM reasoning failed: %s. Using deterministic RAG output.", e)
+            logger.warning("Advisor LLM reasoning failed: %s. Using deterministic RAG output.", e)
             recs = []
             for p in retrieved_products:
                 recs.append({

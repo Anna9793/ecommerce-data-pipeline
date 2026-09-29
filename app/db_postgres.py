@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 _connection_pool = None
 
 def get_pool():
@@ -21,9 +23,9 @@ def get_pool():
                 host=os.getenv("POSTGRES_HOST", "localhost"),
                 port=os.getenv("POSTGRES_PORT", "5432"),
             )
-            logging.info("ThreadedConnectionPool initialized successfully (minconn=1, maxconn=20).")
+            logger.info("ThreadedConnectionPool initialized successfully (minconn=1, maxconn=20).")
         except Exception as e:
-            logging.warning("Could not initialize ThreadedConnectionPool: %s. Using direct connections.", e)
+            logger.warning("Could not initialize ThreadedConnectionPool: %s. Using direct connections.", e)
             _connection_pool = None
     return _connection_pool
 
@@ -33,9 +35,9 @@ def close_pool():
     if _connection_pool is not None:
         try:
             _connection_pool.closeall()
-            logging.info("PostgreSQL ThreadedConnectionPool closed gracefully.")
+            logger.info("PostgreSQL ThreadedConnectionPool closed gracefully.")
         except Exception as e:
-            logging.warning("Error closing ThreadedConnectionPool: %s", e)
+            logger.warning("Error closing ThreadedConnectionPool: %s", e)
         finally:
             _connection_pool = None
 
@@ -46,7 +48,7 @@ def get_connection():
         try:
             return pool_inst.getconn()
         except Exception as e:
-            logging.warning("Failed to get connection from pool: %s. Falling back to direct connect.", e)
+            logger.warning("Failed to get connection from pool: %s. Falling back to direct connect.", e)
     return psycopg2.connect(
         dbname=os.getenv("POSTGRES_DB", "postgres"),
         user=os.getenv("POSTGRES_USER", "postgres"),
@@ -114,8 +116,7 @@ def insert_prediction(record):
 
 
     except Exception:
-        logging.exception(
-            "Error inserting prediction")
+        logger.exception("Error inserting prediction")
         raise
 
     finally:
@@ -168,7 +169,7 @@ def insert_churn_prediction(record):
         ))
         conn.commit()
     except Exception:
-        logging.exception("Error inserting churn prediction")
+        logger.exception("Error inserting churn prediction")
         raise
     finally:
         if cursor:
@@ -180,7 +181,7 @@ def insert_prediction_bigquery(record):
     from google.cloud import bigquery
     from datetime import datetime, timezone
     
-    logging.info("Logging segmentation prediction to BigQuery predictions_log table")
+    logger.info("Logging segmentation prediction to BigQuery predictions_log table")
     record = record.copy()
     record["created_at"] = datetime.now(timezone.utc).isoformat()
     
@@ -196,14 +197,14 @@ def insert_prediction_bigquery(record):
     
     errors = client.insert_rows_json(table_id, [record])
     if errors:
-        logging.error("BigQuery insert errors: %s", errors)
+        logger.error("BigQuery insert errors: %s", errors)
         raise RuntimeError(f"Errors inserting rows to BigQuery: {errors}")
 
 def insert_churn_prediction_bigquery(record):
     from google.cloud import bigquery
     from datetime import datetime, timezone
     
-    logging.info("Logging churn prediction to BigQuery churn_predictions_log table")
+    logger.info("Logging churn prediction to BigQuery churn_predictions_log table")
     record = record.copy()
     record["created_at"] = datetime.now(timezone.utc).isoformat()
     
@@ -219,7 +220,7 @@ def insert_churn_prediction_bigquery(record):
     
     errors = client.insert_rows_json(table_id, [record])
     if errors:
-        logging.error("BigQuery churn insert errors: %s", errors)
+        logger.error("BigQuery churn insert errors: %s", errors)
         raise RuntimeError(f"Errors inserting churn rows to BigQuery: {errors}")
 
 def get_online_features(customer_id: str) -> dict:
@@ -234,10 +235,10 @@ def get_online_features(customer_id: str) -> dict:
             doc_ref = db.collection("online_customer_features").document(str(customer_id))
             doc = doc_ref.get()
             if doc.exists:
-                logging.info("Successfully fetched features for customer %s from Firestore", customer_id)
+                logger.info("Successfully fetched features for customer %s from Firestore", customer_id)
                 return doc.to_dict()
         except Exception as e:
-            logging.warning("Failed to fetch features from Firestore: %s. Trying BigQuery fallback.", e)
+            logger.warning("Failed to fetch features from Firestore: %s. Trying BigQuery fallback.", e)
 
         # Fallback to BigQuery view
         try:
@@ -254,7 +255,7 @@ def get_online_features(customer_id: str) -> dict:
             results = list(query_job.result())
             if results:
                 row = results[0]
-                logging.info("Successfully fetched features for customer %s from BigQuery view fallback", customer_id)
+                logger.info("Successfully fetched features for customer %s from BigQuery view fallback", customer_id)
                 return {
                     "customer_id": customer_id,
                     "recency": float(row.recency),
@@ -265,7 +266,7 @@ def get_online_features(customer_id: str) -> dict:
                     "preferred_shopping_hour": int(row.preferred_shopping_hour) if "preferred_shopping_hour" in row else 12
                 }
         except Exception as e:
-            logging.error("Failed to fetch features from BigQuery fallback: %s", e)
+            logger.error("Failed to fetch features from BigQuery fallback: %s", e)
             
     else:
         # Local Mode: Query Postgres online_customer_features table
@@ -281,7 +282,7 @@ def get_online_features(customer_id: str) -> dict:
             """, (str(customer_id),))
             row = cursor.fetchone()
             if row:
-                logging.info("Successfully fetched features for customer %s from PostgreSQL online features table", customer_id)
+                logger.info("Successfully fetched features for customer %s from PostgreSQL online features table", customer_id)
                 return {
                     "customer_id": customer_id,
                     "recency": row[0],
@@ -292,7 +293,7 @@ def get_online_features(customer_id: str) -> dict:
                     "preferred_shopping_hour": row[5]
                 }
         except Exception as e:
-            logging.error("Failed to query features from PostgreSQL: %s", e)
+            logger.error("Failed to query features from PostgreSQL: %s", e)
         finally:
             if cursor:
                 cursor.close()
@@ -328,9 +329,9 @@ def init_pgvector_table():
             ON product_catalog_vectors (tenant_id);
         """)
         conn.commit()
-        logging.info("pgvector schema and HNSW index successfully initialized.")
+        logger.info("pgvector schema and HNSW index successfully initialized.")
     except Exception as e:
-        logging.warning("pgvector initialization failed: %s", e)
+        logger.warning("pgvector initialization failed: %s", e)
         if conn:
             conn.rollback()
     finally:
@@ -388,7 +389,7 @@ def search_product_catalog_pgvector(query_vector: list, budget_max: float = None
             })
         return results
     except Exception as e:
-        logging.warning("pgvector search failed: %s. Returning empty results.", e)
+        logger.warning("pgvector search failed: %s. Returning empty results.", e)
         return []
     finally:
         if cursor:

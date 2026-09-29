@@ -9,8 +9,7 @@ from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 from vertexai.generative_models import GenerativeModel, GenerationConfig
 from google.cloud import bigquery
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ==========================================
 # 1. Pydantic Structured Output Schemas
@@ -79,7 +78,7 @@ class MarketingAgentService:
         rfm_df = self.bq_client.query(rfm_query, job_config=job_config).to_dataframe()
         
         if rfm_df.empty:
-            logging.warning("Customer ID %s not found in BigQuery rfm_features.", customer_id)
+            logger.warning("Customer ID %s not found in BigQuery rfm_features.", customer_id)
             return None
             
         profile = rfm_df.iloc[0].to_dict()
@@ -143,7 +142,7 @@ class MarketingAgentService:
             catalog_df = self.bq_client.query(catalog_query).to_dataframe()
             
             if catalog_df.empty:
-                logging.error("Product catalog is empty. Run generate_embeddings.py first.")
+                logger.error("Product catalog is empty. Run generate_embeddings.py first.")
                 return []
                 
             # Compute Cosine Similarity using numpy
@@ -161,7 +160,7 @@ class MarketingAgentService:
             
             return top_matches[["stock_code", "description", "unit_price", "similarity"]].to_dict(orient="records")
         except Exception as e:
-            logging.warning("Vertex AI vector search failed: %s. Using default recommendations.", e)
+            logger.warning("Vertex AI vector search failed: %s. Using default recommendations.", e)
             # Safe static fallback recommendations
             return [
                 {"stock_code": "85123A", "description": "WHITE HANGING HEART T-LIGHT HOLDER", "unit_price": 2.55, "similarity": 0.85},
@@ -192,7 +191,7 @@ class MarketingAgentService:
             response = self.gemini_model.generate_content(prompt)
             return response.text.strip()
         except Exception as e:
-            logging.warning("Analyst agent failed: %s. Using fallback.", e)
+            logger.warning("Analyst agent failed: %s. Using fallback.", e)
             status = "high churn risk with declining velocity" if profile.get("churn_probability", 0.1) > 0.5 else "stable engagement with healthy repeat cadence"
             return f"Customer demonstrates {status}. Recent order cancellation rate is {profile.get('cancellation_rate', 0.0)*100:.1f}%."
 
@@ -223,7 +222,7 @@ class MarketingAgentService:
             data = json.loads(response.text)
             return f"1. Theme: {data.get('theme', 'Customer Retention')}\n2. Incentive: Promotional code ({data.get('incentive_code', 'LOYALTYVIP')})\n3. Action Plan: {data.get('action_plan', 'Highlight complementary products.')}"
         except Exception as e:
-            logging.warning("Strategist agent failed: %s. Using fallback.", e)
+            logger.warning("Strategist agent failed: %s. Using fallback.", e)
             code = "WINBACK20" if profile.get("churn_probability", 0.1) > 0.5 else "LOYALTYVIP"
             return f"1. Theme: Customer Retention & Re-engagement.\n2. Incentive: Special promotional benefit ({code}).\n3. Catalog Focus: Complement previous purchase of {profile['last_purchased']}."
 
@@ -264,7 +263,7 @@ class MarketingAgentService:
                 "body": data.get("body", "")
             }
         except Exception as e:
-            logging.warning("Copywriter agent failed: %s. Using fallback.", e)
+            logger.warning("Copywriter agent failed: %s. Using fallback.", e)
             discount = "20% off with code WINBACK20" if profile.get("churn_probability", 0.1) > 0.5 else "VIP access with code LOYALTYVIP"
             rec_items = "\n".join([f"{i+1}. **{r['description']}** — ${r['unit_price']:.2f}" for i, r in enumerate(recommendations)])
             return {
@@ -306,7 +305,7 @@ class MarketingAgentService:
                 "full_text": f"# {subject}\n\n{body}\n\n{delivery_meta}"
             }
         except Exception as e:
-            logging.warning("Critic agent failed: %s. Using fallback.", e)
+            logger.warning("Critic agent failed: %s. Using fallback.", e)
             subject = draft.get("subject", "Special picks for you")
             body = draft.get("body", "")
             return {
