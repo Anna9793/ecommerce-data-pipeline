@@ -228,5 +228,28 @@
       "dag_id": "test_dag",
       "task_id": "test_task"
     }
+  },
+  {
+    "record_id": "lin_20260930_175017",
+    "timestamp_utc": "2026-09-30T17:50:17.463187",
+    "stage_name": "test_dag.test_task",
+    "git_commit": "acfa37e",
+    "dvc_tag": "dvc-v2026.09.30",
+    "transformation_type": "airflow_orchestrated_task",
+    "inputs": [
+      {
+        "task_id": "test_task",
+        "execution_date": "2026-09-10T12:00:00Z"
+      }
+    ],
+    "outputs": [
+      {
+        "status": "SUCCESS"
+      }
+    ],
+    "model_metadata": {
+      "dag_id": "test_dag",
+      "task_id": "test_task"
+    }
   }
 ]

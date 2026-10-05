@@ -93,12 +93,17 @@ class ProductAdvisorService:
     def __init__(self):
         self.project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
         
-        try:
-            vertexai.init(project=self.project_id, location="us-central1")
-            self.embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
-            self.gemini_model = GenerativeModel("gemini-1.5-flash")
-        except Exception as e:
-            logger.warning("Vertex AI initialization skipped in local test mode: %s", e)
+        use_bq = os.getenv("USE_BIGQUERY", "false").lower() == "true"
+        if use_bq:
+            try:
+                vertexai.init(project=self.project_id, location="us-central1")
+                self.embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
+                self.gemini_model = GenerativeModel("gemini-1.5-flash")
+            except Exception as e:
+                logger.warning("Vertex AI initialization skipped in local test mode: %s", e)
+                self.embedding_model = None
+                self.gemini_model = None
+        else:
             self.embedding_model = None
             self.gemini_model = None
 
