@@ -89,64 +89,29 @@ def insert_transactions_to_bq(rows: list, project_id: str = "anna-ml-pipeline") 
     logging.info("Streaming successfully completed.")
     return len(rows)
 
-def publish_transactions_to_pubsub(rows: list, project_id: str = "anna-ml-pipeline", topic: str = "retail-transactions-topic") -> int:
-    """Publishes transaction events to Google Cloud Pub/Sub topic."""
-    from src.pubsub_publisher import TransactionPublisher
-    publisher = TransactionPublisher(project_id=project_id, topic_name=topic)
-    logging.info("Publishing %d transactions via Google Cloud Pub/Sub topic: %s", len(rows), topic)
-    message_ids = publisher.publish_batch(rows)
-    logging.info("Pub/Sub ingestion complete. %d messages acknowledged.", len(message_ids))
-    return len(message_ids)
-
-def generate_shopify_transactions(num_records: int = 10) -> list:
-    """Loads realistic Shopify transactions from data/raw/shopify_nordic_store.csv."""
-    import pandas as pd
-    csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "shopify_nordic_store.csv")
-    if os.path.exists(csv_path):
-        df = pd.read_csv(csv_path)
-        sample = df.sample(min(num_records, len(df)), replace=True)
-        return sample.to_dict(orient="records")
-    return generate_mock_transactions(num_records=num_records)
-
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Simulate real-time transactions ingestion stream.")
-    parser.add_argument("--mode", type=str, default="standard", choices=["standard", "drift_cancellations", "drift_velocity", "pubsub"])
-    parser.add_argument("--tenant", type=str, default="giftshop_uk", choices=["giftshop_uk", "nordic_tech", "shopify"])
-    parser.add_argument("--records", "--limit", "-n", "--count", "--num-records", dest="records", type=int, default=10, help="Number of records to simulate (alias: --limit, -n, --count)")
-    parser.add_argument("--use-pubsub", action="store_true", help="Publish stream to Google Cloud Pub/Sub instead of direct BigQuery insert")
-    parser.add_argument("--dry-run", action="store_true", help="Normalize and print sample records locally without attempting GCP network calls")
+    import json
+    parser = argparse.ArgumentParser(description="Simulate real-time transactions ingestion stream for GiftShop UK.")
+    parser.add_argument("--mode", type=str, default="standard", choices=["standard", "drift_cancellations", "drift_velocity"], help="Simulation mode")
+    parser.add_argument("--records", "--limit", "-n", "--count", "--num-records", dest="records", type=int, default=10, help="Number of records to simulate")
+    parser.add_argument("--dry-run", action="store_true", help="Print sample records locally without attempting GCP network calls")
     args = parser.parse_args()
     
     project = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-    sim_mode = "standard" if args.mode == "pubsub" else args.mode
-    
-    if args.tenant in ("nordic_tech", "shopify"):
-        logging.info("Simulating Shopify transactions for tenant: NordicWear & Tech...")
-        raw_rows = generate_shopify_transactions(num_records=args.records)
-    else:
-        logging.info("Simulating UCI transactions for tenant: GiftShop UK...")
-        raw_rows = generate_mock_transactions(mode=sim_mode, num_records=args.records)
-    
-    from src.schema_adapters import SchemaAdapterFactory
-    canonical_objects = [SchemaAdapterFactory.normalize(r) for r in raw_rows]
-    canonical_rows = [obj.to_dict() for obj in canonical_objects]
-    bq_rows = [obj.to_bigquery_row() for obj in canonical_objects]
-    logging.info("✅ Normalized %d transactions via SchemaAdapterFactory.", len(canonical_rows))
+    logging.info("Simulating transactions for GiftShop UK (mode: %s, records: %d)...", args.mode, args.records)
+    rows = generate_mock_transactions(mode=args.mode, num_records=args.records)
 
     if args.dry_run:
-        import json
-        print("\n--- [DRY RUN: Normalized Canonical Transactions Preview] ---")
-        for i, row in enumerate(canonical_rows[:5], 1):
+        print("\n--- [DRY RUN: GiftShop UK Transactions Preview] ---")
+        for i, row in enumerate(rows[:5], 1):
             print(f"[{i}] {json.dumps(row, indent=2)}")
-        if len(canonical_rows) > 5:
-            print(f"... and {len(canonical_rows) - 5} more records.")
-        print("------------------------------------------------------------\n")
-    elif args.use_pubsub or args.mode == "pubsub":
-        publish_transactions_to_pubsub(raw_rows, project_id=project)
+        if len(rows) > 5:
+            print(f"... and {len(rows) - 5} more records.")
+        print("---------------------------------------------------\n")
     else:
         try:
-            insert_transactions_to_bq(bq_rows, project_id=project)
+            insert_transactions_to_bq(rows, project_id=project)
         except Exception as e:
             logging.info("Note: BigQuery streaming skipped in offline/local mode (%s)", e)
 

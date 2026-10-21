@@ -104,14 +104,14 @@ graph TD
 *   **Structured Outputs**: Utilizes **Pydantic Schemas** (`StrategyPlan`, `CopywriterDraft`, `CriticReview`) with Gemini's `response_mime_type="application/json"` and `response_schema` parameters, eliminating fragile manual string parsing (`.split()`, `.replace()`).
 *   **UI Collaboration Board**: Displays interactive expanders in Tab 3 of Streamlit showing the step-by-step intermediate thoughts of each agent.
 
-### 2.4. Multi-Tenant Hybrid RAG Product Advisor with `pgvector` & Connection Pooling (Phase 14 & 29)
+### 2.4. Hybrid RAG Product Advisor with `pgvector` & Connection Pooling (Phase 14 & 29)
 *   **Location**: [app/rag_service.py](file:///Users/Anna/ecommerce-data-pipeline/app/rag_service.py), [scripts/sync_product_vectors.py](file:///Users/Anna/ecommerce-data-pipeline/scripts/sync_product_vectors.py), and [app/db_postgres.py](file:///Users/Anna/ecommerce-data-pipeline/app/db_postgres.py).
-*   **Multi-Tenant Vector Isolation**: Stored natively in PostgreSQL table `product_catalog_vectors` with a composite primary key `(stock_code, tenant_id)`, enabling complete tenant isolation across stores (`giftshop_uk`, `nordic_tech`) with dedicated indexing on `tenant_id`.
-*   **Contextual Multi-Attribute Embeddings**: Enriches raw products with category classifications and style/seasonal tags (*Title + Category + Price + Seasonal/Tech Tags*) before generating **768-dimensional embeddings** via Vertex AI `text-embedding-004`.
-*   **pgvector & HNSW Indexing**: Uses an **HNSW cosine index** (`USING hnsw (embedding vector_cosine_ops)`) for sub-millisecond retrieval across multi-tenant catalogs.
+*   **Vector Storage**: Stored natively in PostgreSQL table `product_catalog_vectors` with `stock_code` primary key and pgvector extension.
+*   **Contextual Multi-Attribute Embeddings**: Enriches raw products with category classifications and style/seasonal tags (*Title + Category + Price + Seasonal Tags*) before generating **768-dimensional embeddings** via Vertex AI `text-embedding-004`.
+*   **pgvector & HNSW Indexing**: Uses an **HNSW cosine index** (`USING hnsw (embedding vector_cosine_ops)`) for sub-millisecond similarity retrieval.
 *   **Threaded Connection Pooling**: Production-grade database connection management implemented using `psycopg2.pool.ThreadedConnectionPool` (pool size: 1–20 concurrent connections). Reuses existing TCP sockets, eliminates connection establishment latency, and safely handles multithreaded concurrent queries across FastAPI and background workers with robust `try...finally: release_connection()` lifecycle guarantees.
-*   **Hybrid Search, Tenant & Budget Filtering**: Executes parameterized SQL queries that simultaneously enforce tenant isolation (`tenant_id = :tenant_id`), budget constraints (`unit_price <= max_budget`), and rank by cosine distance (`<=>`).
-*   **Conversational Chatbot with RAG Guardrails**: In Tab 5 of Streamlit, a conversational assistant explains *why* each candidate item was selected and gracefully handles out-of-domain requests by clarifying store specialties.
+*   **Hybrid Search & Budget Filtering**: Executes parameterized SQL queries that simultaneously enforce budget constraints (`unit_price <= max_budget`) and rank by cosine distance (`<=>`).
+*   **Conversational Chatbot with RAG Guardrails**: In Tab 3 of Streamlit, a conversational assistant explains *why* each candidate item was selected and gracefully handles out-of-domain requests by clarifying GiftShop UK specialties.
 
 ### 2.5. Autonomous Agent with LangGraph & Cyclic Feedback Loops (Phase 15)
 *   **Location**: [app/agent_graph.py](file:///Users/Anna/ecommerce-data-pipeline/app/agent_graph.py)
@@ -175,11 +175,6 @@ graph TD
     *   API Key authentication (`x-api-key`) enforced at Google's global network edge.
     *   `x-google-backend` dispatching to Cloud Run serverless microservices.
     *   Rate limiting, DDoS protection, and multi-tenant URL mapping (`/v1/predict/churn`, `/v1/predict/campaign-graph/{customer_id}`, `/v1/rag/advisor`).
-
-### 2.13. Multi-Tenant Schema Normalization & Adapter Layer (Phase 21)
-*   **Location**: [src/schema_adapters.py](file:///Users/Anna/ecommerce-data-pipeline/src/schema_adapters.py) & [data/raw/shopify_nordic_store.csv](file:///Users/Anna/ecommerce-data-pipeline/data/raw/shopify_nordic_store.csv)
-*   **Universal Canonical Data Contract**: Defines `CanonicalTransaction` Pydantic model (`tenant_id`, `customer_id`, `invoice_no`, `amount`, `quantity`, `is_cancel`, `timestamp`).
-*   **Adapter Factory Pattern**: Provides `ShopifyAdapter`, `UciRetailAdapter`, and `OlistAdapter` registered in `SchemaAdapterFactory` with dynamic schema auto-detection, allowing any external e-commerce platform to ingest streaming data seamlessly without backend refactoring.
 
 ---
 

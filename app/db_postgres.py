@@ -340,10 +340,10 @@ def init_pgvector_table():
         if conn:
             release_connection(conn)
 
-def search_product_catalog_pgvector(query_vector: list, budget_max: float = None, top_k: int = 4, tenant_id: str = "giftshop_uk") -> list:
+def search_product_catalog_pgvector(query_vector: list, budget_max: float = None, top_k: int = 4) -> list:
     """
     Executes a sub-millisecond similarity search using pgvector in PostgreSQL
-    with multi-tenant isolation and optional budget price filtering.
+    with optional budget price filtering.
     """
     conn = None
     cursor = None
@@ -357,23 +357,22 @@ def search_product_catalog_pgvector(query_vector: list, budget_max: float = None
         if budget_max is not None and budget_max > 0:
             query = """
                 SELECT stock_code, description, category, unit_price, document_text,
-                       1 - (embedding <=> %s::vector) AS similarity, tenant_id
+                       1 - (embedding <=> %s::vector) AS similarity
                 FROM product_catalog_vectors
-                WHERE tenant_id = %s AND unit_price <= %s
+                WHERE unit_price <= %s
                 ORDER BY embedding <=> %s::vector
                 LIMIT %s;
             """
-            cursor.execute(query, (vector_str, tenant_id, float(budget_max), vector_str, int(top_k)))
+            cursor.execute(query, (vector_str, float(budget_max), vector_str, int(top_k)))
         else:
             query = """
                 SELECT stock_code, description, category, unit_price, document_text,
-                       1 - (embedding <=> %s::vector) AS similarity, tenant_id
+                       1 - (embedding <=> %s::vector) AS similarity
                 FROM product_catalog_vectors
-                WHERE tenant_id = %s
                 ORDER BY embedding <=> %s::vector
                 LIMIT %s;
             """
-            cursor.execute(query, (vector_str, tenant_id, vector_str, int(top_k)))
+            cursor.execute(query, (vector_str, vector_str, int(top_k)))
             
         rows = cursor.fetchall()
         results = []
@@ -384,8 +383,7 @@ def search_product_catalog_pgvector(query_vector: list, budget_max: float = None
                 "category": r[2] if r[2] else "General Merchandise",
                 "unit_price": float(r[3]),
                 "document_text": r[4],
-                "similarity": round(float(r[5]), 4),
-                "tenant_id": r[6] if len(r) > 6 else tenant_id
+                "similarity": round(float(r[5]), 4)
             })
         return results
     except Exception as e:

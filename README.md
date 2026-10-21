@@ -2,7 +2,7 @@
 
 [![CI/CD Pipeline](https://github.com/Anna9793/ecommerce-data-pipeline/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anna9793/ecommerce-data-pipeline/actions)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Unit Tests](https://img.shields.io/badge/tests-43%2F43%20passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/tests-35%2F35%20passing-brightgreen.svg)]()
 [![Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20BigQuery-orange.svg)](https://cloud.google.com/)
 [![Vector Search](https://img.shields.io/badge/Vector%20Search-PostgreSQL%20%7C%20pgvector-34A853.svg)](https://github.com/pgvector/pgvector)
 [![Machine Learning](https://img.shields.io/badge/ML-Scikit--Learn%20%7C%20XGBoost-EE4C2C.svg)](https://scikit-learn.org/)
@@ -117,7 +117,7 @@ pip install -r requirements.txt
 docker compose up -d
 ```
 
-### 3. Run Automated Unit Tests (43 Passing)
+### 3. Run Automated Unit Tests (35 Passing)
 ```bash
 pytest tests/
 ```
