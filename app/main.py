@@ -44,8 +44,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="E-Commerce ML & Agentic GenAI Platform",
-    description="Enterprise Multi-Tenant Data, MLOps and Agentic GenAI Recommendation Platform",
+    title="E-Commerce Cloud ML & Vector Search Platform",
+    description="Production Cloud ML, Feature Store, and pgvector Semantic Search Platform",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -202,21 +202,8 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
 
 
 # ==============================================================================
-# Agentic GenAI & Conversational RAG Endpoints
+# Vector Search & Semantic Product Advisor (pgvector + RAG)
 # ==============================================================================
-
-@app.get("/predict/campaign/{customer_id}")
-def generate_campaign_endpoint(customer_id: str):
-    from app.agent_service import MarketingAgentService
-    agent_service = MarketingAgentService()
-    return agent_service.generate_marketing_campaign(customer_id)
-
-
-@app.get("/predict/campaign-graph/{customer_id}")
-def generate_campaign_graph_endpoint(customer_id: str):
-    from app.agent_graph import MarketingGraphOrchestrator
-    orchestrator = MarketingGraphOrchestrator()
-    return orchestrator.run(customer_id)
 
 
 @app.post("/rag/advisor", response_model=ProductAdvisorResponse)

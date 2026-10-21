@@ -6,7 +6,7 @@ pydantic-settings>=2.0.0
 streamlit>=1.31.0
 plotly>=5.18.0
 
-# Data Science, ML, Deep Learning & Tracking
+# Data Science, ML & Tracking
 pandas>=2.1.0
 numpy>=1.24.0
 scikit-learn>=1.4.0
@@ -21,15 +21,8 @@ pandas-gbq>=0.20.0
 google-cloud-storage>=2.14.0
 gcsfs>=2023.12.0
 google-cloud-aiplatform>=1.38.0
-kfp>=2.7.0
-google-cloud-firestore>=2.14.0
-google-cloud-pubsub>=2.18.0
 
-# GenAI & Agentic Workflows
-langgraph>=0.2.0
-langchain-core>=0.3.0
-
-# Database & Feature Store
+# Database & Feature Store (PostgreSQL + pgvector)
 psycopg2-binary>=2.9.9
 SQLAlchemy>=2.0.25
 

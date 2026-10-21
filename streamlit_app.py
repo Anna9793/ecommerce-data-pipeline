@@ -86,12 +86,11 @@ st.title("🛍️ E-commerce Analytics & ML Dashboard")
 st.caption("Real-time Customer Segmentation & Churn Risk Analytics")
 
 # Define Tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
     "📊 Customer Segmentation", 
     "🔮 Churn Prediction", 
-    "🤖 AI Marketing Copilot", 
-    "📈 Model Monitoring",
-    "🛍️ Product Advisor (RAG)"
+    "🛍️ Product Advisor (RAG & pgvector)",
+    "📈 Model Monitoring"
 ])
 
 # TAB 1: CUSTOMER SEGMENTATION
@@ -286,108 +285,6 @@ with tab2:
                     except Exception as e:
                         st.error(f"❌ Connection error: {str(e)}")
 
-# TAB 3: AI MARKETING COPILOT
-with tab3:
-    st.subheader("🤖 AI Marketing Campaign Generator & Vector Search")
-    st.write("Target inactive or high-value customers with personalized recommendations and email drafts powered by LangGraph, Vertex AI, and Gemini.")
-    
-    col_input, col_info = st.columns([1, 2])
-    with col_input:
-        with st.container(border=True):
-            customer_id_input = st.text_input("Enter Customer ID", value="17850")
-            st.caption("Try sample customer IDs: **17850**, **13047**, **12583**, **12431**, **14606**")
-            
-            engine_choice = st.radio(
-                "Orchestration Engine",
-                ["LangGraph (StateGraph with Self-Correction)", "Linear Assembly Line"],
-                index=0,
-                help="LangGraph supports cyclic feedback loops where the Critic can reject and send drafts back to the Copywriter."
-            )
-            generate_btn = st.button("Generate Campaign", use_container_width=True)
-            
-    with col_info:
-        st.info("💡 **How it works:** This assistant identifies the customer's churn risk and segment from BigQuery / Online Feature Store, retrieves similar products using Vector Search, and uses a **LangGraph Multi-Agent Team** with an autonomous Critic audit loop to generate compliant email campaigns.")
-
-    if generate_btn:
-        endpoint_url = f"{API_URL}/predict/campaign-graph/{customer_id_input}" if "LangGraph" in engine_choice else f"{API_URL}/predict/campaign/{customer_id_input}"
-        with st.spinner(f"Executing {engine_choice}..."):
-            try:
-                response = requests.get(endpoint_url)
-                if response.status_code == 200:
-                    result = response.json()
-                    
-                    st.divider()
-                    col_results_left, col_results_right = st.columns([1, 1.5])
-                    
-                    with col_results_left:
-                        st.subheader("👤 Customer Profile Details")
-                        
-                        # Profile Cards
-                        with st.container(border=True):
-                            st.write(f"**Customer ID:** {result.get('customer_id', customer_id_input)}")
-                            st.write(f"**Segment:** {result.get('segment') or result.get('profile', {}).get('segment', 'Valued Customer')}")
-                            
-                            churn_str = result.get('churn_risk') or f"{result.get('profile', {}).get('churn_probability', 0.1)*100:.1f}%"
-                            if "High" in churn_str or float(churn_str.replace('%','')) > 50:
-                                st.warning(f"⚠️ Churn Risk: **{churn_str}**")
-                            else:
-                                st.success(f"✅ Churn Risk: **{churn_str}**")
-                                
-                            if "delivery_meta" in result:
-                                st.info(f"⏰ **Dispatch Timing:** {result['delivery_meta']}")
-                                
-                        st.subheader("🛍️ Recommended Products")
-                        if "recommended_products" in result and isinstance(result["recommended_products"], list):
-                            for p in result["recommended_products"]:
-                                if isinstance(p, dict):
-                                    st.markdown(f"- **{p.get('description')}** (${p.get('unit_price', 0):.2f})")
-                                else:
-                                    st.markdown(f"- **{p}**")
-                        elif "recommendations" in result:
-                            for rec in result["recommendations"]:
-                                with st.container(border=True):
-                                    col_desc, col_sim = st.columns([3, 1])
-                                    with col_desc:
-                                        st.markdown(f"**{rec['description']}**")
-                                        st.write(f"Price: ${rec['unit_price']:.2f} | Code: {rec['stock_code']}")
-                                    with col_sim:
-                                        st.metric("Similarity", f"{rec['similarity']*100:.1f}%")
-                                    
-                    with col_results_right:
-                        st.subheader("🤝 Multi-Agent Collaboration Board")
-                        
-                        if "graph_engine" in result:
-                            st.caption(f"Engine: **{result['graph_engine']}** | Iterations Completed: **{result.get('iterations_required', 1)}**")
-                        
-                        agent_traces = result.get("agent_traces")
-                        if isinstance(agent_traces, list):
-                            for trace in agent_traces:
-                                node_title = trace.get("title", trace.get("node", "Agent Step"))
-                                with st.expander(f"🔹 **{node_title}**", expanded=False):
-                                    st.markdown(trace.get("content", ""))
-                        elif isinstance(agent_traces, dict):
-                            with st.expander("🔍 **Step 1: Behavioral Analyst Agent**", expanded=False):
-                                st.info(agent_traces.get("analyst_diagnosis", "No trace available."))
-                            with st.expander("🎯 **Step 2: Campaign Strategist Agent**", expanded=False):
-                                st.success(agent_traces.get("strategy_plan", "No trace available."))
-                            with st.expander("✍️ **Step 3: Creative Copywriter Draft**", expanded=False):
-                                st.code(agent_traces.get("initial_draft", "No trace available."), language="markdown")
-                            with st.expander("🛡️ **Step 4: Quality & Compliance Critic Review**", expanded=False):
-                                st.warning(f"**Audit Findings:** {agent_traces.get('critic_review', 'Verified against brand guidelines.')}")
-                                
-                        st.subheader("📧 Final Approved Marketing Email")
-                        with st.container(border=True):
-                            if "subject" in result and "body" in result:
-                                st.markdown(f"### ✉️ Subject: {result['subject']}")
-                                st.markdown(result["body"])
-                            else:
-                                st.markdown(result.get("campaign_draft", ""))
-                            
-                else:
-                    st.error(f"Failed to generate campaign. Server returned status code: {response.status_code}")
-            except Exception as e:
-                st.error(f"Error connecting to FastAPI API: {str(e)}")
-
 # TAB 4: MODEL MONITORING & DRIFT
 with tab4:
     st.subheader("📈 Real-time Feature Drift Monitoring")
@@ -486,32 +383,29 @@ with tab4:
 
     st.divider()
 
-    # PHASE 24: DATA LINEAGE & TIME TRAVEL EXPLORER
-    with st.expander("🕰️ **Data Lineage, Provenance & BigQuery Time Travel (Phase 24)**", expanded=False):
+    # BigQuery Time Travel Explorer
+    with st.expander("🕰️ **BigQuery Time Travel Explorer**", expanded=False):
         st.markdown("""
         **Point-in-Time Reproducibility & Auditing**:
-        Explore cryptographic dataset versions, BigQuery `FOR SYSTEM_TIME AS OF` time-travel snapshots, and end-to-end data lineage across the platform.
+        Explore BigQuery `FOR SYSTEM_TIME AS OF` time-travel queries for reproducible auditing and rollback.
         """)
 
-        col_lin1, col_lin2 = st.columns([1, 1])
+        st.markdown("#### 📜 BigQuery Time Travel Query Builder")
+        time_interval = st.selectbox(
+            "Select Point-in-Time Snapshot Window",
+            ["1 Hour Ago (Interval 1 HOUR)", "1 Day Ago (Interval 1 DAY)", "7 Days Ago (Interval 7 DAY)", "Custom UTC Timestamp"]
+        )
+        
+        if "1 Hour" in time_interval:
+            time_expr = "TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)"
+        elif "1 Day" in time_interval:
+            time_expr = "TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)"
+        elif "7 Days" in time_interval:
+            time_expr = "TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)"
+        else:
+            time_expr = "TIMESTAMP '2026-09-01 00:00:00 UTC'"
 
-        with col_lin1:
-            st.markdown("#### 📜 BigQuery Time Travel Query Builder")
-            time_interval = st.selectbox(
-                "Select Point-in-Time Snapshot Window",
-                ["1 Hour Ago (Interval 1 HOUR)", "1 Day Ago (Interval 1 DAY)", "7 Days Ago (Interval 7 DAY)", "Custom UTC Timestamp"]
-            )
-            
-            if "1 Hour" in time_interval:
-                time_expr = "TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)"
-            elif "1 Day" in time_interval:
-                time_expr = "TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)"
-            elif "7 Days" in time_interval:
-                time_expr = "TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)"
-            else:
-                time_expr = "TIMESTAMP '2026-09-01 00:00:00 UTC'"
-
-            sql_sample = f"""-- BigQuery Point-in-Time Time Travel Query (Zero Compute Overhead)
+        sql_sample = f"""-- BigQuery Point-in-Time Time Travel Query (Zero Compute Overhead)
 SELECT 
     customer_id, 
     COUNT(DISTINCT invoice_no) AS total_orders, 
@@ -521,30 +415,12 @@ FOR SYSTEM_TIME AS OF {time_expr}
 WHERE customer_id IS NOT NULL
 GROUP BY customer_id
 LIMIT 10;"""
-            st.code(sql_sample, language="sql")
-            st.caption("⚡ Uses BigQuery's native 7-day immutable time-travel window for instant rollback & reproducibility.")
-
-        with col_lin2:
-            st.markdown("#### 📦 Active DVC & Snapshot Metadata")
-            st.json({
-                "dvc_remote": "gs://anna-ml-pipeline-bucket/dvcstore",
-                "active_git_commit": "044c8c7 (Phase 23/24)",
-                "latest_snapshot": "retail_data.transactions_snapshot_20260907",
-                "snapshot_policy": "Zero-Copy Table Clone (30-day expiration)",
-                "lineage_stages": ["Pub/Sub Ingestion", "BigQuery Raw", "Dataproc PySpark (Phase 23)", "Online Feature Store", "Vertex AI / MLflow"]
-            })
-
-        st.markdown("#### 🔗 End-to-End Platform Data Lineage Flow")
-        try:
-            from src.lineage import tracker
-            mermaid_code = tracker.get_latest_lineage_graph_mermaid()
-            st.markdown(f"```mermaid\n{mermaid_code}\n```")
-        except Exception:
-            st.info("Lineage graph visualization available via `src.lineage.DataLineageTracker`.")
+        st.code(sql_sample, language="sql")
+        st.caption("⚡ Uses BigQuery's native 7-day immutable time-travel window for instant rollback & reproducibility.")
 
 
-# TAB 5: PRODUCT ADVISOR CHATBOT (RAG + PGVECTOR)
-with tab5:
+# TAB 3: PRODUCT ADVISOR CHATBOT (RAG + PGVECTOR)
+with tab3:
     store_title = "NordicWear & Tech (Shopify)" if active_store == "nordic_tech" else "GiftShop UK (Vintage Retail)"
     st.subheader(f"🛍️ Product Advisor Chatbot — {store_title}")
     st.write(f"Ask natural questions about **{store_title}**. The assistant searches catalog vector embeddings with real-time budget filtering and uses **Gemini** for personalized recommendations.")

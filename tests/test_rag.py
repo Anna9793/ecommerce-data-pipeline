@@ -87,7 +87,8 @@ def test_search_product_catalog_pgvector_nordic_tenant(mock_get_conn):
 @patch("app.rag_service.TextEmbeddingModel.from_pretrained")
 @patch("app.rag_service.GenerativeModel")
 @patch("app.rag_service.search_product_catalog_pgvector")
-def test_product_advisor_service_advise(mock_search, mock_gen_model, mock_embed_model, mock_vertex):
+def test_product_advisor_service_advise(mock_search, mock_gen_model, mock_embed_model, mock_vertex, monkeypatch):
+    monkeypatch.setenv("USE_BIGQUERY", "true")
     mock_search.return_value = [
         {
             "stock_code": "47566",
