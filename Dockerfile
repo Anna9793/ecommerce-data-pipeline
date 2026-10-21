@@ -5,8 +5,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-COPY requirements.txt pyproject.toml ./
-RUN uv pip install --system --no-cache --torch-backend=cpu -r requirements.txt
+COPY requirements.txt ./
+RUN uv pip install --system --no-cache -r requirements.txt
 
 COPY . .
 

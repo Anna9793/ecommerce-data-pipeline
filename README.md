@@ -2,11 +2,11 @@
 
 [![CI/CD Pipeline](https://github.com/Anna9793/ecommerce-data-pipeline/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anna9793/ecommerce-data-pipeline/actions)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Unit Tests](https://img.shields.io/badge/tests-49%2F49%20passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/tests-43%2F43%20passing-brightgreen.svg)]()
 [![Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20BigQuery-orange.svg)](https://cloud.google.com/)
 [![Vector Search](https://img.shields.io/badge/Vector%20Search-PostgreSQL%20%7C%20pgvector-34A853.svg)](https://github.com/pgvector/pgvector)
 [![Machine Learning](https://img.shields.io/badge/ML-Scikit--Learn%20%7C%20XGBoost-EE4C2C.svg)](https://scikit-learn.org/)
-[![Packaging](https://img.shields.io/badge/Packaging-pyproject.toml%20%7C%20uv-DE5FE9.svg)](https://github.com/astral-sh/uv)
+[![Container](https://img.shields.io/badge/Container-Docker-2496ED.svg)](https://www.docker.com/)
 
 A production-grade, end-to-end **Cloud Data, Machine Learning, and Semantic Vector Search Platform** built on Google Cloud Platform (GCP). The platform automates customer segmentation, predictive churn scoring, low-latency online feature serving, statistical drift monitoring, and AI-powered product discovery with pgvector.
 
@@ -91,7 +91,7 @@ The platform includes a modern Streamlit web application ([streamlit_app.py](fil
 * **Machine Learning & MLOps**: Scikit-Learn, XGBoost, Scipy (Kolmogorov-Smirnov), MLflow.
 * **Vector Database & Feature Store**: PostgreSQL 15, `pgvector` (HNSW indexing), `psycopg2` Threaded Connection Pools.
 * **Serving & API**: FastAPI, Uvicorn, Pydantic v2, Streamlit, Plotly.
-* **Packaging & DevOps**: `pyproject.toml`, `uv`, Docker Multi-Stage, GitHub Actions CI/CD.
+* **Packaging & DevOps**: `requirements.txt`, Docker Multi-Stage, GitHub Actions CI/CD.
 
 ---
 
@@ -108,15 +108,16 @@ The platform includes a modern Streamlit web application ([streamlit_app.py](fil
 git clone https://github.com/Anna9793/ecommerce-data-pipeline.git
 cd ecommerce-data-pipeline
 
-# Fast environment setup with uv
-uv venv
-uv pip install -r requirements.txt
+# Virtual environment setup
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
 # Launch local PostgreSQL (with pgvector) and local services
 docker compose up -d
 ```
 
-### 3. Run Automated Unit Tests (49 Passing)
+### 3. Run Automated Unit Tests (43 Passing)
 ```bash
 pytest tests/
 ```
