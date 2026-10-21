@@ -28,7 +28,7 @@ A production-grade, end-to-end **Data Engineering, MLOps, and Agentic GenAI Plat
 graph TD
     %% Ingress & API Gateway Layer
     subgraph Ingress_Layer ["1. Edge Security & Ingress Layer"]
-        Clients[Multi-Tenant Clients: Shopify / Mobile / Web] -->|HTTPS with API Key| Gateway["Google Cloud API Gateway<br/>(OpenAPI 3.0 Contract & Rate Limiting)"]
+        Clients["Multi-Tenant Clients: Shopify / Mobile / Web"] -->|"HTTPS with API Key"| Gateway["Google Cloud API Gateway<br/>(OpenAPI 3.0 Contract & Rate Limiting)"]
     end
 
     %% Schema Normalization & Adapter Layer
@@ -40,11 +40,11 @@ graph TD
     %% Streaming Ingestion & Processing Layer
     subgraph Ingestion_Stream ["3. Streaming Ingestion & ETL Layer"]
         Canonical --> Topic[("GCP Pub/Sub: retail-transactions-topic")]
-        Topic -->|DLQ Policy: 5 Retries| PubSub_DLQ[("Pub/Sub DLQ: dead-letter-topic")]
-        Topic -->|Native Subscription| BQ_Raw[("BigQuery: retail_data.transactions<br/>(7-Day Time Travel Enabled)")]
-        Topic -->|Stream Pull| Beam["Apache Beam on Dataflow<br/>(5-Min Windowing & Velocity)"]
-        Beam -->|Tagged Output: DLQ| Beam_DLQ[("Dataflow DLQ Logs")]
-        Beam -->|Windowed Features| BQ_Agg[("BigQuery: streaming_customer_aggregates")]
+        Topic -->|"DLQ Policy: 5 Retries"| PubSub_DLQ[("Pub/Sub DLQ: dead-letter-topic")]
+        Topic -->|"Native Subscription"| BQ_Raw[("BigQuery: retail_data.transactions<br/>(7-Day Time Travel Enabled)")]
+        Topic -->|"Stream Pull"| Beam["Apache Beam on Dataflow<br/>(5-Min Windowing & Velocity)"]
+        Beam -->|"Tagged Output: DLQ"| Beam_DLQ[("Dataflow DLQ Logs")]
+        Beam -->|"Windowed Features"| BQ_Agg[("BigQuery: streaming_customer_aggregates")]
     end
 
     %% Master Orchestration Layer
@@ -63,38 +63,38 @@ graph TD
     %% Distributed Big Data Feature Engineering & Versioning
     subgraph BigData_Engine ["6. Distributed PySpark Engine & Data Lineage (Phase 23/24)"]
         Airflow --> Dataproc["Dataproc Ephemeral Cluster<br/>(PySpark Windowing, RFM, 30d/90d Velocity, Spot VMs)"]
-        Dataproc -->|Parquet & BigQuery Connector| BQ_RFM[("BigQuery: rfm_features View")]
-        Airflow -.->|Lineage Manifest & DVC| DVC[("DVC & BQ Snapshots<br/>reports/lineage_manifest.json")]
+        Dataproc -->|"Parquet & BigQuery Connector"| BQ_RFM[("BigQuery: rfm_features View")]
+        Airflow -.->|"Lineage Manifest & DVC"| DVC[("DVC & BQ Snapshots<br/>reports/lineage_manifest.json")]
     end
 
     %% Serving & Storage Layer
     subgraph Serving_Layer ["7. Low-Latency Serving & Feature Store"]
-        Gateway -->|Reverse Proxy /v1/*| API[FastAPI on Cloud Run]
-        UI[Streamlit Dashboard UI] <-->|REST API| API
-        API <-->|Sub-15ms Key-Value Lookup| FS[("Online Feature Store: Firestore / PostgreSQL")]
-        API -->|Analytical Queries| BQ_RFM
+        Gateway -->|"Reverse Proxy /v1"| API["FastAPI on Cloud Run"]
+        UI["Streamlit Dashboard UI"] <-->|"REST API"| API
+        API <-->|"Sub-15ms Key-Value Lookup"| FS[("Online Feature Store: Firestore / PostgreSQL")]
+        API -->|"Analytical Queries"| BQ_RFM
     end
 
     %% Agentic GenAI & Hybrid RAG
     subgraph GenAI_Engine ["8. LangGraph Autonomous Multi-Agent & RAG"]
         API --> LangGraph["LangGraph StateMachine<br/>(Analyst → Strategist → Copywriter → Critic)"]
-        LangGraph -->|Rejection Feedback Loop| LangGraph
-        LangGraph -->|Approved Campaign| UI
+        LangGraph -->|"Rejection Feedback Loop"| LangGraph
+        LangGraph -->|"Approved Campaign"| UI
         
-        UI -->|Natural Language Query| RAG_API["POST /rag/advisor"]
+        UI -->|"Natural Language Query"| RAG_API["POST /rag/advisor"]
         RAG_API --> Embed["Vertex AI text-embedding-004"]
-        Embed -->|768d Vector Query| PG_Vec[("PostgreSQL pgvector: HNSW Index")]
-        PG_Vec -->|Budget & Distance Filter| Gemini["Gemini 1.5 Flash (RAG)"]
-        Gemini -->|Product Justifications| UI
+        Embed -->|"768d Vector Query"| PG_Vec[("PostgreSQL pgvector: HNSW Index")]
+        PG_Vec -->|"Budget & Distance Filter"| Gemini["Gemini 1.5 Flash (RAG)"]
+        Gemini -->|"Product Justifications"| UI
     end
 
     %% Closed-Loop MLOps & Retraining
     subgraph MLOps_Retraining ["9. Closed-Loop MLOps & Retraining"]
-        Airflow -->|If Drift Detected p < 0.05| Vertex["Vertex AI Pipelines (Kubeflow/KFP)"]
-        Vertex -->|Parallel Tasks| Train["Train XGBoost & KMeans"]
+        Airflow -->|"If Drift Detected (p < 0.05)"| Vertex["Vertex AI Pipelines (Kubeflow/KFP)"]
+        Vertex -->|"Parallel Tasks"| Train["Train XGBoost & KMeans"]
         Train --> Gate{"F1 Evaluation Gate"}
-        Gate -->|Approved| GCS[("GCS Model Registry Bucket")]
-        GCS -->|In-Memory Hot Reload| API
+        Gate -->|"Approved"| GCS[("GCS Model Registry Bucket")]
+        GCS -->|"In-Memory Hot Reload"| API
     end
 
     %% Infrastructure as Code
@@ -113,8 +113,7 @@ graph TD
     classDef gcp fill:#4285F4,stroke:#333,stroke-width:2px,color:#fff;
     classDef ai fill:#34A853,stroke:#333,stroke-width:2px,color:#fff;
     classDef tf fill:#623CE4,stroke:#333,stroke-width:2px,color:#fff;
-    class Clients,Gateway gw;
-    class Factory,Canonical gw;
+    class Clients,Gateway,Factory,Canonical gw;
     class Topic,PubSub_DLQ pubsub;
     class Beam stream;
     class Airflow airflow;
