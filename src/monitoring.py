@@ -5,8 +5,6 @@ import pandas as pd
 from scipy.stats import ks_2samp
 from config.paths import RFM_CUSTOMERS
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
 def calculate_feature_drift(project_id: str = "anna-ml-pipeline") -> dict:
     """
     Computes Kolmogorov-Smirnov test to detect data drift between the training baseline

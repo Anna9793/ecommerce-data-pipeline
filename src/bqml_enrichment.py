@@ -5,8 +5,6 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional, Tuple
 
-logging.basicConfig(level=logging.INFO)
-
 # Standard Category Taxonomy for E-Commerce Platform
 STANDARD_CATEGORIES = [
     "Kitchen & Dining",
