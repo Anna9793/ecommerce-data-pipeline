@@ -22,11 +22,17 @@ from app.service import (
     RFM_FEATURE_VERSION,
     CHURN_FEATURE_VERSION,
 )
-from config.logging_config import setup_logging
+import sys
 from app.db_postgres import insert_prediction, insert_churn_prediction, close_pool
 
-# Initialize 12-Factor Event Stream Logger (Factor XI)
-logger = setup_logging()
+# Configure application-wide logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
