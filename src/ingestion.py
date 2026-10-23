@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 import logging
 
-from config.config import ONLINE_RETAIL_XLSX, ONLINE_RETAIL_CSV
+from config.paths import ONLINE_RETAIL_XLSX, ONLINE_RETAIL_CSV
 
 def load_dataset(path):
 
