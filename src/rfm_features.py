@@ -11,14 +11,13 @@ load_dotenv()
 
 def load_transactions(path):
     logging.info("Loading transaction dataset from %s", path)
-    df = pd.read_csv(path)
-    df["invoice_date"] = pd.to_datetime(df["invoice_date"])
-    return df
+    return pd.read_csv(path, parse_dates=["invoice_date"])
 
 
 def compute_rfm(df):
     df = df.copy()
-    df["invoice_date"] = pd.to_datetime(df["invoice_date"])
+    if not pd.api.types.is_datetime64_any_dtype(df["invoice_date"]):
+        df["invoice_date"] = pd.to_datetime(df["invoice_date"])
     df["invoice_no"] = df["invoice_no"].astype(str)
     df["order_value"] = pd.to_numeric(df["order_value"], errors="coerce").fillna(0.0)
     
@@ -101,14 +100,15 @@ def compute_rfm(df):
     rfm["cancellation_rate"] = (rfm["cancelled_orders"] / rfm["total_orders"]).round(4)
     
     # 4. Preferred Shopping Hour
-    df["hour"] = df["invoice_date"].dt.hour
+    if "invoice_hour" not in df.columns:
+        df["invoice_hour"] = df["invoice_date"].dt.hour
     
     def get_mode_hour(x):
         mode_series = x.mode()
         return int(mode_series.iloc[0]) if not mode_series.empty else 12
         
     pref_hour = (
-        df.groupby("customer_id")["hour"]
+        df.groupby("customer_id")["invoice_hour"]
         .agg(get_mode_hour)
         .rename("preferred_shopping_hour")
     )
