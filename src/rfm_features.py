@@ -56,20 +56,20 @@ def compute_rfm(df):
     
     monetary_30 = (
         valid_sales[valid_sales["invoice_date"] >= date_30]
-        .groupby("customer_id")["order_value"]
-        .sum()
-        .rename("monetary_30")
+        .groupby("customer_id")
+        .agg(monetary_30=("order_value", "sum"))
+        .reset_index()
     )
     
     monetary_90 = (
         valid_sales[valid_sales["invoice_date"] >= date_90]
-        .groupby("customer_id")["order_value"]
-        .sum()
-        .rename("monetary_90")
+        .groupby("customer_id")
+        .agg(monetary_90=("order_value", "sum"))
+        .reset_index()
     )
     
-    rfm = rfm.join(monetary_30, on="customer_id", how="left")
-    rfm = rfm.join(monetary_90, on="customer_id", how="left")
+    rfm = rfm.merge(monetary_30, on="customer_id", how="left")
+    rfm = rfm.merge(monetary_90, on="customer_id", how="left")
     rfm["monetary_30"] = rfm["monetary_30"].fillna(0.0)
     rfm["monetary_90"] = rfm["monetary_90"].fillna(0.0)
     
@@ -80,19 +80,19 @@ def compute_rfm(df):
     # 3. Cancellation Rate
     cancelled = (
         df[df["invoice_no"].str.startswith("C", na=False)]
-        .groupby("customer_id")["invoice_no"]
-        .nunique()
-        .rename("cancelled_orders")
+        .groupby("customer_id")
+        .agg(cancelled_orders=("invoice_no", "nunique"))
+        .reset_index()
     )
     
     total_orders = (
-        df.groupby("customer_id")["invoice_no"]
-        .nunique()
-        .rename("total_orders")
+        df.groupby("customer_id")
+        .agg(total_orders=("invoice_no", "nunique"))
+        .reset_index()
     )
     
-    rfm = rfm.join(cancelled, on="customer_id", how="left")
-    rfm = rfm.join(total_orders, on="customer_id", how="left")
+    rfm = rfm.merge(cancelled, on="customer_id", how="left")
+    rfm = rfm.merge(total_orders, on="customer_id", how="left")
     rfm["cancelled_orders"] = rfm["cancelled_orders"].fillna(0)
     rfm["total_orders"] = rfm["total_orders"].fillna(1)
     
@@ -107,12 +107,12 @@ def compute_rfm(df):
         return int(mode_series.iloc[0]) if not mode_series.empty else 12
         
     pref_hour = (
-        df.groupby("customer_id")["invoice_hour"]
-        .agg(get_mode_hour)
-        .rename("preferred_shopping_hour")
+        df.groupby("customer_id")
+        .agg(preferred_shopping_hour=("invoice_hour", get_mode_hour))
+        .reset_index()
     )
     
-    rfm = rfm.join(pref_hour, on="customer_id", how="left")
+    rfm = rfm.merge(pref_hour, on="customer_id", how="left")
     rfm["preferred_shopping_hour"] = rfm["preferred_shopping_hour"].fillna(12).astype(int)
     
     rfm = rfm[[
