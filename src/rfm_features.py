@@ -20,9 +20,6 @@ def load_transactions(path):
 
 def compute_rfm(df):
     df = df.copy()
-    if not pd.api.types.is_datetime64_any_dtype(df["invoice_date"]):
-        df["invoice_date"] = pd.to_datetime(df["invoice_date"])
-    
     max_date = df["invoice_date"].max()
     
     # 1. Base RFM metrics (only using positive quantities for frequency/monetary)
