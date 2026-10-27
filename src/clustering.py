@@ -12,6 +12,7 @@ from sklearn.metrics import silhouette_score
 from src.features.transformers import LogTransformer
 from src.features.selection import ColumnSelector
 from src.features.to_numpy import ToNumpy
+from src.rfm_features import load_rfm
 
 from config.paths import (
     RFM_CUSTOMERS,
@@ -22,11 +23,6 @@ from config.paths import (
 )
 
 # BASIC STEPS
-
-def load_rfm_data(path):
-    df = pd.read_csv(path)
-    logging.info("Loading RFM dataset from %s with shape %s", path, df.shape)
-    return df
 
 def split_dataset(df, random_state):
     logging.info("Splitting dataset")
@@ -233,7 +229,7 @@ def run_clustering(
     random_state = config.clustering.random_state
 
     if df is None:
-        df = load_rfm_data(RFM_CUSTOMERS)
+        df = load_rfm(RFM_CUSTOMERS)
 
     train_df, test_df = split_dataset(df, random_state)
 
