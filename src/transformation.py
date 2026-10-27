@@ -26,43 +26,30 @@ def load_clean_data(path):
         return df
 
     logging.info("Loading cleaned dataset from path: %s", path)
-    df = pd.read_csv(path)
+    df = pd.read_csv(
+        path,
+        parse_dates=["invoice_date"],
+        dtype={"customer_id": str, "invoice_no": str}
+    )
     return df
 
 def add_order_value(df):
-
     logging.info("Creating order_value feature")
-
     df["order_value"] = df["quantity"] * df["unit_price"]
-
-    return df
-
-def convert_invoice_date(df):
-
-    logging.info("Converting invoice_date to datetime")
-
-    df["invoice_date"] = pd.to_datetime(df["invoice_date"])
-
     return df
 
 def add_time_features(df):
-
     logging.info("Extracting time features")
-
     df["invoice_year"] = df["invoice_date"].dt.year
-
     df["invoice_month"] = df["invoice_date"].dt.month
-
     df["invoice_hour"] = df["invoice_date"].dt.hour
-
     return df
 
 def transform_data(df):
-
-    df = convert_invoice_date(df)
+    if not pd.api.types.is_datetime64_any_dtype(df["invoice_date"]):
+        df["invoice_date"] = pd.to_datetime(df["invoice_date"])
     df = add_order_value(df)
     df = add_time_features(df)
-
     return df
 
 

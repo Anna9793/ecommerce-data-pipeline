@@ -11,15 +11,17 @@ load_dotenv()
 
 def load_transactions(path):
     logging.info("Loading transaction dataset from %s", path)
-    return pd.read_csv(path, parse_dates=["invoice_date"])
+    return pd.read_csv(
+        path,
+        parse_dates=["invoice_date"],
+        dtype={"customer_id": str, "invoice_no": str}
+    )
 
 
 def compute_rfm(df):
     df = df.copy()
     if not pd.api.types.is_datetime64_any_dtype(df["invoice_date"]):
         df["invoice_date"] = pd.to_datetime(df["invoice_date"])
-    df["invoice_no"] = df["invoice_no"].astype(str)
-    df["order_value"] = pd.to_numeric(df["order_value"], errors="coerce").fillna(0.0)
     
     max_date = df["invoice_date"].max()
     

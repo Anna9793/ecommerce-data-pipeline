@@ -21,17 +21,32 @@ def standardize_column_names(df):
     return df
 
 def remove_missing_customer_ids(df):
-    logging.info("Removing rows with missing CustomerID")
+    logging.info("Step 3: Removing rows with missing CustomerID")
     return df.dropna(subset=["customer_id"])
 
+def cast_data_types(df):
+    logging.info("Step 4: Casting data types (dates, IDs, numerics)")
+    if "invoice_date" in df.columns:
+        df["invoice_date"] = pd.to_datetime(df["invoice_date"], errors="coerce")
+    if "customer_id" in df.columns:
+        df["customer_id"] = df["customer_id"].astype(str).str.replace(r"\.0$", "", regex=True)
+    if "invoice_no" in df.columns:
+        df["invoice_no"] = df["invoice_no"].astype(str)
+    if "quantity" in df.columns:
+        df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce")
+    if "unit_price" in df.columns:
+        df["unit_price"] = pd.to_numeric(df["unit_price"], errors="coerce")
+    return df
+
 def filter_valid_transactions(df):
-    logging.info("Filtering transactions with positive quantity and unit_price using query()")
+    logging.info("Step 5: Filtering transactions with positive quantity and unit_price using query()")
     return df.query("quantity > 0 and unit_price > 0")
 
 def clean_data(df):
-    df = remove_duplicates(df)
     df = standardize_column_names(df)
+    df = remove_duplicates(df)
     df = remove_missing_customer_ids(df)
+    df = cast_data_types(df)
     df = filter_valid_transactions(df)
     return df
 
