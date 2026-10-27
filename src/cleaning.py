@@ -39,8 +39,10 @@ def cast_data_types(df):
     return df
 
 def filter_valid_transactions(df):
-    logging.info("Step 5: Filtering transactions with positive quantity and unit_price using query()")
-    return df.query("quantity > 0 and unit_price > 0")
+    logging.info("Step 5: Filtering valid transactions (positive price, purchases or 'C' cancellations)")
+    is_valid_purchase = df["quantity"] > 0
+    is_valid_cancellation = (df["quantity"] < 0) & df["invoice_no"].str.startswith("C", na=False)
+    return df[(df["unit_price"] > 0) & (is_valid_purchase | is_valid_cancellation)]
 
 def clean_data(df):
     df = standardize_column_names(df)
