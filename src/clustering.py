@@ -2,16 +2,15 @@ import logging
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import numpy as np
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, FunctionTransformer
+from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 
-from src.features.transformers import LogTransformer
-from src.features.selection import ColumnSelector
-from src.features.to_numpy import ToNumpy
 from src.rfm_features import load_rfm
 
 from config.paths import (
@@ -30,11 +29,19 @@ def split_dataset(df, random_state):
     return train_df, test_df
 
 def build_pipeline(k, random_state, feature_columns):
-    logging.info("Building pipeline")
+    logging.info("Building pipeline with native scikit-learn transformers")
+    log_features = [col for col in ["frequency", "avg_order_value"] if col in feature_columns]
+    other_features = [col for col in feature_columns if col not in log_features]
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("log", FunctionTransformer(np.log1p), log_features),
+            ("pass", "passthrough", other_features)
+        ]
+    )
+
     return Pipeline([
-        ("selector", ColumnSelector(columns=feature_columns)),
-        ("log", LogTransformer(columns=["frequency", "avg_order_value"])),
-        ("to_numpy", ToNumpy()),
+        ("preprocessor", preprocessor),
         ("scaler", StandardScaler()),
         ("model", KMeans(n_clusters=k, random_state=random_state))
     ])
