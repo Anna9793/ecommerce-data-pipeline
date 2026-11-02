@@ -13,7 +13,6 @@ from src.utils.plotting import plot_silhouette_scores, plot_pca_clusters
 
 from config.paths import (
     RFM_CUSTOMERS,
-    TRAIN_CLUSTERS,
     CUSTOMER_CLUSTERS,
     CLUSTER_PROFILE,
 )
@@ -114,22 +113,29 @@ def profile_clusters(df):
     return df_labeled, profile
 
 
-def save_outputs(train_df, test_df, profile):
-    """Saves training clusters, predicted test clusters, and cluster profile to CSV."""
-    logging.info("Saving cluster artifacts to processed directory")
-    train_df.to_csv(TRAIN_CLUSTERS, index=False)
-    test_df.to_csv(CUSTOMER_CLUSTERS, index=False)
+def save_outputs(profile, scored_df=None):
+    """
+    Saves clustering artifacts:
+    - CLUSTER_PROFILE: Business summary table used by FastAPI and BI dashboards.
+    - CUSTOMER_CLUSTERS: Batch scored customer segmentation for CRM / marketing campaigns.
+    """
+    logging.info("Saving cluster profile to %s", CLUSTER_PROFILE)
     profile.to_csv(CLUSTER_PROFILE)
+
+    if scored_df is not None:
+        logging.info("Saving batch customer segmentation to %s", CUSTOMER_CLUSTERS)
+        scored_df.to_csv(CUSTOMER_CLUSTERS, index=False)
 
 
 def run_clustering(config, df=None, feature_columns=None, cluster_range=None):
     """
     End-to-end clustering workflow:
-    1. Splits RFM data into train/test sets.
-    2. Identifies optimal k using Silhouette Score.
-    3. Assigns clusters and generates business profiles.
-    4. Generates Silhouette and PCA visualization figures.
-    5. Saves outputs to disk.
+    1. Splits RFM data into train/test sets for model selection.
+    2. Identifies optimal k on train set using Silhouette Score.
+    3. Profiles clusters and assigns business segment labels.
+    4. Performs batch inference across all customers with segment assignment.
+    5. Generates Silhouette curve and PCA 2D projection figures.
+    6. Persists cluster profile and batch customer segmentation.
     """
     logging.info("Starting clustering pipeline")
 
@@ -140,31 +146,31 @@ def run_clustering(config, df=None, feature_columns=None, cluster_range=None):
     if df is None:
         df = load_rfm(RFM_CUSTOMERS)
 
-    # 1. Train / Test Split
+    # 1. Train / Test Split (for unbiased hyperparameter selection)
     train_df, test_df = train_test_split(df, test_size=0.2, random_state=random_state)
     train_df = train_df.copy()
-    test_df = test_df.copy()
 
     # 2. Hyperparameter optimization
     best_pipeline, best_k, best_score, scores = find_best_kmeans(
         train_df, feature_columns, cluster_range, random_state
     )
 
-    # 3. Predict clusters
+    # 3. Profile & Business segments (derived from train set)
     train_df["cluster"] = best_pipeline.predict(train_df[feature_columns])
-    test_df["cluster"] = best_pipeline.predict(test_df[feature_columns])
-
-    # 4. Profile & Business segments
     train_df, profile = profile_clusters(train_df)
-    test_df["segment"] = test_df["cluster"].map(profile["segment"])
     logging.info("Cluster profile:\n%s", profile)
+
+    # 4. Batch Scoring: Score all active customers for CRM marketing usage
+    scored_customers = df.copy()
+    scored_customers["cluster"] = best_pipeline.predict(scored_customers[feature_columns])
+    scored_customers["segment"] = scored_customers["cluster"].map(profile["segment"])
 
     # 5. Visualizations
     fig = plot_silhouette_scores(scores)
     pca_fig = plot_pca_clusters(train_df, best_pipeline, feature_columns)
 
-    # 6. Save artifacts
-    save_outputs(train_df, test_df, profile)
+    # 6. Save artifacts (profile for FastAPI/BI, full customer scoring for CRM)
+    save_outputs(profile, scored_df=scored_customers)
 
     logging.info("Clustering pipeline completed successfully")
     return best_pipeline, best_k, {"silhouette": best_score}, fig, pca_fig

@@ -37,7 +37,6 @@ ONLINE_RETAIL_CSV = RAW_DIR / "online_retail.csv"
 CLEAN_RETAIL = PROCESSED_DIR / "clean_retail.csv"
 FEATURE_RETAIL = PROCESSED_DIR / "feature_retail.csv"
 RFM_CUSTOMERS = PROCESSED_DIR / "rfm_customers.csv"
-TRAIN_CLUSTERS = PROCESSED_DIR / "rfm_train_clusters.csv"
 CLUSTER_PROFILE = PROCESSED_DIR / "cluster_profile.csv"
 
 # Predicciones y clasificaciones

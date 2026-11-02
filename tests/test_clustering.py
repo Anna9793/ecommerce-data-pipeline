@@ -141,20 +141,16 @@ def test_plot_pca_clusters(sample_rfm_df):
 
 
 def test_save_outputs(tmp_path, monkeypatch):
-    train_path = tmp_path / "train.csv"
-    test_path = tmp_path / "test.csv"
     profile_path = tmp_path / "profile.csv"
+    customers_path = tmp_path / "customers.csv"
 
-    monkeypatch.setattr("src.clustering.TRAIN_CLUSTERS", train_path)
-    monkeypatch.setattr("src.clustering.CUSTOMER_CLUSTERS", test_path)
     monkeypatch.setattr("src.clustering.CLUSTER_PROFILE", profile_path)
+    monkeypatch.setattr("src.clustering.CUSTOMER_CLUSTERS", customers_path)
 
-    df_train = pd.DataFrame({"customer_id": ["C1"], "cluster": [0]})
-    df_test = pd.DataFrame({"customer_id": ["C2"], "cluster": [0]})
     df_profile = pd.DataFrame({"customers": [1]}, index=[0])
+    df_scored = pd.DataFrame({"customer_id": ["C1"], "cluster": [0], "segment": ["Medium Customers"]})
 
-    save_outputs(df_train, df_test, df_profile)
+    save_outputs(df_profile, scored_df=df_scored)
 
-    assert train_path.exists()
-    assert test_path.exists()
     assert profile_path.exists()
+    assert customers_path.exists()
