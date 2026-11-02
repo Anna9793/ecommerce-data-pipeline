@@ -8,13 +8,13 @@ from sklearn.cluster import KMeans
 
 from src.clustering import (
     build_pipeline,
-    split_dataset,
     find_best_kmeans,
-    assign_clusters,
     profile_clusters,
-    label_clusters,
-    build_cluster_profile,
-    visualize_clusters
+    save_outputs,
+)
+from src.utils.plotting import (
+    plot_silhouette_scores,
+    plot_pca_clusters,
 )
 
 
@@ -41,13 +41,6 @@ def sample_rfm_df():
             np.random.uniform(20, 80, size=20)
         ])
     })
-
-
-def test_split_dataset(sample_rfm_df):
-    train_df, test_df = split_dataset(sample_rfm_df, random_state=42)
-    assert len(train_df) == 48  # 80% of 60
-    assert len(test_df) == 12   # 20% of 60
-    assert set(train_df["customer_id"]).isdisjoint(set(test_df["customer_id"]))
 
 
 def test_build_pipeline_structure():
@@ -94,18 +87,7 @@ def test_find_best_kmeans(sample_rfm_df):
     assert isinstance(best_pipeline, Pipeline)
 
 
-def test_assign_clusters(sample_rfm_df):
-    features = ["recency", "frequency", "avg_order_value"]
-    pipeline = build_pipeline(k=3, random_state=42, feature_columns=features)
-    pipeline.fit(sample_rfm_df)
-
-    clustered_df = assign_clusters(sample_rfm_df, pipeline, features)
-    assert "cluster" in clustered_df.columns
-    assert clustered_df["cluster"].nunique() <= 3
-    assert len(clustered_df) == len(sample_rfm_df)
-
-
-def test_profile_and_label_clusters():
+def test_profile_clusters_and_business_labels():
     # Synthetic clustered data with distinct cluster characteristics
     df = pd.DataFrame({
         "customer_id": [f"C_{i}" for i in range(4)],
@@ -115,45 +97,64 @@ def test_profile_and_label_clusters():
         "avg_order_value": [30.0, 100.0, 600.0, 100.0]
     })
 
-    profile = profile_clusters(df)
+    df_labeled, profile = profile_clusters(df)
+
     assert "customers" in profile.columns
     assert "avg_recency" in profile.columns
+    assert "segment" in profile.columns
     assert len(profile) == 4
 
-    labeled_profile = label_clusters(profile)
-    assert "segment" in labeled_profile.columns
-
-    # Check rule-based mapping:
+    # Check rule-based segment mappings:
     # cluster 0: recency 200 > 150 -> Inactive Customers
-    assert labeled_profile.loc[0, "segment"] == "Inactive Customers"
+    assert profile.loc[0, "segment"] == "Inactive Customers"
     # cluster 1: frequency 15 > 10 -> Frequent Buyers
-    assert labeled_profile.loc[1, "segment"] == "Frequent Buyers"
+    assert profile.loc[1, "segment"] == "Frequent Buyers"
     # cluster 2: avg_order_value 600 > 500 -> Occasional High Value Buyers
-    assert labeled_profile.loc[2, "segment"] == "Occasional High Value Buyers"
+    assert profile.loc[2, "segment"] == "Occasional High Value Buyers"
     # cluster 3: default -> Medium Customers
-    assert labeled_profile.loc[3, "segment"] == "Medium Customers"
+    assert profile.loc[3, "segment"] == "Medium Customers"
+
+    # Verify customer dataframe contains segment column
+    assert "segment" in df_labeled.columns
+    assert not df_labeled["segment"].isna().any()
+    assert df_labeled.loc[0, "segment"] == "Inactive Customers"
 
 
-def test_build_cluster_profile_end_to_end(sample_rfm_df):
-    features = ["recency", "frequency", "avg_order_value"]
-    pipeline = build_pipeline(k=3, random_state=42, feature_columns=features)
-    sample_rfm_df["cluster"] = pipeline.fit_predict(sample_rfm_df)
-
-    enriched_df, profile = build_cluster_profile(sample_rfm_df)
-    assert "segment" in enriched_df.columns
-    assert "segment" in profile.columns
-    assert len(enriched_df) == len(sample_rfm_df)
-    assert not enriched_df["segment"].isna().any()
-
-
-def test_visualize_clusters(sample_rfm_df):
-    features = ["recency", "frequency", "avg_order_value"]
-    pipeline = build_pipeline(k=3, random_state=42, feature_columns=features)
-    sample_rfm_df["cluster"] = pipeline.fit_predict(sample_rfm_df)
-
-    fig = visualize_clusters(sample_rfm_df, pipeline, features)
+def test_plot_silhouette_scores():
+    scores = [(2, 0.25), (3, 0.35), (4, 0.30)]
+    fig = plot_silhouette_scores(scores)
     assert fig is not None
 
-    # Test with < 2 features (skips PCA)
-    fig_single = visualize_clusters(sample_rfm_df, pipeline, ["recency"])
+
+def test_plot_pca_clusters(sample_rfm_df):
+    features = ["recency", "frequency", "avg_order_value"]
+    pipeline = build_pipeline(k=3, random_state=42, feature_columns=features)
+    sample_rfm_df["cluster"] = pipeline.fit_predict(sample_rfm_df)
+
+    # Valid with >= 2 features
+    fig = plot_pca_clusters(sample_rfm_df, pipeline, features)
+    assert fig is not None
+
+    # Skips when fewer than 2 features
+    fig_single = plot_pca_clusters(sample_rfm_df, pipeline, ["recency"])
     assert fig_single is None
+
+
+def test_save_outputs(tmp_path, monkeypatch):
+    train_path = tmp_path / "train.csv"
+    test_path = tmp_path / "test.csv"
+    profile_path = tmp_path / "profile.csv"
+
+    monkeypatch.setattr("src.clustering.TRAIN_CLUSTERS", train_path)
+    monkeypatch.setattr("src.clustering.CUSTOMER_CLUSTERS", test_path)
+    monkeypatch.setattr("src.clustering.CLUSTER_PROFILE", profile_path)
+
+    df_train = pd.DataFrame({"customer_id": ["C1"], "cluster": [0]})
+    df_test = pd.DataFrame({"customer_id": ["C2"], "cluster": [0]})
+    df_profile = pd.DataFrame({"customers": [1]}, index=[0])
+
+    save_outputs(df_train, df_test, df_profile)
+
+    assert train_path.exists()
+    assert test_path.exists()
+    assert profile_path.exists()
