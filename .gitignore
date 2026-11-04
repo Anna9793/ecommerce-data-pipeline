@@ -10,6 +10,7 @@ data/predictions
 mlruns/
 models/
 .ipynb_checkpoints/
+notebooks/
 .DS_Store
 churn_pipeline.yaml
 
