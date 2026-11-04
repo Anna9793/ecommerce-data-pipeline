@@ -1,12 +1,8 @@
 clustering:
+  # k=4 locked for production stability (derived from silhouette analysis & business segments)
+  features: ["recency", "frequency", "avg_order_value"]
   cluster_range: [4]
   random_state: 42
 
 mlflow:
   experiment_name: "customer_segmentation"
-
-experiments:
-  exp1_full:
-    description: "Clustering with all features"
-    features: ["recency", "frequency", "avg_order_value"]
-    

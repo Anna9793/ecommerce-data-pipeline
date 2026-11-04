@@ -4,70 +4,64 @@ import mlflow
 import mlflow.sklearn
 from mlflow.models import infer_signature
 
-
 from src.cleaning import run_cleaning
 from src.transformation import run_transformation
-from src.rfm_features import (
-    run_rfm_features,
-    load_rfm
-)
+from src.rfm_features import run_rfm_features, load_rfm
 from src.clustering import run_clustering
 
-def run_training_pipeline(config):
 
-    logging.info("Start training pipeline")
+def run_training_pipeline(config):
+    """
+    Executes the end-to-end customer segmentation training pipeline:
+    1. Preprocesses raw data (cleaning, transformations, RFM engineering).
+    2. Runs clustering model training and evaluation.
+    3. Logs metrics, parameters, artifacts, and registers model in MLflow.
+    """
+    logging.info("Starting training pipeline")
 
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
+    mlflow.set_experiment(config.mlflow.experiment_name)
 
-    mlflow.set_experiment("customer_segmentation")
+    # 1. Feature Engineering & Preparation
+    run_cleaning()
+    run_transformation()
+    run_rfm_features()
 
-    for exp_name, exp_config in config.experiments.items():
-        
-        with mlflow.start_run():
-            
-            print(f"\n Running {exp_name}")
+    df = load_rfm()
+    feature_columns = config.clustering.features
 
-            feature_columns = exp_config.features
+    with mlflow.start_run():
+        logging.info("Executing clustering training run in MLflow")
 
-            run_cleaning()
-            run_transformation()
-            run_rfm_features()
+        model, best_k, metrics, fig, pca_fig = run_clustering(
+            config,
+            df=df,
+            feature_columns=feature_columns,
+            cluster_range=config.clustering.cluster_range
+        )
 
-            df = load_rfm()
+        input_example = df[feature_columns].head(5)
+        predictions = model.predict(input_example)
+        signature = infer_signature(input_example, predictions)
 
-            model, best_k, metrics, fig, pca_fig = run_clustering(
-                config, 
-                df=df,
-                feature_columns=feature_columns,
-                cluster_range=config.clustering.cluster_range
-                )
+        mlflow.sklearn.log_model(
+            sk_model=model,
+            name="model",
+            input_example=input_example,
+            signature=signature
+        )
 
-            input_example = df[feature_columns].head(5)
-            predictions = model.predict(input_example)
-            signature = infer_signature(
-                input_example,
-                predictions
-            )
+        mlflow.log_metric("silhouette_score", metrics["silhouette"])
+        mlflow.log_figure(fig, "silhouette_plot.png")
+        if pca_fig is not None:
+            mlflow.log_figure(pca_fig, "pca_clusters.png")
 
-            mlflow.sklearn.log_model(
-                sk_model= model, 
-                name="model",
-                input_example=input_example,
-                signature=signature)
+        mlflow.log_param("feature_set", ",".join(feature_columns))
+        mlflow.log_param("n_clusters", best_k)
 
-            mlflow.log_metric("silhouette_score", metrics["silhouette"])
-
-            mlflow.log_figure(fig, "silhouette_plot.png")
-            if pca_fig is not None:
-                mlflow.log_figure(pca_fig, "pca_clusters.png")
-            
-        
-            mlflow.log_param("feature_set", ",".join(feature_columns))
-            mlflow.log_param("n_clusters", best_k)
-
-            mlflow.register_model(
+        mlflow.register_model(
             model_uri=f"runs:/{mlflow.active_run().info.run_id}/model",
             name="customer_segmentation_model"
         )
 
-    logging.info("Training pipeline completed")
+    logging.info("Training pipeline completed successfully")
