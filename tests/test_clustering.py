@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
@@ -140,7 +141,8 @@ def test_plot_pca_clusters(sample_rfm_df):
     assert fig_single is None
 
 
-def test_save_outputs(tmp_path, monkeypatch):
+def test_save_outputs_local_mode(tmp_path, monkeypatch):
+    monkeypatch.setenv("USE_BIGQUERY", "false")
     profile_path = tmp_path / "profile.csv"
     customers_path = tmp_path / "customers.csv"
 
@@ -150,7 +152,33 @@ def test_save_outputs(tmp_path, monkeypatch):
     df_profile = pd.DataFrame({"customers": [1]}, index=[0])
     df_scored = pd.DataFrame({"customer_id": ["C1"], "cluster": [0], "segment": ["Medium Customers"]})
 
-    save_outputs(df_profile, scored_df=df_scored)
+    with patch("pandas_gbq.to_gbq") as mock_to_gbq:
+        save_outputs(df_profile, scored_df=df_scored)
+        assert not mock_to_gbq.called
+
+    assert profile_path.exists()
+    assert customers_path.exists()
+
+
+def test_save_outputs_bigquery_mode(tmp_path, monkeypatch):
+    monkeypatch.setenv("USE_BIGQUERY", "true")
+    monkeypatch.setenv("GCP_PROJECT", "test-project")
+    profile_path = tmp_path / "profile.csv"
+    customers_path = tmp_path / "customers.csv"
+
+    monkeypatch.setattr("src.clustering.CLUSTER_PROFILE", profile_path)
+    monkeypatch.setattr("src.clustering.CUSTOMER_CLUSTERS", customers_path)
+
+    df_profile = pd.DataFrame({"customers": [1]}, index=[0])
+    df_scored = pd.DataFrame({"customer_id": ["C1"], "cluster": [0], "segment": ["Medium Customers"]})
+
+    with patch("pandas_gbq.to_gbq") as mock_to_gbq:
+        save_outputs(df_profile, scored_df=df_scored)
+        assert mock_to_gbq.called
+        call_kwargs = mock_to_gbq.call_args[1]
+        assert call_kwargs["destination_table"] == "retail_data.customer_segments"
+        assert call_kwargs["project_id"] == "test-project"
+        assert call_kwargs["if_exists"] == "replace"
 
     assert profile_path.exists()
     assert customers_path.exists()
