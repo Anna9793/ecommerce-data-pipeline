@@ -195,8 +195,3 @@ def run_clustering(config, df=None, feature_columns=None, cluster_range=None):
 
     logging.info("Clustering pipeline completed successfully")
     return best_pipeline, best_k, {"silhouette": best_score}, fig, pca_fig
-
-
-# Aliases for backward compatibility
-build_cluster_profile = profile_clusters
-visualize_clusters = plot_pca_clusters
