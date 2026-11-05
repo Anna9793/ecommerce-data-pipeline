@@ -4,15 +4,14 @@ Responsible for row-level sanitization, typing, and transactional enrichment:
 - Eliminates duplicate rows and invalid customer IDs
 - Filters strictly valid transactions (unit_price > 0, purchases or valid cancellations)
 - Computes transactional enrichments: order_value (quantity * unit_price) and timestamp features
-- Unifies and replaces legacy cleaning.py and transformation.py in a single, high-efficiency pass
+- Transforms Bronze raw data into the Silver curated dataset in a single, high-efficiency pass
 """
 
 import os
 import logging
 import pandas as pd
 from dotenv import load_dotenv
-from config.paths import SILVER_RETAIL
-from src.bronze import load_bronze
+from config.paths import BRONZE_RETAIL, ONLINE_RETAIL_XLSX, SILVER_RETAIL
 
 load_dotenv()
 
@@ -128,12 +127,32 @@ def load_silver(path=SILVER_RETAIL, use_bigquery=None):
 def run_silver(use_bigquery=None):
     """
     Executes the Silver pipeline:
-    Loads Bronze -> Cleans & Enriches in memory -> Persists Silver.
+    Loads Bronze (raw) -> Cleans & Enriches in memory -> Persists Silver.
     """
-    logging.info("Starting Silver Layer processing...")
-    raw_df = load_bronze(use_bigquery=use_bigquery)
-    logging.info("Bronze rows received: %d", len(raw_df))
+    if use_bigquery is None:
+        use_bigquery = os.getenv("USE_BIGQUERY", "false").lower() == "true"
 
+    logging.info("Starting Silver Layer processing...")
+
+    if use_bigquery:
+        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+        logging.info("Silver Layer [Cloud]: Reading raw transactions from BigQuery: %s.retail_data.transactions", project_id)
+        import pandas_gbq
+        query = f"SELECT * FROM `{project_id}.retail_data.transactions`"
+        raw_df = pandas_gbq.read_gbq(query, project_id=project_id)
+    else:
+        logging.info("Silver Layer [Local]: Reading raw transactions from %s", BRONZE_RETAIL)
+        if not os.path.exists(BRONZE_RETAIL):
+            if os.path.exists(ONLINE_RETAIL_XLSX):
+                logging.info("Raw CSV not found. Converting %s to CSV...", ONLINE_RETAIL_XLSX)
+                raw_df = pd.read_excel(ONLINE_RETAIL_XLSX)
+                raw_df.to_csv(BRONZE_RETAIL, index=False)
+            else:
+                raise FileNotFoundError(f"Neither raw CSV ({BRONZE_RETAIL}) nor Excel ({ONLINE_RETAIL_XLSX}) found.")
+        else:
+            raw_df = pd.read_csv(BRONZE_RETAIL)
+
+    logging.info("Bronze rows received: %d", len(raw_df))
     silver_df = clean_and_enrich_transactions(raw_df)
     logging.info("Silver curated rows produced: %d", len(silver_df))
 
