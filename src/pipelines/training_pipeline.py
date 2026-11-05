@@ -4,6 +4,7 @@ import mlflow
 import mlflow.sklearn
 from mlflow.models import infer_signature
 
+from src.bronze import run_bronze
 from src.silver import run_silver
 from src.gold import run_gold, load_gold
 from src.clustering import run_clustering
@@ -13,6 +14,7 @@ def run_training_pipeline(config):
     """
     Executes the end-to-end customer segmentation training pipeline:
     1. Medallion ETL:
+       - Bronze: Ingests raw source into immutable local landing storage.
        - Silver: Cleans, types, and enriches transactions in a single pass.
        - Gold: Computes customer RFM and velocity features (0 NaNs guaranteed).
     2. Runs clustering model training and evaluation.
@@ -25,8 +27,9 @@ def run_training_pipeline(config):
     mlflow.set_experiment(config.mlflow.experiment_name)
 
     # 1. Medallion Feature Engineering (Local deterministic execution)
-    run_silver(use_bigquery=False)
-    run_gold(use_bigquery=False)
+    run_bronze()
+    run_silver()
+    run_gold()
 
     df = load_gold(use_bigquery=False)
     feature_columns = config.clustering.features

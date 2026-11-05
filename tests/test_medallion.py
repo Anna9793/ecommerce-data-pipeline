@@ -4,8 +4,34 @@ import numpy as np
 import pandas as pd
 from unittest.mock import patch
 
+from src.bronze import ingest_raw_source, load_bronze, run_bronze
 from src.silver import clean_and_enrich_transactions, load_silver
 from src.gold import compute_gold_features, load_gold
+
+
+def test_bronze_ingestion_and_loading(tmp_path):
+    """
+    Verifies that Bronze layer correctly ingests raw files and persists immutable Bronze CSV.
+    """
+    raw_source = tmp_path / "raw_source.csv"
+    bronze_target = tmp_path / "bronze_target.csv"
+
+    sample_df = pd.DataFrame({
+        "InvoiceNo": ["536365"],
+        "Quantity": [6],
+        "UnitPrice": [2.55]
+    })
+    sample_df.to_csv(raw_source, index=False)
+
+    # Test ingest_raw_source
+    ingested_df = ingest_raw_source(source_path=raw_source, target_path=bronze_target)
+    assert bronze_target.exists()
+    assert len(ingested_df) == 1
+
+    # Test load_bronze
+    loaded_df = load_bronze(path=bronze_target)
+    assert len(loaded_df) == 1
+    assert loaded_df["InvoiceNo"].iloc[0] == 536365
 
 
 @pytest.fixture

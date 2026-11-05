@@ -9,9 +9,12 @@ Responsible for row-level sanitization, typing, and transactional enrichment:
 
 import os
 import logging
+from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
-from config.paths import BRONZE_RETAIL, RAW_EXCEL, SILVER_RETAIL
+
+from config.paths import SILVER_RETAIL
+from src.bronze import load_bronze
 
 load_dotenv()
 
@@ -31,7 +34,6 @@ def remove_duplicates(df):
 
 def remove_missing_customer_ids(df):
     df = df.dropna(subset=["customer_id"])
-    # Also exclude string representations of nulls or guest users
     if "customer_id" in df.columns:
         invalid_ids = {"nan", "none", "guest", ""}
         df = df[~df["customer_id"].astype(str).str.lower().isin(invalid_ids)]
@@ -85,36 +87,14 @@ def save_silver(df, path=SILVER_RETAIL):
     df.to_csv(path, index=False)
 
 
-def load_silver(path=SILVER_RETAIL, use_bigquery=None):
+def load_silver(path=SILVER_RETAIL, **kwargs):
     """
     Loads curated transactions from the Silver layer.
-    
-    Parameters
-    ----------
-    path : Path or str, default SILVER_RETAIL
-        Path to local Silver CSV file.
-    use_bigquery : bool, optional
-        If True, loads from BigQuery view retail_data.clean_transactions.
-        If False, loads from local CSV file.
-        If None, defaults to USE_BIGQUERY environment variable.
     """
-    if use_bigquery is None:
-        use_bigquery = os.getenv("USE_BIGQUERY", "false").lower() == "true"
-
-    if use_bigquery:
-        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        logging.info("Silver Layer [Cloud]: Loading clean transactions from BigQuery view: %s.retail_data.clean_transactions", project_id)
-        import pandas_gbq
-        query = f"SELECT * FROM `{project_id}.retail_data.clean_transactions`"
-        df = pandas_gbq.read_gbq(query, project_id=project_id)
-        if "invoice_date" in df.columns:
-            df["invoice_date"] = pd.to_datetime(df["invoice_date"])
-        return df
-
-    logging.info("Silver Layer [Local]: Loading clean transactions from %s", path)
+    logging.info("Silver Layer: Loading clean transactions from %s", path)
     if not os.path.exists(path):
         logging.warning("Silver file not found at %s. Running Silver pipeline to generate it.", path)
-        return run_silver(use_bigquery=False)
+        return run_silver()
 
     df = pd.read_csv(
         path,
@@ -124,34 +104,13 @@ def load_silver(path=SILVER_RETAIL, use_bigquery=None):
     return df
 
 
-def run_silver(use_bigquery=None):
+def run_silver(**kwargs):
     """
-    Executes the Silver pipeline:
+    Executes the Silver pipeline locally:
     Loads Bronze (raw) -> Cleans & Enriches in memory -> Persists Silver.
     """
-    if use_bigquery is None:
-        use_bigquery = os.getenv("USE_BIGQUERY", "false").lower() == "true"
-
     logging.info("Starting Silver Layer processing...")
-
-    if use_bigquery:
-        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        logging.info("Silver Layer [Cloud]: Reading raw transactions from BigQuery: %s.retail_data.transactions", project_id)
-        import pandas_gbq
-        query = f"SELECT * FROM `{project_id}.retail_data.transactions`"
-        raw_df = pandas_gbq.read_gbq(query, project_id=project_id)
-    else:
-        logging.info("Silver Layer [Local]: Reading raw transactions from %s", BRONZE_RETAIL)
-        if not os.path.exists(BRONZE_RETAIL):
-            if os.path.exists(RAW_EXCEL):
-                logging.info("Raw CSV not found. Converting %s to CSV...", RAW_EXCEL)
-                raw_df = pd.read_excel(RAW_EXCEL)
-                raw_df.to_csv(BRONZE_RETAIL, index=False)
-            else:
-                raise FileNotFoundError(f"Neither raw CSV ({BRONZE_RETAIL}) nor Excel ({RAW_EXCEL}) found.")
-        else:
-            raw_df = pd.read_csv(BRONZE_RETAIL)
-
+    raw_df = load_bronze()
     logging.info("Bronze rows received: %d", len(raw_df))
     silver_df = clean_and_enrich_transactions(raw_df)
     logging.info("Silver curated rows produced: %d", len(silver_df))

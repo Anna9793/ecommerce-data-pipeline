@@ -182,19 +182,19 @@ def load_gold(path=GOLD_RFM, use_bigquery=None):
     logging.info("Gold Layer [Local]: Loading customer features from %s", path)
     if not os.path.exists(path):
         logging.warning("Gold file not found at %s. Running Gold pipeline to generate it.", path)
-        return run_gold(use_bigquery=False)
+        return run_gold()
 
     df = pd.read_csv(path, dtype={"customer_id": str})
     return df
 
 
-def run_gold(use_bigquery=None):
+def run_gold(**kwargs):
     """
-    Executes the Gold pipeline:
+    Executes the Gold pipeline locally:
     Loads Silver -> Computes RFM & Behavioral Features -> Persists Gold.
     """
     logging.info("Starting Gold Layer processing...")
-    silver_df = load_silver(use_bigquery=use_bigquery)
+    silver_df = load_silver()
     logging.info("Silver input rows received: %d", len(silver_df))
 
     gold_df = compute_gold_features(silver_df)
