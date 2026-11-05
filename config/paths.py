@@ -13,7 +13,6 @@ DATA_DIR = BASE_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 PREDICTIONS_DIR = DATA_DIR / "predictions"
-REPORTS_DIR = BASE_DIR / "reports"
 MODELS_DIR = BASE_DIR / "models"
 CONFIG_DIR = BASE_DIR / "config"
 
@@ -22,7 +21,6 @@ DIRECTORIES = [
     RAW_DIR,
     PROCESSED_DIR,
     PREDICTIONS_DIR,
-    REPORTS_DIR,
     MODELS_DIR,
     CONFIG_DIR
 ]
