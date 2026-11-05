@@ -1,12 +1,10 @@
 """
 Medallion Architecture - Bronze Layer (Raw Ingestion & Landing Zone)
 Responsible for raw, immutable data access and ingestion:
-- Ingests raw source dataset (RAW_EXCEL from config.paths)
+- Ingests raw Excel source (RAW_EXCEL from config.paths)
 - Lands raw immutable transactions into BRONZE_RETAIL (CSV)
-- Provides optional utility to upload raw data to BigQuery
 """
 
-import os
 import logging
 from pathlib import Path
 import pandas as pd
@@ -35,21 +33,6 @@ def ingest_raw_source(source_path=RAW_EXCEL, target_path=BRONZE_RETAIL):
     df.to_csv(target_path, index=False)
     logging.info("Bronze Layer: Saved %d raw records to %s", len(df), target_path)
     return df
-
-
-def upload_bronze_to_bigquery(path=BRONZE_RETAIL, project_id=None, if_exists="replace"):
-    """
-    Utility: Uploads raw local Bronze CSV to BigQuery table retail_data.transactions.
-    """
-    if project_id is None:
-        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        
-    logging.info("Bronze Layer: Uploading raw Bronze data (%s) to BigQuery table %s.retail_data.transactions", path, project_id)
-    import pandas_gbq
-    df = pd.read_csv(path)
-    destination_table = "retail_data.transactions"
-    pandas_gbq.to_gbq(df, destination_table=destination_table, project_id=project_id, if_exists=if_exists)
-    logging.info("Bronze Layer: Upload completed successfully (%d rows).", len(df))
 
 
 def run_bronze():
