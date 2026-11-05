@@ -14,13 +14,10 @@ import mlflow
 import mlflow.sklearn
 from mlflow.models import infer_signature
 
-from src.transformation import (
-    load_clean_data,
-    transform_data
-)
-from src.rfm_features import compute_rfm
-from src.churn_target import create_churn_target
 from config.paths import SILVER_RETAIL
+from src.silver import run_silver
+from src.gold import compute_gold_features
+from src.churn_target import create_churn_target
 
 def run_churn_training(
     cutoff_days=90,
@@ -33,9 +30,10 @@ def run_churn_training(
     mlflow.set_experiment("customer_churn")
 
     if df is None:
-        logging.info("Loading and transforming data")
-        df = load_clean_data(SILVER_RETAIL)
-        df = transform_data(df)
+        logging.info("Loading curated transactions from Silver Layer (%s)", SILVER_RETAIL)
+        if not SILVER_RETAIL.exists():
+            run_silver()
+        df = pd.read_csv(SILVER_RETAIL, parse_dates=["invoice_date"])
     else:
         logging.info("Using provided DataFrame for training")
         if "invoice_date" in df.columns:
@@ -54,7 +52,7 @@ def run_churn_training(
     logging.info("Future rows: %s", len(future_df))
 
     # Creating RFM features
-    rfm_df = compute_rfm(feature_df)
+    rfm_df = compute_gold_features(feature_df)
 
     # Creating the target
     target_df = create_churn_target(feature_df, future_df)

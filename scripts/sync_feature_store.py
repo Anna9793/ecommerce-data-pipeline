@@ -120,12 +120,13 @@ def sync_feature_store():
     project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
     
     # 1. Load latest aggregated features
-    from src.rfm_features import load_rfm
+    from src.gold import load_gold
+    from config.paths import GOLD_RFM
     try:
-        df = load_rfm(use_bigquery=use_bigquery)
+        df = load_gold(use_bigquery=use_bigquery)
     except Exception as e:
         logging.error("Failed to load RFM features for syncing: %s. Reading local fallback.", e)
-        df = pd.read_csv("data/processed/rfm_customers.csv")
+        df = pd.read_csv(GOLD_RFM)
         
     # Ensure columns exist
     required_cols = ["customer_id", "recency", "frequency", "avg_order_value", "spending_velocity", "cancellation_rate", "preferred_shopping_hour"]
