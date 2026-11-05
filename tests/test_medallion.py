@@ -9,9 +9,9 @@ from src.silver import clean_and_enrich_transactions, run_silver
 from src.gold import compute_gold_features, load_gold, run_gold
 
 
-def test_bronze_ingestion_and_loading(tmp_path):
+def test_bronze_ingestion(tmp_path):
     """
-    Verifies that Bronze layer correctly ingests raw files and persists immutable Bronze CSV.
+    Verifies that Bronze layer correctly ingests raw Excel files and persists immutable Bronze CSV.
     """
     raw_source = tmp_path / "raw_source.xlsx"
     bronze_target = tmp_path / "bronze_target.csv"
@@ -23,15 +23,24 @@ def test_bronze_ingestion_and_loading(tmp_path):
     })
     sample_df.to_excel(raw_source, index=False)
 
-    # Test ingest_raw_source
+    # 1. Test ingest_raw_source
     ingested_df = ingest_raw_source(source_path=raw_source, target_path=bronze_target)
     assert bronze_target.exists()
     assert len(ingested_df) == 1
 
-    # Test direct CSV read
+    # 2. Test direct CSV read and data integrity
     loaded_df = pd.read_csv(bronze_target)
     assert len(loaded_df) == 1
     assert loaded_df["InvoiceNo"].iloc[0] == 536365
+
+
+def test_run_bronze():
+    """
+    Verifies that run_bronze returns a valid non-empty DataFrame.
+    """
+    df = run_bronze()
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty
 
 
 @pytest.fixture
