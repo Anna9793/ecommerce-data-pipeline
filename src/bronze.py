@@ -1,9 +1,8 @@
 """
 Medallion Architecture - Bronze Layer (Raw Ingestion & Landing Zone)
 Responsible for raw, immutable data access and ingestion:
-- Reads the raw source dataset (RAW_EXCEL from config.paths)
+- Ingests raw source dataset (RAW_EXCEL from config.paths)
 - Lands raw immutable transactions into BRONZE_RETAIL (CSV)
-- Provides load_bronze() for downstream consumption (by Silver layer)
 - Provides optional utility to upload raw data to BigQuery
 """
 
@@ -41,22 +40,6 @@ def ingest_raw_source(source_path=RAW_EXCEL, target_path=BRONZE_RETAIL):
     return df
 
 
-def load_bronze(path=BRONZE_RETAIL):
-    """
-    Loads raw untransformed transactional data from the Bronze layer.
-    If the Bronze CSV does not exist but the source Excel exists, it ingests it automatically.
-    """
-    path = Path(path)
-    if not path.exists():
-        logging.warning("Bronze file not found at %s. Ingesting from raw source...", path)
-        if Path(RAW_EXCEL).exists():
-            return ingest_raw_source(RAW_EXCEL, path)
-        raise FileNotFoundError(f"Neither Bronze CSV ({path}) nor Raw Source ({RAW_EXCEL}) found.")
-
-    logging.info("Bronze Layer: Loading raw transactions from %s", path)
-    return pd.read_csv(path)
-
-
 def upload_bronze_to_bigquery(path=BRONZE_RETAIL, project_id=None, if_exists="replace"):
     """
     Utility: Uploads raw local Bronze CSV to BigQuery table retail_data.transactions.
@@ -74,10 +57,14 @@ def upload_bronze_to_bigquery(path=BRONZE_RETAIL, project_id=None, if_exists="re
 
 def run_bronze():
     """
-    Executes the Bronze ingestion step.
+    Executes the Bronze ingestion step:
+    Ensures BRONZE_RETAIL exists; if not, ingests from RAW_EXCEL.
     """
     logging.info("Starting Bronze Layer ingestion...")
-    return load_bronze()
+    if not BRONZE_RETAIL.exists():
+        return ingest_raw_source(RAW_EXCEL, BRONZE_RETAIL)
+    logging.info("Bronze file already exists at %s", BRONZE_RETAIL)
+    return pd.read_csv(BRONZE_RETAIL)
 
 
 if __name__ == "__main__":

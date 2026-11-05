@@ -14,8 +14,8 @@ import logging
 import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
-from config.paths import GOLD_RFM
-from src.silver import load_silver
+from config.paths import GOLD_RFM, SILVER_RETAIL
+from src.silver import run_silver
 
 load_dotenv()
 
@@ -191,10 +191,13 @@ def load_gold(path=GOLD_RFM, use_bigquery=None):
 def run_gold(**kwargs):
     """
     Executes the Gold pipeline locally:
-    Loads Silver -> Computes RFM & Behavioral Features -> Persists Gold.
+    Reads Silver CSV -> Computes RFM & Behavioral Features -> Persists Gold CSV.
     """
     logging.info("Starting Gold Layer processing...")
-    silver_df = load_silver()
+    if not SILVER_RETAIL.exists():
+        run_silver()
+
+    silver_df = pd.read_csv(SILVER_RETAIL, parse_dates=["invoice_date"])
     logging.info("Silver input rows received: %d", len(silver_df))
 
     gold_df = compute_gold_features(silver_df)

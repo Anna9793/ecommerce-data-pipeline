@@ -7,15 +7,16 @@ import os
 import logging
 import pandas as pd
 from config.paths import SILVER_RETAIL
-from src.silver import load_silver, save_silver, run_silver, add_transaction_enrichments
+from src.silver import run_silver, add_transaction_enrichments
 
 
-def load_clean_data(path=SILVER_RETAIL, use_bigquery=None):
+def load_clean_data(path=SILVER_RETAIL, **kwargs):
     """
-    Backward-compatible loader delegating to Silver layer.
-    Prioritizes explicit use_bigquery argument over environment variable.
+    Backward-compatible loader.
     """
-    return load_silver(path=path, use_bigquery=use_bigquery)
+    if not os.path.exists(path):
+        run_silver()
+    return pd.read_csv(path, parse_dates=["invoice_date"])
 
 
 def add_order_value(df):
@@ -40,11 +41,11 @@ def transform_data(df):
 
 
 def save_transformed_data(df, path=SILVER_RETAIL):
-    save_silver(df, path=path)
+    df.to_csv(path, index=False)
 
 
 def run_transformation():
-    return run_silver(use_bigquery=False)
+    return run_silver()
 
 
 if __name__ == "__main__":

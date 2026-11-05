@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 from unittest.mock import patch
 
-from src.bronze import ingest_raw_source, load_bronze, run_bronze
-from src.silver import clean_and_enrich_transactions, load_silver
-from src.gold import compute_gold_features, load_gold
+from src.bronze import ingest_raw_source, run_bronze
+from src.silver import clean_and_enrich_transactions, run_silver
+from src.gold import compute_gold_features, load_gold, run_gold
 
 
 def test_bronze_ingestion_and_loading(tmp_path):
@@ -28,8 +28,8 @@ def test_bronze_ingestion_and_loading(tmp_path):
     assert bronze_target.exists()
     assert len(ingested_df) == 1
 
-    # Test load_bronze
-    loaded_df = load_bronze(path=bronze_target)
+    # Test direct CSV read
+    loaded_df = pd.read_csv(bronze_target)
     assert len(loaded_df) == 1
     assert loaded_df["InvoiceNo"].iloc[0] == 536365
 

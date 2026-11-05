@@ -13,8 +13,8 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
-from config.paths import SILVER_RETAIL
-from src.bronze import load_bronze
+from config.paths import BRONZE_RETAIL, SILVER_RETAIL
+from src.bronze import run_bronze
 
 load_dotenv()
 
@@ -82,40 +82,22 @@ def clean_and_enrich_transactions(df):
     return df
 
 
-def save_silver(df, path=SILVER_RETAIL):
-    logging.info("Silver Layer: Saving curated transactions to %s", path)
-    df.to_csv(path, index=False)
-
-
-def load_silver(path=SILVER_RETAIL, **kwargs):
-    """
-    Loads curated transactions from the Silver layer.
-    """
-    logging.info("Silver Layer: Loading clean transactions from %s", path)
-    if not os.path.exists(path):
-        logging.warning("Silver file not found at %s. Running Silver pipeline to generate it.", path)
-        return run_silver()
-
-    df = pd.read_csv(
-        path,
-        parse_dates=["invoice_date"],
-        dtype={"customer_id": str, "invoice_no": str}
-    )
-    return df
-
-
-def run_silver(**kwargs):
+def run_silver():
     """
     Executes the Silver pipeline locally:
-    Loads Bronze (raw) -> Cleans & Enriches in memory -> Persists Silver.
+    Reads Bronze CSV -> Cleans & Enriches in memory -> Persists Silver CSV.
     """
     logging.info("Starting Silver Layer processing...")
-    raw_df = load_bronze()
+    if not BRONZE_RETAIL.exists():
+        run_bronze()
+
+    raw_df = pd.read_csv(BRONZE_RETAIL)
     logging.info("Bronze rows received: %d", len(raw_df))
     silver_df = clean_and_enrich_transactions(raw_df)
     logging.info("Silver curated rows produced: %d", len(silver_df))
 
-    save_silver(silver_df, SILVER_RETAIL)
+    silver_df.to_csv(SILVER_RETAIL, index=False)
+    logging.info("Silver Layer: Saved curated transactions to %s", SILVER_RETAIL)
     return silver_df
 
 

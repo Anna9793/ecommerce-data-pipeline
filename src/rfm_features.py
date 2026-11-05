@@ -8,14 +8,16 @@ import logging
 import pandas as pd
 from dotenv import load_dotenv
 from config.paths import GOLD_RFM, SILVER_RETAIL
-from src.silver import load_silver
+from src.silver import run_silver
 from src.gold import compute_gold_features, save_gold, load_gold, run_gold
 
 load_dotenv()
 
 
 def load_transactions(path=SILVER_RETAIL):
-    return load_silver(path=path, use_bigquery=False)
+    if not os.path.exists(path):
+        run_silver()
+    return pd.read_csv(path, parse_dates=["invoice_date"])
 
 
 def compute_rfm(df):
