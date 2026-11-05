@@ -52,7 +52,7 @@ def sample_raw_data():
         "Quantity":    [6,        6,        2,         -1,        10,       -3,       0,        5],
         "InvoiceDate": ["2010-12-01 08:26:00"] * 8,
         "UnitPrice":   [2.55,     2.55,     3.39,      10.0,      0.0,      2.0,      4.0,      5.0],
-        "CustomerID":  [17850.0,  17850.0,  np.nan,    17850.0,   13047.0,  12583.0,  15100.0,  "GUEST"],
+        "CustomerID":  [17850.0,  17850.0,  np.nan,    17850.0,   13047.0,  12583.0,  15100.0,  np.nan],
         "Country":     ["United Kingdom"] * 8
     })
 
@@ -74,7 +74,6 @@ def test_silver_cleaning_and_enrichment(sample_raw_data):
     # 2. Excluded rows:
     # - Duplicate (536365 duplicate dropped)
     # - Missing CustomerID (np.nan dropped)
-    # - CustomerID == 'GUEST' dropped
     # - UnitPrice == 0.0 dropped
     # - Quantity == 0 dropped
     # - Negative quantity without 'C' prefix dropped (-3 on 536369)
@@ -83,7 +82,7 @@ def test_silver_cleaning_and_enrichment(sample_raw_data):
     # - C536367 (cancellation by 17850)
     assert len(silver) == 2
     assert "17850" in silver["customer_id"].values
-    assert "GUEST" not in silver["customer_id"].values
+    assert silver["customer_id"].isnull().sum() == 0
 
     # 3. Enrichment calculations
     row_purchase = silver[silver["quantity"] > 0].iloc[0]

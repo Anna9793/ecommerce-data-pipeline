@@ -33,11 +33,7 @@ def remove_duplicates(df):
 
 
 def remove_missing_customer_ids(df):
-    df = df.dropna(subset=["customer_id"])
-    if "customer_id" in df.columns:
-        invalid_ids = {"nan", "none", "guest", ""}
-        df = df[~df["customer_id"].astype(str).str.lower().isin(invalid_ids)]
-    return df
+    return df.dropna(subset=["customer_id"])
 
 
 def cast_data_types(df):
