@@ -8,7 +8,7 @@ import joblib
 
 # Ensure project root is in Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from config.paths import MODELS_DIR
+from config.paths import MODELS_DIR, SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL
 
 # Configure local MLflow
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
@@ -25,10 +25,9 @@ def export_and_upload():
     print("Loading segmentation model...")
     try:
         seg_model = mlflow.sklearn.load_model("models:/customer_segmentation_model@production")
-        seg_path = MODELS_DIR / "customer_segmentation_model.pkl"
-        joblib.dump(seg_model, seg_path)
-        print(f"Saved segmentation model to {seg_path}")
-        uploaded_files.append(("customer_segmentation_model.pkl", str(seg_path)))
+        joblib.dump(seg_model, SEGMENTATION_MODEL_PKL)
+        print(f"Saved segmentation model to {SEGMENTATION_MODEL_PKL}")
+        uploaded_files.append((SEGMENTATION_MODEL_PKL.name, str(SEGMENTATION_MODEL_PKL)))
     except Exception as e:
         print(f"Could not load customer_segmentation_model from registry: {e}. Skipping segmentation model export.")
     
@@ -36,10 +35,9 @@ def export_and_upload():
     print("Loading churn model...")
     try:
         churn_model = mlflow.sklearn.load_model("models:/customer_churn_model@production")
-        churn_path = MODELS_DIR / "customer_churn_model.pkl"
-        joblib.dump(churn_model, churn_path)
-        print(f"Saved churn model to {churn_path}")
-        uploaded_files.append(("customer_churn_model.pkl", str(churn_path)))
+        joblib.dump(churn_model, CHURN_MODEL_PKL)
+        print(f"Saved churn model to {CHURN_MODEL_PKL}")
+        uploaded_files.append((CHURN_MODEL_PKL.name, str(CHURN_MODEL_PKL)))
     except Exception as e:
         print(f"Could not load customer_churn_model from registry: {e}. Cannot export churn model.")
     

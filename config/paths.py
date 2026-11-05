@@ -36,6 +36,8 @@ SILVER_RETAIL = PROCESSED_DIR / "silver_retail.csv"
 GOLD_RFM = PROCESSED_DIR / "gold_rfm.csv"
 
 # 4. Modelos, Perfiles y Configuración
+SEGMENTATION_MODEL_PKL = MODELS_DIR / "customer_segmentation_model.pkl"
+CHURN_MODEL_PKL = MODELS_DIR / "customer_churn_model.pkl"
 CLUSTER_PROFILE = PROCESSED_DIR / "cluster_profile.csv"
 CUSTOMER_CLUSTERS = PREDICTIONS_DIR / "customer_clusters.csv"
 EXPERIMENT_CONFIG_PATH = CONFIG_DIR / "experiment.yaml"
