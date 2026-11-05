@@ -9,14 +9,19 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import silhouette_score
 
-from src.rfm_features import load_rfm
+from dotenv import load_dotenv
+from src.gold import load_gold
 from src.utils.plotting import plot_silhouette_scores, plot_pca_clusters
 
 from config.paths import (
+    GOLD_RFM,
     RFM_CUSTOMERS,
     CUSTOMER_CLUSTERS,
     CLUSTER_PROFILE,
 )
+
+load_dotenv()
+load_rfm = load_gold  # Backward compatibility alias
 
 
 def build_pipeline(k, random_state, feature_columns):
@@ -165,7 +170,14 @@ def run_clustering(config, df=None, feature_columns=None, cluster_range=None):
     random_state = config.clustering.random_state
 
     if df is None:
-        df = load_rfm(RFM_CUSTOMERS)
+        df = load_gold(GOLD_RFM)
+
+    # Defensive validation: guarantee no NaNs reach Scikit-Learn
+    if feature_columns is not None:
+        initial_len = len(df)
+        df = df.dropna(subset=feature_columns).copy()
+        if len(df) < initial_len:
+            logging.warning("Dropped %d rows with NaNs in feature columns", initial_len - len(df))
 
     # 1. Train / Test Split (for unbiased hyperparameter selection)
     train_df, test_df = train_test_split(df, test_size=0.2, random_state=random_state)

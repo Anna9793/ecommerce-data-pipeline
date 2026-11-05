@@ -1,5 +1,5 @@
 cluster,customers,avg_recency,avg_frequency,avg_order_value,segment
-0,708,263.22,1.38,270.93,Inactive Customers
-1,964,53.65,2.35,168.81,Medium Customers
-2,819,23.18,11.49,434.46,Frequent Buyers
-3,980,65.06,2.18,726.94,Occasional High Value Buyers
+0,863,22.04,10.8,425.02,Frequent Buyers
+1,938,51.43,2.34,164.92,Medium Customers
+2,972,62.37,2.1,803.48,Occasional High Value Buyers
+3,697,259.56,1.42,261.02,Inactive Customers

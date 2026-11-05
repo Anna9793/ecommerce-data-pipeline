@@ -1,72 +1,52 @@
+"""
+Legacy transformation module - Adapted to Medallion Architecture (Silver Layer)
+Maintained for backward compatibility. Direct calls should prefer src.silver.
+"""
+
 import os
-import pandas as pd
 import logging
-from config.paths import CLEAN_RETAIL, FEATURE_RETAIL
+import pandas as pd
+from config.paths import CLEAN_RETAIL, FEATURE_RETAIL, SILVER_RETAIL
+from src.silver import load_silver, save_silver, run_silver, add_transaction_enrichments
 
-def load_clean_data(path):
-    use_bigquery = os.getenv("USE_BIGQUERY", "false").lower() == "true"
-    
-    if use_bigquery:
-        logging.info("Cloud mode active: loading cleaned dataset from BigQuery table")
-        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        query = f"""
-        SELECT 
-            InvoiceNo AS invoice_no,
-            StockCode AS stock_code,
-            Description AS description,
-            CAST(Quantity AS INT64) AS quantity,
-            InvoiceDate AS invoice_date,
-            CAST(UnitPrice AS FLOAT64) AS unit_price,
-            CAST(CustomerID AS STRING) AS customer_id,
-            Country AS country
-        FROM `{project_id}.retail_data.transactions`
-        """
-        import pandas_gbq
-        df = pandas_gbq.read_gbq(query, project_id=project_id)
-        return df
 
-    logging.info("Loading cleaned dataset from path: %s", path)
-    df = pd.read_csv(
-        path,
-        parse_dates=["invoice_date"],
-        dtype={"customer_id": str, "invoice_no": str}
-    )
-    return df
+def load_clean_data(path=SILVER_RETAIL, use_bigquery=None):
+    """
+    Backward-compatible loader delegating to Silver layer.
+    Prioritizes explicit use_bigquery argument over environment variable.
+    """
+    return load_silver(path=path, use_bigquery=use_bigquery)
+
 
 def add_order_value(df):
     logging.info("Creating order_value feature")
-    df["order_value"] = df["quantity"] * df["unit_price"]
+    df["order_value"] = (df["quantity"] * df["unit_price"]).round(2)
     return df
+
 
 def add_time_features(df):
     logging.info("Extracting time features")
-    df["invoice_year"] = df["invoice_date"].dt.year
-    df["invoice_month"] = df["invoice_date"].dt.month
-    df["invoice_hour"] = df["invoice_date"].dt.hour
+    if "invoice_date" in df.columns:
+        if not pd.api.types.is_datetime64_any_dtype(df["invoice_date"]):
+            df["invoice_date"] = pd.to_datetime(df["invoice_date"])
+        df["invoice_year"] = df["invoice_date"].dt.year
+        df["invoice_month"] = df["invoice_date"].dt.month
+        df["invoice_hour"] = df["invoice_date"].dt.hour
     return df
+
 
 def transform_data(df):
-    if not pd.api.types.is_datetime64_any_dtype(df["invoice_date"]):
-        df["invoice_date"] = pd.to_datetime(df["invoice_date"])
-    df = add_order_value(df)
-    df = add_time_features(df)
-    return df
+    return add_transaction_enrichments(df)
 
 
-def save_transformed_data(df, path):
-
-    logging.info("Saving transformed data to %s" ,path)
-
-    df.to_csv(path, index=False)
+def save_transformed_data(df, path=FEATURE_RETAIL):
+    save_silver(df, path=path)
 
 
 def run_transformation():
+    return run_silver(use_bigquery=False)
 
-    df = load_clean_data(CLEAN_RETAIL)
-
-    df = transform_data(df)
-
-    save_transformed_data(df, FEATURE_RETAIL)
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     run_transformation()

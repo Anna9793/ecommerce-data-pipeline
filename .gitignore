@@ -5,6 +5,7 @@ venv/
 data/raw/
 data/processed/clean_retail.csv
 data/processed/feature_retail.csv
+data/processed/silver_retail.csv
 data/processed/rfm_train_clusters.csv
 data/predictions
 mlruns/

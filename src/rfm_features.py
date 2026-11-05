@@ -1,158 +1,43 @@
+"""
+Legacy RFM module - Adapted to Medallion Architecture (Gold Layer)
+Maintained for backward compatibility. Direct calls should prefer src.gold.
+"""
+
 import os
-import pandas as pd
-import numpy as np
 import logging
-from pathlib import Path
+import pandas as pd
 from dotenv import load_dotenv
-from config.paths import FEATURE_RETAIL, RFM_CUSTOMERS
+from config.paths import GOLD_RFM, RFM_CUSTOMERS, SILVER_RETAIL, FEATURE_RETAIL
+from src.silver import load_silver
+from src.gold import compute_gold_features, save_gold, load_gold, run_gold
 
 load_dotenv()
 
 
-def load_transactions(path):
-    logging.info("Loading transaction dataset from %s", path)
-    return pd.read_csv(
-        path,
-        parse_dates=["invoice_date"],
-        dtype={"customer_id": str, "invoice_no": str}
-    )
+def load_transactions(path=SILVER_RETAIL):
+    return load_silver(path=path, use_bigquery=False)
 
 
 def compute_rfm(df):
-    df = df.copy()
-    max_date = df["invoice_date"].max()
-    
-    # 1. Base RFM metrics (only using positive quantities for frequency/monetary)
-    valid_sales = df[df["quantity"] > 0]
-    
-    rfm = (
-        df.groupby("customer_id")
-        .agg(
-            recency=("invoice_date", lambda x: (max_date - x.max()).days)
-        )
-        .reset_index()
-    )
-    
-    sales_metrics = (
-        valid_sales.groupby("customer_id")
-        .agg(
-            frequency=("invoice_no", "nunique"),
-            monetary=("order_value", "sum")
-        )
-        .reset_index()
-    )
-    
-    rfm = rfm.merge(sales_metrics, on="customer_id", how="left")
-    rfm["frequency"] = rfm["frequency"].fillna(0).astype(int)
-    rfm["monetary"] = rfm["monetary"].fillna(0.0)
-    
-    rfm["avg_order_value"] = (
-        rfm["monetary"] / rfm["frequency"].replace(0, 1)
-    ).round(2)
-    
-    # 2. Spending Velocity
-    date_30 = max_date - pd.Timedelta(days=30)
-    date_90 = max_date - pd.Timedelta(days=90)
-    
-    monetary_30 = (
-        valid_sales[valid_sales["invoice_date"] >= date_30]
-        .groupby("customer_id")
-        .agg(monetary_30=("order_value", "sum"))
-        .reset_index()
-    )
-    
-    monetary_90 = (
-        valid_sales[valid_sales["invoice_date"] >= date_90]
-        .groupby("customer_id")
-        .agg(monetary_90=("order_value", "sum"))
-        .reset_index()
-    )
-    
-    rfm = rfm.merge(monetary_30, on="customer_id", how="left")
-    rfm = rfm.merge(monetary_90, on="customer_id", how="left")
-    rfm["monetary_30"] = rfm["monetary_30"].fillna(0.0)
-    rfm["monetary_90"] = rfm["monetary_90"].fillna(0.0)
-    
-    # Velocity: monetary_30 / (monetary_90 / 3.0)
-    denom = rfm["monetary_90"] / 3.0
-    rfm["spending_velocity"] = (rfm["monetary_30"] / denom.replace(0.0, np.nan)).fillna(1.0).round(2)
-    
-    # 3. Cancellation Rate
-    cancelled = (
-        df[df["invoice_no"].str.startswith("C", na=False)]
-        .groupby("customer_id")
-        .agg(cancelled_orders=("invoice_no", "nunique"))
-        .reset_index()
-    )
-    
-    total_orders = (
-        df.groupby("customer_id")
-        .agg(total_orders=("invoice_no", "nunique"))
-        .reset_index()
-    )
-    
-    rfm = rfm.merge(cancelled, on="customer_id", how="left")
-    rfm = rfm.merge(total_orders, on="customer_id", how="left")
-    rfm["cancelled_orders"] = rfm["cancelled_orders"].fillna(0)
-    rfm["total_orders"] = rfm["total_orders"].fillna(1)
-    
-    rfm["cancellation_rate"] = (rfm["cancelled_orders"] / rfm["total_orders"]).round(4)
-    
-    # 4. Preferred Shopping Hour
-    if "invoice_hour" not in df.columns:
-        df["invoice_hour"] = df["invoice_date"].dt.hour
-    
-    def get_mode_hour(x):
-        mode_series = x.mode()
-        return int(mode_series.iloc[0]) if not mode_series.empty else 12
-        
-    pref_hour = (
-        df.groupby("customer_id")
-        .agg(preferred_shopping_hour=("invoice_hour", get_mode_hour))
-        .reset_index()
-    )
-    
-    rfm = rfm.merge(pref_hour, on="customer_id", how="left")
-    rfm["preferred_shopping_hour"] = rfm["preferred_shopping_hour"].fillna(12).astype(int)
-    
-    rfm = rfm[[
-        "customer_id", 
-        "recency", 
-        "frequency", 
-        "avg_order_value", 
-        "spending_velocity", 
-        "cancellation_rate", 
-        "preferred_shopping_hour"
-    ]]
-    
-    return rfm
+    return compute_gold_features(df)
 
 
-def save_rfm(df, path):
-    logging.info("Saving RFM dataset to %s", path)
-    df.to_csv(path, index=False)
+def save_rfm(df, path=GOLD_RFM):
+    save_gold(df, path=path)
 
-def load_rfm(path=RFM_CUSTOMERS, use_bigquery=False):
-    if use_bigquery or os.getenv("USE_BIGQUERY", "false").lower() == "true":
-        logging.info("Loading RFM dataset from BigQuery view: retail_data.rfm_features")
-        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        query = "SELECT * FROM `retail_data.rfm_features`"
-        df = pd.read_gbq(query, project_id=project_id)
-        # Ensure customer_id column type matches (e.g. string or float depending on needs)
-        # BigQuery will load as string or float depending on casting, let's keep it clean
-        return df
 
-    logging.info("Loading RFM dataset from %s", path)
-    return pd.read_csv(path)
+def load_rfm(path=GOLD_RFM, use_bigquery=None):
+    """
+    Backward-compatible loader delegating to Gold layer.
+    Prioritizes explicit use_bigquery argument over environment variable.
+    """
+    return load_gold(path=path, use_bigquery=use_bigquery)
 
 
 def run_rfm_features():
+    return run_gold(use_bigquery=False)
 
-    df = load_transactions(FEATURE_RETAIL)
-
-    rfm = compute_rfm(df)
-
-    save_rfm(rfm, RFM_CUSTOMERS)
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     run_rfm_features()

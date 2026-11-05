@@ -31,12 +31,17 @@ DIRECTORIES = [
 for directory in DIRECTORIES:
     directory.mkdir(exist_ok=True)
 
-# 3. Archivos del Dataset y Modelos
+# 3. Archivos del Dataset (Medallion Architecture)
+BRONZE_RETAIL = RAW_DIR / "online_retail.csv"
+SILVER_RETAIL = PROCESSED_DIR / "silver_retail.csv"
+GOLD_RFM = PROCESSED_DIR / "gold_rfm.csv"
+
+# Aliases de compatibilidad con pipelines y tests existentes
 ONLINE_RETAIL_XLSX = RAW_DIR / "Online_Retail.xlsx"
-ONLINE_RETAIL_CSV = RAW_DIR / "online_retail.csv"
-CLEAN_RETAIL = PROCESSED_DIR / "clean_retail.csv"
-FEATURE_RETAIL = PROCESSED_DIR / "feature_retail.csv"
-RFM_CUSTOMERS = PROCESSED_DIR / "rfm_customers.csv"
+ONLINE_RETAIL_CSV = BRONZE_RETAIL
+CLEAN_RETAIL = SILVER_RETAIL
+FEATURE_RETAIL = SILVER_RETAIL
+RFM_CUSTOMERS = GOLD_RFM
 CLUSTER_PROFILE = PROCESSED_DIR / "cluster_profile.csv"
 
 # Predicciones y clasificaciones

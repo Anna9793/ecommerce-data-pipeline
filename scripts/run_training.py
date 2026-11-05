@@ -1,4 +1,10 @@
+import os
+import sys
 import logging
+
+# Ensure project root is in Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from config.loader import load_config
 from config.paths import EXPERIMENT_CONFIG_PATH
 from src.pipelines.training_pipeline import run_training_pipeline

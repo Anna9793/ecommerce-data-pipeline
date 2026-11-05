@@ -4,30 +4,31 @@ import mlflow
 import mlflow.sklearn
 from mlflow.models import infer_signature
 
-from src.cleaning import run_cleaning
-from src.transformation import run_transformation
-from src.rfm_features import run_rfm_features, load_rfm
+from src.silver import run_silver
+from src.gold import run_gold, load_gold
 from src.clustering import run_clustering
 
 
 def run_training_pipeline(config):
     """
     Executes the end-to-end customer segmentation training pipeline:
-    1. Preprocesses raw data (cleaning, transformations, RFM engineering).
+    1. Medallion ETL:
+       - Silver: Cleans, types, and enriches transactions in a single pass.
+       - Gold: Computes customer RFM and velocity features (0 NaNs guaranteed).
     2. Runs clustering model training and evaluation.
     3. Logs metrics, parameters, artifacts, and registers model in MLflow.
+    4. Persists artifacts locally and exports to BigQuery (if USE_BIGQUERY=true).
     """
-    logging.info("Starting training pipeline")
+    logging.info("Starting Medallion training pipeline")
 
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
     mlflow.set_experiment(config.mlflow.experiment_name)
 
-    # 1. Feature Engineering & Preparation
-    run_cleaning()
-    run_transformation()
-    run_rfm_features()
+    # 1. Medallion Feature Engineering (Local deterministic execution)
+    run_silver(use_bigquery=False)
+    run_gold(use_bigquery=False)
 
-    df = load_rfm()
+    df = load_gold(use_bigquery=False)
     feature_columns = config.clustering.features
 
     with mlflow.start_run():
