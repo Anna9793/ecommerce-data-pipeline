@@ -11,7 +11,7 @@ import os
 import logging
 import pandas as pd
 from dotenv import load_dotenv
-from config.paths import BRONZE_RETAIL, ONLINE_RETAIL_XLSX, SILVER_RETAIL
+from config.paths import BRONZE_RETAIL, RAW_EXCEL, SILVER_RETAIL
 
 load_dotenv()
 
@@ -143,12 +143,12 @@ def run_silver(use_bigquery=None):
     else:
         logging.info("Silver Layer [Local]: Reading raw transactions from %s", BRONZE_RETAIL)
         if not os.path.exists(BRONZE_RETAIL):
-            if os.path.exists(ONLINE_RETAIL_XLSX):
-                logging.info("Raw CSV not found. Converting %s to CSV...", ONLINE_RETAIL_XLSX)
-                raw_df = pd.read_excel(ONLINE_RETAIL_XLSX)
+            if os.path.exists(RAW_EXCEL):
+                logging.info("Raw CSV not found. Converting %s to CSV...", RAW_EXCEL)
+                raw_df = pd.read_excel(RAW_EXCEL)
                 raw_df.to_csv(BRONZE_RETAIL, index=False)
             else:
-                raise FileNotFoundError(f"Neither raw CSV ({BRONZE_RETAIL}) nor Excel ({ONLINE_RETAIL_XLSX}) found.")
+                raise FileNotFoundError(f"Neither raw CSV ({BRONZE_RETAIL}) nor Excel ({RAW_EXCEL}) found.")
         else:
             raw_df = pd.read_csv(BRONZE_RETAIL)
 

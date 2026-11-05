@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import pandas as pd
 from scipy.stats import ks_2samp
-from config.paths import RFM_CUSTOMERS
+from config.paths import GOLD_RFM
 
 def calculate_feature_drift(project_id: str = "anna-ml-pipeline") -> dict:
     """
@@ -13,10 +13,10 @@ def calculate_feature_drift(project_id: str = "anna-ml-pipeline") -> dict:
     use_bigquery = os.getenv("USE_BIGQUERY", "false").lower() == "true"
     
     # 1. Load Baseline (Training) Dataset
-    if os.path.exists(RFM_CUSTOMERS):
-        baseline_df = pd.read_csv(RFM_CUSTOMERS)
+    if os.path.exists(GOLD_RFM):
+        baseline_df = pd.read_csv(GOLD_RFM)
     else:
-        logging.warning("Baseline RFM file not found at %s. Creating a mock baseline for safety.", RFM_CUSTOMERS)
+        logging.warning("Baseline RFM file not found at %s. Creating a mock baseline for safety.", GOLD_RFM)
         # Fallback mock baseline matching original distributions
         baseline_df = pd.DataFrame({
             "recency": np.random.exponential(scale=50, size=500),

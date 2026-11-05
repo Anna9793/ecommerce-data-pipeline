@@ -31,25 +31,13 @@ DIRECTORIES = [
 for directory in DIRECTORIES:
     directory.mkdir(exist_ok=True)
 
-# 3. Archivos del Dataset (Medallion Architecture)
+# 3. Datasets del Pipeline (Arquitectura Medallion)
+RAW_EXCEL = RAW_DIR / "Online_Retail.xlsx"
 BRONZE_RETAIL = RAW_DIR / "online_retail.csv"
 SILVER_RETAIL = PROCESSED_DIR / "silver_retail.csv"
 GOLD_RFM = PROCESSED_DIR / "gold_rfm.csv"
 
-# Aliases de compatibilidad con pipelines y tests existentes
-ONLINE_RETAIL_XLSX = RAW_DIR / "Online_Retail.xlsx"
-ONLINE_RETAIL_CSV = BRONZE_RETAIL
-CLEAN_RETAIL = SILVER_RETAIL
-FEATURE_RETAIL = SILVER_RETAIL
-RFM_CUSTOMERS = GOLD_RFM
+# 4. Modelos, Perfiles y Configuración
 CLUSTER_PROFILE = PROCESSED_DIR / "cluster_profile.csv"
-
-# Predicciones y clasificaciones
 CUSTOMER_CLUSTERS = PREDICTIONS_DIR / "customer_clusters.csv"
-CUSTOMER_CLUSTERS_V2 = PREDICTIONS_DIR / "customer_clusters_v2.csv"
-CUSTOMER_CLUSTERS_LABELED = PREDICTIONS_DIR / "customer_clusters_labeled.csv"
-CUSTOMER_CLUSTERS_DB = PREDICTIONS_DIR / "customer_clusters.db"
-
-# Configuración de experimentos
 EXPERIMENT_CONFIG_PATH = CONFIG_DIR / "experiment.yaml"
-

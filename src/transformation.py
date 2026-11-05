@@ -6,7 +6,7 @@ Maintained for backward compatibility. Direct calls should prefer src.silver.
 import os
 import logging
 import pandas as pd
-from config.paths import CLEAN_RETAIL, FEATURE_RETAIL, SILVER_RETAIL
+from config.paths import SILVER_RETAIL
 from src.silver import load_silver, save_silver, run_silver, add_transaction_enrichments
 
 
@@ -39,7 +39,7 @@ def transform_data(df):
     return add_transaction_enrichments(df)
 
 
-def save_transformed_data(df, path=FEATURE_RETAIL):
+def save_transformed_data(df, path=SILVER_RETAIL):
     save_silver(df, path=path)
 
 

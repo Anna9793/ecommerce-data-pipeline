@@ -1,8 +1,8 @@
 import pandas as pd
 import logging
-from config.paths import ONLINE_RETAIL_CSV, CLEAN_RETAIL
+from config.paths import BRONZE_RETAIL, SILVER_RETAIL
 
-def load_raw_data(path):
+def load_raw_data(path=BRONZE_RETAIL):
     logging.info("Loading raw dataset from %s", path)
     df = pd.read_csv(path)
     return df
@@ -57,11 +57,11 @@ def save_clean_data(df, path):
     df.to_csv(path, index=False)
 
 def run_cleaning():
-    df = load_raw_data(ONLINE_RETAIL_CSV)
+    df = load_raw_data(BRONZE_RETAIL)
     logging.info("Rows loaded: %s", len(df))
     df = clean_data(df)
     logging.info("Cleaned rows remaining: %s", len(df))
-    save_clean_data(df, CLEAN_RETAIL)
+    save_clean_data(df, SILVER_RETAIL)
 
 if __name__ == "__main__":
     run_cleaning()

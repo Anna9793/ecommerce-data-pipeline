@@ -20,7 +20,7 @@ from src.transformation import (
 )
 from src.rfm_features import compute_rfm
 from src.churn_target import create_churn_target
-from config.paths import CLEAN_RETAIL
+from config.paths import SILVER_RETAIL
 
 def run_churn_training(
     cutoff_days=90,
@@ -34,7 +34,7 @@ def run_churn_training(
 
     if df is None:
         logging.info("Loading and transforming data")
-        df = load_clean_data(CLEAN_RETAIL)
+        df = load_clean_data(SILVER_RETAIL)
         df = transform_data(df)
     else:
         logging.info("Using provided DataFrame for training")

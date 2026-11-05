@@ -7,7 +7,7 @@ import os
 import logging
 import pandas as pd
 from dotenv import load_dotenv
-from config.paths import GOLD_RFM, RFM_CUSTOMERS, SILVER_RETAIL, FEATURE_RETAIL
+from config.paths import GOLD_RFM, SILVER_RETAIL
 from src.silver import load_silver
 from src.gold import compute_gold_features, save_gold, load_gold, run_gold
 

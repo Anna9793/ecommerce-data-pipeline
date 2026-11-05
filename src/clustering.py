@@ -15,7 +15,6 @@ from src.utils.plotting import plot_silhouette_scores, plot_pca_clusters
 
 from config.paths import (
     GOLD_RFM,
-    RFM_CUSTOMERS,
     CUSTOMER_CLUSTERS,
     CLUSTER_PROFILE,
 )
