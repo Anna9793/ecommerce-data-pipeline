@@ -13,7 +13,7 @@ def test_bronze_ingestion_and_loading(tmp_path):
     """
     Verifies that Bronze layer correctly ingests raw files and persists immutable Bronze CSV.
     """
-    raw_source = tmp_path / "raw_source.csv"
+    raw_source = tmp_path / "raw_source.xlsx"
     bronze_target = tmp_path / "bronze_target.csv"
 
     sample_df = pd.DataFrame({
@@ -21,7 +21,7 @@ def test_bronze_ingestion_and_loading(tmp_path):
         "Quantity": [6],
         "UnitPrice": [2.55]
     })
-    sample_df.to_csv(raw_source, index=False)
+    sample_df.to_excel(raw_source, index=False)
 
     # Test ingest_raw_source
     ingested_df = ingest_raw_source(source_path=raw_source, target_path=bronze_target)

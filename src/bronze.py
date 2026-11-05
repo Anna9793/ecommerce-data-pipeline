@@ -19,20 +19,17 @@ load_dotenv()
 
 def ingest_raw_source(source_path=RAW_EXCEL, target_path=BRONZE_RETAIL):
     """
-    Ingests the raw source data (e.g. Online_Retail.xlsx) and persists
+    Ingests the raw Excel source (Online_Retail.xlsx) and persists
     it as an untransformed, immutable Bronze CSV.
     """
     source_path = Path(source_path)
     target_path = Path(target_path)
 
     if not source_path.exists():
-        raise FileNotFoundError(f"Source raw file not found at: {source_path}")
+        raise FileNotFoundError(f"Source raw Excel file not found at: {source_path}")
 
-    logging.info("Bronze Layer: Ingesting raw data from %s -> %s", source_path, target_path)
-    if source_path.suffix.lower() in [".xlsx", ".xls"]:
-        df = pd.read_excel(source_path)
-    else:
-        df = pd.read_csv(source_path)
+    logging.info("Bronze Layer: Ingesting raw Excel %s -> %s", source_path, target_path)
+    df = pd.read_excel(source_path)
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(target_path, index=False)
