@@ -21,15 +21,7 @@ load_dotenv()
 
 
 def compute_gold_features(silver_df):
-    """
-    Computes customer-level analytical features from Silver transactions.
-    
-    Guarantees:
-    - Base RFM (Recency, Frequency, Monetary) computed exclusively on valid purchases (quantity > 0)
-    - Exactly 0 NaNs
-    - Safe divisions (no divide-by-zero errors)
-    - Restricts to customers with valid purchase history (frequency > 0)
-    """
+    """Computes customer-level RFM and behavioral features for active purchasers."""
     df = silver_df.copy()
     if not pd.api.types.is_datetime64_any_dtype(df["invoice_date"]):
         df["invoice_date"] = pd.to_datetime(df["invoice_date"])
