@@ -25,9 +25,10 @@ def compute_gold_features(silver_df):
     Computes customer-level analytical features from Silver transactions.
     
     Guarantees:
+    - Base RFM (Recency, Frequency, Monetary) computed exclusively on valid purchases (quantity > 0)
     - Exactly 0 NaNs
     - Safe divisions (no divide-by-zero errors)
-    - Filters to customers with frequency > 0 (valid purchasers)
+    - Restricts to customers with valid purchase history (frequency > 0)
     """
     df = silver_df.copy()
     if not pd.api.types.is_datetime64_any_dtype(df["invoice_date"]):
@@ -46,10 +47,9 @@ def compute_gold_features(silver_df):
         )
         .reset_index()
     )
-    rfm["frequency"] = rfm["frequency"].fillna(0).astype(int)
-    rfm["monetary"] = rfm["monetary"].fillna(0.0).round(2)
+    rfm["monetary"] = rfm["monetary"].round(2)
 
-    # Avg Order Value with zero-division safeguard
+    # 2. Avg Order Value
     rfm["avg_order_value"] = (
         rfm["monetary"] / rfm["frequency"].replace(0, 1)
     ).round(2)
