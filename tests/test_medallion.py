@@ -97,13 +97,13 @@ def test_gold_feature_computation():
     """
     dates = pd.date_range("2011-01-01", periods=10, freq="10D")
     silver_df = pd.DataFrame({
-        "invoice_no":   ["101", "102", "103", "C104", "105"],
-        "customer_id":  ["CUST_A", "CUST_A", "CUST_B", "CUST_A", "CUST_C"],
-        "quantity":     [2, 3, 5, -1, -2],
-        "unit_price":   [10.0, 20.0, 15.0, 20.0, 5.0],
-        "order_value":  [20.0, 60.0, 75.0, -20.0, -10.0],
-        "invoice_date": [dates[-1], dates[-2], dates[-3], dates[-1], dates[-1]],
-        "invoice_hour": [10, 10, 14, 10, 9]
+        "invoice_no":   ["101", "102", "103", "C104", "105", "C106"],
+        "customer_id":  ["CUST_A", "CUST_A", "CUST_B", "CUST_A", "CUST_C", "CUST_B"],
+        "quantity":     [2, 3, 5, -1, -2, -1],
+        "unit_price":   [10.0, 20.0, 15.0, 20.0, 5.0, 15.0],
+        "order_value":  [20.0, 60.0, 75.0, -20.0, -10.0, -15.0],
+        "invoice_date": [dates[-1], dates[-2], dates[-3], dates[-1], dates[-1], dates[-1]],
+        "invoice_hour": [10, 10, 14, 10, 9, 14]
     })
 
     gold = compute_gold_features(silver_df)
@@ -121,6 +121,13 @@ def test_gold_feature_computation():
     assert cust_a["cancellation_rate"] == round(1 / 3, 4)  # 1 cancellation out of 3 total orders
     assert cust_a["preferred_shopping_hour"] == 10
     assert cust_a["spending_velocity"] >= 0.0
+
+    # 4. Customer B verification: Recency must ignore later cancellation (dates[-1])
+    # and strictly reflect latest VALID purchase date (dates[-3] -> 20 days difference)
+    cust_b = gold[gold["customer_id"] == "CUST_B"].iloc[0]
+    assert cust_b["recency"] == 20
+    assert cust_b["frequency"] == 1
+    assert cust_b["cancellation_rate"] == 0.5  # 1 cancellation out of 2 orders (103, C106)
 
 
 def test_data_mode_precedence(monkeypatch):

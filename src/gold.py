@@ -36,24 +36,16 @@ def compute_gold_features(silver_df):
     max_date = df["invoice_date"].max()
     valid_sales = df[df["quantity"] > 0]
 
-    # 1. Base Recency
+    # 1. Base RFM (Recency, Frequency, Monetary computed exclusively on valid purchases)
     rfm = (
-        df.groupby("customer_id")
-        .agg(recency=("invoice_date", lambda x: (max_date - x.max()).days))
-        .reset_index()
-    )
-
-    # 2. Frequency & Monetary (only positive purchases)
-    sales_metrics = (
         valid_sales.groupby("customer_id")
         .agg(
+            recency=("invoice_date", lambda x: (max_date - x.max()).days),
             frequency=("invoice_no", "nunique"),
             monetary=("order_value", "sum")
         )
         .reset_index()
     )
-
-    rfm = rfm.merge(sales_metrics, on="customer_id", how="left")
     rfm["frequency"] = rfm["frequency"].fillna(0).astype(int)
     rfm["monetary"] = rfm["monetary"].fillna(0.0).round(2)
 
