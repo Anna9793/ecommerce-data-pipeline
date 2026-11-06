@@ -10,9 +10,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 def migrate_transactions_schema(project_id: str = "anna-ml-pipeline") -> None:
     """
-    Migrates BigQuery retail_data.transactions schema:
-    Converts CustomerID from FLOAT64 to STRING while preserving
-    partitioning by DATE(InvoiceDate) and clustering by CustomerID, Country.
+    One-off Blue-Green migration for BigQuery retail_data.transactions:
+    Converts legacy CustomerID from FLOAT64 to STRING while establishing
+    day partitioning by DATE(InvoiceDate) and clustering by CustomerID, Country.
     """
     client = bigquery.Client(project=project_id)
     table_id = f"{project_id}.retail_data.transactions"
