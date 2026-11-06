@@ -49,7 +49,7 @@ def migrate_transactions_schema(project_id: str = "anna-ml-pipeline") -> None:
       Quantity,
       InvoiceDate,
       UnitPrice,
-      IFNULL(REGEXP_REPLACE(CAST(CustomerID AS STRING), r'\\.0$', ''), 'GUEST') AS CustomerID,
+      REGEXP_REPLACE(CAST(CustomerID AS STRING), r'\\.0$', '') AS CustomerID,
       Country
     FROM `{table_id}`
     """

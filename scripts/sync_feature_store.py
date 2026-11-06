@@ -142,7 +142,7 @@ def sync_feature_store():
             else:
                 df[col] = 0.0
                 
-    # Clean customer_id formatting (safely handles numeric floats like 12345.0, ints, and string IDs like 'GUEST')
+    # Clean customer_id formatting (safely handles numeric floats like 12345.0 and ints)
     def clean_cust_id(val):
         if pd.isna(val):
             return ""

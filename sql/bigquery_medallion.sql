@@ -7,7 +7,7 @@
 -- 1. SILVER LAYER: Curated & Sanitized Transactions
 -- Source: retail_data.transactions (Bronze)
 -- Guarantees:
---   - CustomerID is non-null, trimmed, and not 'GUEST'
+--   - CustomerID is non-null
 --   - Strictly positive UnitPrice (> 0)
 --   - Valid purchases (Quantity > 0) or valid cancellations (Quantity < 0 & InvoiceNo starts with 'C')
 --   - Pre-computed order_value (Quantity * UnitPrice)
@@ -28,7 +28,6 @@ SELECT
   EXTRACT(HOUR FROM InvoiceDate) AS invoice_hour
 FROM `retail_data.transactions`
 WHERE CustomerID IS NOT NULL
-  AND TRIM(CustomerID) NOT IN ('', 'GUEST', 'nan', 'None')
   AND UnitPrice > 0
   AND (
     Quantity > 0 
