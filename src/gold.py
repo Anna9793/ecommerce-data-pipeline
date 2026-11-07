@@ -124,18 +124,7 @@ def save_gold(df, path=GOLD_RFM):
 
 
 def load_gold(path=GOLD_RFM, use_bigquery=None):
-    """
-    Loads customer feature store from the Gold layer.
-    
-    Parameters
-    ----------
-    path : Path or str, default GOLD_RFM
-        Path to local Gold CSV file.
-    use_bigquery : bool, optional
-        If True, loads from BigQuery view retail_data.rfm_features.
-        If False, loads from local CSV file.
-        If None, defaults to USE_BIGQUERY environment variable.
-    """
+    """Loads customer feature store from the Gold layer."""
     if use_bigquery is None:
         use_bigquery = os.getenv("USE_BIGQUERY", "false").lower() == "true"
 
