@@ -1,9 +1,4 @@
-"""
-Medallion Architecture - Bronze Layer (Raw Ingestion & Landing Zone)
-Responsible for raw, immutable data access and ingestion:
-- Ingests raw Excel source (RAW_EXCEL from config.paths)
-- Lands raw immutable transactions into BRONZE_RETAIL (CSV)
-"""
+"""Medallion Architecture - Bronze Layer: raw ingestion and landing zone."""
 
 import logging
 from pathlib import Path

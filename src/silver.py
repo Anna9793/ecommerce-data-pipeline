@@ -1,11 +1,4 @@
-"""
-Medallion Architecture - Silver Layer (Cleaned & Curated Transactions)
-Responsible for row-level sanitization, typing, and transactional enrichment:
-- Eliminates duplicate rows and invalid customer IDs
-- Filters strictly valid transactions (unit_price > 0, purchases or valid cancellations)
-- Computes transactional enrichments: order_value (quantity * unit_price) and timestamp features
-- Transforms Bronze raw data into the Silver curated dataset in a single, high-efficiency pass
-"""
+"""Medallion Architecture - Silver Layer: transactional cleaning, typing, and enrichment."""
 
 import os
 import logging

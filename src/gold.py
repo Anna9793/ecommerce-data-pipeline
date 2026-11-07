@@ -1,13 +1,4 @@
-"""
-Medallion Architecture - Gold Layer (Customer Feature Store & Analytics)
-Responsible for customer-level behavioral aggregations and ML feature engineering:
-- Aggregates RFM metrics (Recency, Frequency, Monetary, Avg Order Value)
-- Computes behavioral momentum: 30d vs 90d Spending Velocity
-- Measures operational risk: Cancellation Rate
-- Determines engagement patterns: Preferred Shopping Hour
-- Guarantees exactly 0 NaNs and safe numeric divisions
-- Unifies and modernizes legacy rfm_features.py
-"""
+"""Medallion Architecture - Gold Layer: customer-level behavioral aggregations and ML feature store."""
 
 import os
 import logging
