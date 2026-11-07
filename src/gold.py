@@ -67,13 +67,10 @@ def compute_gold_features(silver_df):
     rfm = rfm.merge(monetary_30, on="customer_id", how="left")
     rfm = rfm.merge(monetary_90, on="customer_id", how="left")
     rfm["monetary_30"] = rfm["monetary_30"].fillna(0.0)
-    rfm["monetary_90"] = rfm["monetary_90"].fillna(0.0)
 
     # Velocity: monetary_30 / (monetary_90 / 3.0), default 1.0 (neutral velocity)
     denom = rfm["monetary_90"] / 3.0
-    rfm["spending_velocity"] = (
-        rfm["monetary_30"] / denom.replace(0.0, np.nan)
-    ).fillna(1.0).round(2)
+    rfm["spending_velocity"] = (rfm["monetary_30"] / denom).fillna(1.0).round(2)
 
     # 4. Cancellation Rate
     cancelled = (
