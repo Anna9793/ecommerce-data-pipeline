@@ -2,7 +2,7 @@ import os
 import pytest
 import numpy as np
 import pandas as pd
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from src.bronze import ingest_raw_source, run_bronze
 from src.silver import clean_and_enrich_transactions, run_silver
@@ -167,3 +167,25 @@ def test_cloud_mode_queries_bigquery_views(mock_read_gbq, monkeypatch):
     query_called = mock_read_gbq.call_args[0][0]
     assert "retail_data.rfm_features" in query_called
     assert len(df) == 1
+
+
+@patch("google.cloud.bigquery.Client")
+def test_deploy_medallion_views(mock_bq_client):
+    """
+    Verifies that deploy_medallion_views reads SQL file and executes query on BigQuery.
+    """
+    from scripts.deploy_bigquery_views import deploy_medallion_views
+
+    mock_client_instance = MagicMock()
+    mock_query_job = MagicMock()
+    mock_client_instance.query.return_value = mock_query_job
+    mock_bq_client.return_value = mock_client_instance
+
+    deploy_medallion_views(project_id="test-project")
+
+    assert mock_bq_client.called
+    assert mock_client_instance.query.called
+    executed_sql = mock_client_instance.query.call_args[0][0]
+    assert "clean_transactions" in executed_sql
+    assert "rfm_features" in executed_sql
+    assert mock_query_job.result.called
