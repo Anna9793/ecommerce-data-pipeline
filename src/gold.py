@@ -145,8 +145,6 @@ def load_gold(path=GOLD_RFM, use_bigquery=None):
         import pandas_gbq
         query = f"SELECT * FROM `{project_id}.retail_data.rfm_features`"
         df = pandas_gbq.read_gbq(query, project_id=project_id)
-        # Drop residual nulls if view in BQ has any anomalies
-        df = df.dropna(subset=["recency", "frequency", "avg_order_value"])
         if "customer_id" in df.columns:
             df["customer_id"] = df["customer_id"].astype(str)
         return df
