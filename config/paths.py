@@ -15,6 +15,7 @@ PROCESSED_DIR = DATA_DIR / "processed"
 PREDICTIONS_DIR = DATA_DIR / "predictions"
 MODELS_DIR = BASE_DIR / "models"
 CONFIG_DIR = BASE_DIR / "config"
+SQL_DIR = BASE_DIR / "sql"
 
 DIRECTORIES = [
     DATA_DIR,
@@ -22,7 +23,8 @@ DIRECTORIES = [
     PROCESSED_DIR,
     PREDICTIONS_DIR,
     MODELS_DIR,
-    CONFIG_DIR
+    CONFIG_DIR,
+    SQL_DIR
 ]
 
 # Crear directorios si no existen
@@ -41,3 +43,6 @@ CHURN_MODEL_PKL = MODELS_DIR / "customer_churn_model.pkl"
 CLUSTER_PROFILE = PROCESSED_DIR / "cluster_profile.csv"
 CUSTOMER_CLUSTERS = PREDICTIONS_DIR / "customer_clusters.csv"
 EXPERIMENT_CONFIG_PATH = CONFIG_DIR / "experiment.yaml"
+
+# 5. Scripts SQL de Infraestructura
+BIGQUERY_MEDALLION_SQL = SQL_DIR / "bigquery_medallion.sql"

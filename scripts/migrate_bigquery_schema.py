@@ -1,10 +1,6 @@
 import os
-import sys
 import logging
 from google.cloud import bigquery
-
-# Ensure project root is in Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 

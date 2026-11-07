@@ -9,12 +9,12 @@ from pathlib import Path
 from google.cloud import bigquery
 
 # Ensure project root is in path
-ROOT_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT_DIR))
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+from config.paths import BIGQUERY_MEDALLION_SQL
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-SQL_FILE = ROOT_DIR / "sql" / "bigquery_medallion.sql"
 
 
 def deploy_medallion_views(project_id: str = None) -> None:
@@ -27,12 +27,12 @@ def deploy_medallion_views(project_id: str = None) -> None:
     logging.info("Connecting to BigQuery project: %s", project_id)
     client = bigquery.Client(project=project_id)
 
-    if not SQL_FILE.exists():
-        raise FileNotFoundError(f"SQL file not found at: {SQL_FILE}")
+    if not BIGQUERY_MEDALLION_SQL.exists():
+        raise FileNotFoundError(f"SQL file not found at: {BIGQUERY_MEDALLION_SQL}")
 
-    sql_content = SQL_FILE.read_text(encoding="utf-8")
+    sql_content = BIGQUERY_MEDALLION_SQL.read_text(encoding="utf-8")
 
-    logging.info("Executing Medallion DDL statements from %s...", SQL_FILE.name)
+    logging.info("Executing Medallion DDL statements from %s...", BIGQUERY_MEDALLION_SQL.name)
     job_config = bigquery.QueryJobConfig(default_dataset=f"{project_id}.retail_data")
     query_job = client.query(sql_content, job_config=job_config)
     query_job.result()  # Wait for DDL completion
