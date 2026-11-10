@@ -22,8 +22,7 @@ def run_training_pipeline(config):
     """
     logging.info("Starting Medallion training pipeline")
 
-    tracking_cfg = config.get_tracking() if hasattr(config, "get_tracking") else (config.tracking or config.mlflow)
-    experiment_name = tracking_cfg.experiment_name
+    experiment_name = config.tracking.experiment_name
 
     tracker = VertexExperimentTracker(experiment_name=experiment_name)
 

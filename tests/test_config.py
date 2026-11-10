@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 from config.loader import load_config
-from config.schema import ExperimentConfig, ClusteringConfig, MLflowConfig
+from config.schema import ExperimentConfig, ClusteringConfig, TrackingConfig
 from config.paths import EXPERIMENT_CONFIG_PATH
 
 
@@ -11,12 +11,12 @@ def test_load_production_config():
 
     assert isinstance(config, ExperimentConfig)
     assert isinstance(config.clustering, ClusteringConfig)
-    assert isinstance(config.mlflow, MLflowConfig)
+    assert isinstance(config.tracking, TrackingConfig)
 
     assert config.clustering.features == ["recency", "frequency", "avg_order_value"]
     assert config.clustering.cluster_range == [4]
     assert config.clustering.random_state == 42
-    assert config.mlflow.experiment_name == "customer_segmentation"
+    assert config.tracking.experiment_name == "customer_segmentation"
 
 
 def test_config_validation_rejects_invalid_types(tmp_path):
@@ -27,9 +27,10 @@ clustering:
   features: "not-a-list"
   cluster_range: [4]
   random_state: "not-an-int"
-mlflow:
+tracking:
   experiment_name: "test"
 """)
 
     with pytest.raises(ValidationError):
         load_config(invalid_yaml)
+

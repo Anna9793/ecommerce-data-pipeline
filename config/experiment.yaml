@@ -7,6 +7,3 @@ clustering:
 tracking:
   experiment_name: "customer_segmentation"
 
-# Backward-compatibility alias
-mlflow:
-  experiment_name: "customer_segmentation"
