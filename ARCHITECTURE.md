@@ -48,7 +48,7 @@ graph TD
         API -->|Trigger retraining Webhook| Vertex[Vertex AI Pipelines]
         Vertex -->|Extract Transactions| BQ
         Vertex -->|Train Churn XGBoost & Seg KMeans| KFP_Train[Isolated VM Tasks]
-        KFP_Train -->|Log Experiments| MLflow[MLflow Tracking Registry]
+        KFP_Train -->|Log Experiments & Metrics| VertexExp[Vertex AI Experiments & Model Registry]
         KFP_Train -->|Save Pickle Binaries| GCS[(GCS Bucket: models/)]
         Vertex -->|Evaluation Gate & Deploy| GCS
         GCS -->|POST /reload-models| API
@@ -247,7 +247,7 @@ graph TD
 *   **Rationale**:
     1. **Point-in-Time Reproducibility**: BigQuery's 7-day time travel allows instant debugging, auditing, and historical rollbacks without duplicating warehouse storage.
     2. **Decoupled Large Data Versioning**: DVC hashes large training files stored in GCS (`gs://.../dvcstore`) while keeping Git commits lightweight and audit-friendly.
-    3. **End-to-End Governance**: Lineage manifests cryptographically link the source ingestion payload $\rightarrow$ BigQuery snapshot $\rightarrow$ PySpark feature schema $\rightarrow$ MLflow Model Run ID, fulfilling enterprise MLOps compliance and debugging requirements.
+    3. **End-to-End Governance**: Lineage manifests cryptographically link the source ingestion payload $\rightarrow$ BigQuery snapshot $\rightarrow$ PySpark feature schema $\rightarrow$ Vertex AI Model Run ID, fulfilling enterprise MLOps compliance and debugging requirements.
 
 ### 3.17. Warehouse-Native Semantic Modeling & Data Contracts (dbt on BigQuery) vs. Raw Ad-Hoc SQL (Phase 25)
 *   **Decision**: Implemented **dbt (data build tool)** for BigQuery to govern the Medallion Architecture (`staging` $\rightarrow$ `intermediate` $\rightarrow$ `marts`), enforce SQL data contracts (uniqueness, not-null, categorical accepted values), and expose semantic RFM aggregations for BI consumption (Looker Studio / Tableau).
@@ -278,11 +278,20 @@ graph TD
     3. **Agent & RAG Synergy**: The retrieved top candidate products directly feed into our LangGraph marketing copilot and conversational RAG advisor, ensuring personalized, highly relevant product suggestions.
 
 ### 3.22. Twelve-Factor App Modern Configuration & Explicit Dependencies (Pydantic Settings & Unified Lineage) (Phase 31)
-*   **Decision**: Unified legacy static path scripts (`config/paths.py`) and scattered `os.getenv()` calls into a centralized **Pydantic Settings Architecture (`config/settings.py`, `.env.example`)** conforming to *The Twelve-Factor App* methodology (**Factor II: Dependencies** and **Factor III: Config**).
+*   **Decision**: Unified legacy static path scripts (`config/paths.py`) and scattered `os.getenv()` calls into a centralized **Pydantic Settings Architecture (`config/settings.py`, `.env`)** conforming to *The Twelve-Factor App* methodology (**Factor II: Dependencies** and **Factor III: Config**).
 *   **Rationale**:
     1. **Type-Safe Dynamic Configuration (Factor III)**: `Settings` automatically parses, coerces, and validates configuration from environment variables and `.env` files with strict type safety, safe local defaults (`USE_BIGQUERY=false`), and cached singleton access (`get_settings()`).
     2. **Zero-Code Lineage Evolution**: Feature versions (`RFM_FEATURE_VERSION`, `CHURN_FEATURE_VERSION`) and model registries are centrally managed, allowing production lineage upgrades without modifying application logic.
     3. **100% Backward Compatibility**: `config/paths.py` dynamically delegates to the central settings singleton, maintaining seamless compatibility with all legacy ingestion and reporting modules.
+
+### 3.23. Native Cloud MLOps (Vertex AI Experiments & Model Registry) vs. Self-Hosted MLflow (Phase 32)
+*   **Decision**: Replaced self-hosted MLflow tracking server and SQLite/local artifact backend with native **Google Cloud Vertex AI Experiments (`google-cloud-aiplatform`)**, **Vertex AI Model Registry**, and direct **Google Cloud Storage (GCS)** model synchronization via `VertexExperimentTracker`.
+*   **Rationale**:
+    1. **Serverless & FinOps Optimization**: Eliminates the operational overhead and compute costs of maintaining dedicated servers, databases, or local background daemon processes for MLflow tracking. Vertex AI Experiments is completely serverless, pay-per-use, and integrated seamlessly with Google Cloud IAM.
+    2. **Elimination of macOS Apple Silicon / WSGI Fork Conflicts**: Eliminates Gunicorn prefork worker crashes (`SIGSEGV` when importing PyArrow after fork on macOS ARM64) and avoids port conflicts with Apple's AirPlay Receiver (port 5000).
+    3. **End-to-End GCP Ecosystem Integration**: Native interoperability with BigQuery datasets, Cloud Storage model artifacts (`gs://anna-ml-pipeline-bucket/models/`), Vertex AI Pipelines, and Cloud Run serving containers. Provides centralized experiment comparison in the Google Cloud Console with unified IAM roles and zero local CPU overhead.
+    4. **Robust Offline Fallback & Validation**: The custom `VertexExperimentTracker` ([tracker.py](file:///Users/Anna/ecommerce-data-pipeline/src/utils/tracker.py)) automatically enforces Vertex AI naming constraints (`[a-z0-9][a-z0-9-]{0,127}` RFC-1123) and falls back gracefully to local file-based logging when running tests or development environments without cloud credentials.
+
 
 
 

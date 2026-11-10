@@ -2,7 +2,7 @@
 
 [![CI/CD Pipeline](https://github.com/Anna9793/ecommerce-data-pipeline/actions/workflows/deploy.yml/badge.svg)](https://github.com/Anna9793/ecommerce-data-pipeline/actions)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Unit Tests](https://img.shields.io/badge/tests-31%2F31%20passing-brightgreen.svg)]()
+[![Unit Tests](https://img.shields.io/badge/tests-44%2F44%20passing-brightgreen.svg)]()
 [![Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20BigQuery-orange.svg)](https://cloud.google.com/)
 [![Vector Search](https://img.shields.io/badge/Vector%20Search-PostgreSQL%20%7C%20pgvector-34A853.svg)](https://github.com/pgvector/pgvector)
 [![Machine Learning](https://img.shields.io/badge/ML-Scikit--Learn%20%7C%20XGBoost-EE4C2C.svg)](https://scikit-learn.org/)
@@ -31,11 +31,15 @@ graph TD
     end
 
     %% Machine Learning & AI
-    subgraph ML_AI["3. Machine Learning and Semantic AI"]
+    subgraph ML_AI["3. Machine Learning and MLOps"]
         API --> KMeans["K-Means Segmentation (Customer Personas)"]
         API --> Churn["XGBoost / Logistic Regression (Churn Risk)"]
         API --> Gemini["Vertex AI / Gemini (RAG Product Advisor)"]
         PGVector -->|"Semantic Top-K Context"| Gemini
+        KMeans -.->|"Track Runs & Metrics"| VertexExp["Vertex AI Experiments & Model Registry"]
+        Churn -.->|"Track Runs & Metrics"| VertexExp
+        VertexExp -->|"Save Binaries"| GCS["Cloud Storage (GCS)"]
+        GCS -->|"Load Model .pkl"| API
     end
 
     %% CI/CD and Containerization
@@ -51,7 +55,7 @@ graph TD
     classDef ui fill:#FF6F00,stroke:#333,stroke-width:2px,color:#fff;
 
     class UI,API ui;
-    class BigQuery,FeatureStore,PGVector gcp;
+    class BigQuery,FeatureStore,PGVector,VertexExp,GCS gcp;
     class KMeans,Churn,Gemini ai;
     class GHA,DockerBuild devops;
 ```
@@ -68,7 +72,7 @@ graph TD
 | **04** | **Data Warehouse** | Scalable analytical storage for millions of e-commerce transactions and point-in-time time-travel queries. | `Google BigQuery` |
 | **05** | **Online Feature Store** | Low-latency (<15ms) key-value feature serving for real-time customer inference. | `PostgreSQL`, `psycopg2.pool` |
 | **06** | **Vector Search & RAG** | Conversational product advisor using pgvector embeddings and Google Gemini reasoning. | `pgvector`, `Vertex AI`, `Gemini` |
-| **07** | **MLOps & Drift Monitoring** | Automated statistical data drift evaluation using two-sample Kolmogorov-Smirnov (K-S) tests. | `Scipy.stats`, `Plotly` |
+| **07** | **MLOps & Drift Monitoring** | Automated experiment tracking with Vertex AI Experiments & Model Registry, plus statistical data drift evaluation (K-S tests). | `Vertex AI`, `Scipy.stats`, `GCS` |
 | **08** | **Serverless Serving** | Containerized microservices on Cloud Run with zero-downtime model hot-reloading. | `FastAPI`, `Cloud Run`, `Docker` |
 | **09** | **CI/CD Quality Gates** | Keyless automated testing and deployment workflow using Workload Identity Federation. | `GitHub Actions`, `Docker Buildx` |
 
@@ -87,8 +91,8 @@ The platform includes a modern Streamlit web application ([streamlit_app.py](fil
 
 ## 🛠️ Tech Stack
 
-* **Cloud Infrastructure (GCP)**: Google BigQuery, Cloud Run, Cloud Storage, Vertex AI, Artifact Registry.
-* **Machine Learning & MLOps**: Scikit-Learn, XGBoost, Scipy (Kolmogorov-Smirnov), MLflow.
+* **Cloud Infrastructure (GCP)**: Google BigQuery, Cloud Run, Cloud Storage (GCS), Vertex AI (Experiments & Model Registry), Artifact Registry.
+* **Machine Learning & MLOps**: Scikit-Learn, XGBoost, Scipy (Kolmogorov-Smirnov), Google Cloud Vertex AI Experiments & Model Registry, Google Cloud Storage (GCS).
 * **Vector Database & Feature Store**: PostgreSQL 15, `pgvector` (HNSW indexing), `psycopg2` Threaded Connection Pools.
 * **Serving & API**: FastAPI, Uvicorn, Pydantic v2, Streamlit, Plotly.
 * **Packaging & DevOps**: `requirements.txt`, Docker Multi-Stage, GitHub Actions CI/CD.
@@ -113,11 +117,11 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Launch local PostgreSQL (with pgvector) and local services
+# Launch local PostgreSQL (with pgvector)
 docker compose up -d
 ```
 
-### 3. Run Automated Unit Tests (31 Passing)
+### 3. Run Automated Unit Tests (44 Passing)
 ```bash
 pytest tests/
 ```

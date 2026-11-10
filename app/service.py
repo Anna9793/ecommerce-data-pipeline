@@ -66,7 +66,7 @@ def _load_all_models(force_download=False):
 prod_pipeline, prod_churn_pipeline, MODEL_VERSION, CHURN_MODEL_VERSION = _load_all_models(force_download=False)
 
 def reload_production_models():
-    """Forces reloading of models from GCS/MLflow by bypassing caches."""
+    """Forces reloading of models from GCS/local storage by bypassing caches."""
     global prod_pipeline, prod_churn_pipeline, MODEL_VERSION, CHURN_MODEL_VERSION
     logger.info("Request received to reload production models.")
     prod_pipeline, prod_churn_pipeline, MODEL_VERSION, CHURN_MODEL_VERSION = _load_all_models(force_download=True)
