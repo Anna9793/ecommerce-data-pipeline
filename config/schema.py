@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 
 class ClusteringConfig(BaseModel):
@@ -8,10 +8,18 @@ class ClusteringConfig(BaseModel):
     random_state: int
 
 
-class MLflowConfig(BaseModel):
+class TrackingConfig(BaseModel):
     experiment_name: str
+
+
+# MLflowConfig alias for backwards compatibility
+MLflowConfig = TrackingConfig
 
 
 class ExperimentConfig(BaseModel):
     clustering: ClusteringConfig
-    mlflow: MLflowConfig
+    tracking: Optional[TrackingConfig] = None
+    mlflow: Optional[MLflowConfig] = None
+
+    def get_tracking(self) -> TrackingConfig:
+        return self.tracking or self.mlflow or TrackingConfig(experiment_name="customer_segmentation")

@@ -1,13 +1,12 @@
 import os
 import logging
-import mlflow
-import mlflow.sklearn
-from mlflow.models import infer_signature
 
 from src.bronze import run_bronze
 from src.silver import run_silver
 from src.gold import run_gold, load_gold
 from src.clustering import run_clustering
+from src.utils.tracker import VertexExperimentTracker
+from config.paths import SEGMENTATION_MODEL_PKL
 
 
 def run_training_pipeline(config):
@@ -18,13 +17,15 @@ def run_training_pipeline(config):
        - Silver: Cleans, types, and enriches transactions in a single pass.
        - Gold: Computes customer RFM and velocity features (0 NaNs guaranteed).
     2. Runs clustering model training and evaluation.
-    3. Logs metrics, parameters, artifacts, and registers model in MLflow.
+    3. Logs metrics, parameters, artifacts, and registers model in Vertex AI Experiments & Model Registry.
     4. Persists artifacts locally and exports to BigQuery (if USE_BIGQUERY=true).
     """
     logging.info("Starting Medallion training pipeline")
 
-    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
-    mlflow.set_experiment(config.mlflow.experiment_name)
+    tracking_cfg = config.get_tracking() if hasattr(config, "get_tracking") else (config.tracking or config.mlflow)
+    experiment_name = tracking_cfg.experiment_name
+
+    tracker = VertexExperimentTracker(experiment_name=experiment_name)
 
     # 1. Medallion Feature Engineering (Local deterministic execution)
     run_bronze()
@@ -34,8 +35,8 @@ def run_training_pipeline(config):
     df = load_gold(use_bigquery=False)
     feature_columns = config.clustering.features
 
-    with mlflow.start_run():
-        logging.info("Executing clustering training run in MLflow")
+    with tracker.start_run(run_name="customer_segmentation_kmeans"):
+        logging.info("Executing clustering training run in Vertex AI Experiments")
 
         model, best_k, metrics, fig, pca_fig = run_clustering(
             config,
@@ -44,28 +45,20 @@ def run_training_pipeline(config):
             cluster_range=config.clustering.cluster_range
         )
 
-        input_example = df[feature_columns].head(5)
-        predictions = model.predict(input_example)
-        signature = infer_signature(input_example, predictions)
+        tracker.log_metrics({"silhouette_score": float(metrics["silhouette"])})
+        tracker.log_params({
+            "feature_set": ",".join(feature_columns),
+            "n_clusters": int(best_k)
+        })
 
-        mlflow.sklearn.log_model(
-            sk_model=model,
-            name="model",
-            input_example=input_example,
-            signature=signature
-        )
-
-        mlflow.log_metric("silhouette_score", metrics["silhouette"])
-        mlflow.log_figure(fig, "silhouette_plot.png")
+        tracker.log_figure(fig, "silhouette_plot.png")
         if pca_fig is not None:
-            mlflow.log_figure(pca_fig, "pca_clusters.png")
+            tracker.log_figure(pca_fig, "pca_clusters.png")
 
-        mlflow.log_param("feature_set", ",".join(feature_columns))
-        mlflow.log_param("n_clusters", best_k)
-
-        mlflow.register_model(
-            model_uri=f"runs:/{mlflow.active_run().info.run_id}/model",
-            name="customer_segmentation_model"
+        tracker.save_and_register_model(
+            model=model,
+            model_name="customer_segmentation_model",
+            local_path=SEGMENTATION_MODEL_PKL
         )
 
     logging.info("Training pipeline completed successfully")

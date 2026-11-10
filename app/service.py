@@ -1,24 +1,16 @@
 import os
-import pandas as pd
-import mlflow
-import mlflow.sklearn
 import logging
-from mlflow import MlflowClient
-from config.paths import CLUSTER_PROFILE
+import joblib
+import pandas as pd
+from config.paths import CLUSTER_PROFILE, SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL
 
 logger = logging.getLogger(__name__)
-
-mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
-
-PROD_MODEL_URI = "models:/customer_segmentation_model@production"
-PROD_CHURN_MODEL_URI = "models:/customer_churn_model@production"
 
 RFM_FEATURE_VERSION = os.getenv("RFM_FEATURE_VERSION", "rfm_v1")
 CHURN_FEATURE_VERSION = os.getenv("CHURN_FEATURE_VERSION", "churn_v2")
 
 def load_model_from_gcs(model_name: str, force_download: bool = False):
     from google.cloud import storage
-    import joblib
 
     project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
     bucket_name = os.getenv("GCS_BUCKET", "anna-ml-pipeline-bucket")
@@ -52,21 +44,12 @@ def _load_all_models(force_download=False):
             p_pipeline, p_version = load_model_from_gcs("customer_segmentation_model.pkl", force_download)
             p_churn_pipeline, p_churn_version = load_model_from_gcs("customer_churn_model.pkl", force_download)
         else:
-            # Local mode: load from MLflow
-            p_pipeline = mlflow.sklearn.load_model(PROD_MODEL_URI)
-            client = MlflowClient()
-            version_info = client.get_model_version_by_alias(
-                "customer_segmentation_model",
-                "production"
-            )
-            p_version = version_info.version
-
-            p_churn_pipeline = mlflow.sklearn.load_model(PROD_CHURN_MODEL_URI)
-            churn_version_info = client.get_model_version_by_alias(
-                "customer_churn_model",
-                "production"
-            )
-            p_churn_version = churn_version_info.version
+            # Local mode: load directly from local artifacts
+            logger.info("Local mode active: loading models from local filesystem (%s, %s)", SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL)
+            p_pipeline = joblib.load(SEGMENTATION_MODEL_PKL)
+            p_churn_pipeline = joblib.load(CHURN_MODEL_PKL)
+            p_version = "local_v1"
+            p_churn_version = "local_v1"
         return p_pipeline, p_churn_pipeline, p_version, p_churn_version
     except Exception as e:
         logger.warning("Model loading failed: %s. Using mock fallback models.", e)

@@ -1,6 +1,14 @@
 import os
+import sys
 import logging
+from pathlib import Path
 import pandas as pd
+
+# Ensure project root is in sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
@@ -10,14 +18,11 @@ from sklearn.metrics import (
     accuracy_score,
     classification_report
 )
-import mlflow
-import mlflow.sklearn
-from mlflow.models import infer_signature
-
-from config.paths import SILVER_RETAIL
+from config.paths import SILVER_RETAIL, CHURN_MODEL_PKL
 from src.silver import run_silver
 from src.gold import compute_gold_features
 from src.churn_target import create_churn_target
+from src.utils.tracker import VertexExperimentTracker
 
 def run_churn_training(
     cutoff_days=90,
@@ -26,8 +31,7 @@ def run_churn_training(
     df=None
 ):
 
-    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
-    mlflow.set_experiment("customer_churn")
+    tracker = VertexExperimentTracker(experiment_name="customer_churn")
 
     if df is None:
         logging.info("Loading curated transactions from Silver Layer (%s)", SILVER_RETAIL)
@@ -82,12 +86,11 @@ def run_churn_training(
 
     lr_f1 = -1.0
     lr_pipeline = None
-    lr_run_id = None
 
     for model_name, model_instance in candidate_models.items():
         logging.info("Training candidate model: %s", model_name)
         
-        with mlflow.start_run(run_name=model_name) as run:
+        with tracker.start_run(run_name=model_name):
             # Build training pipeline (scaler + classifier)
             pipeline = Pipeline([
                 ("scaler", StandardScaler()),
@@ -101,7 +104,7 @@ def run_churn_training(
             report = classification_report(y_test, y_pred, output_dict=True)
             f1 = report["1"]["f1-score"]
 
-            mlflow.log_params({
+            tracker.log_params({
                 "model_type": model_name,
                 "cutoff_days": cutoff_days,
                 "random_state": random_state,
@@ -109,62 +112,45 @@ def run_churn_training(
                 "scaler": "StandardScaler"
             })
 
-            mlflow.log_metrics({
-                "accuracy": report["accuracy"],
-                "churn_precision": report["1"]["precision"],
-                "churn_recall": report["1"]["recall"],
-                "churn_f1": f1,
-                "churn_rate": training_df["churn"].mean()
-            })
+            metrics_to_log = {
+                "accuracy": float(report["accuracy"]),
+                "churn_precision": float(report["1"]["precision"]),
+                "churn_recall": float(report["1"]["recall"]),
+                "churn_f1": float(f1),
+                "churn_rate": float(training_df["churn"].mean())
+            }
 
             # Feature coefficients or importance logging
             fitted_model = pipeline.named_steps["model"]
             if hasattr(fitted_model, "coef_"):
                 for feature, coef in zip(X.columns, fitted_model.coef_[0]):
-                    mlflow.log_metric(f"coef_{feature}", float(coef))
+                    metrics_to_log[f"coef_{feature}"] = float(coef)
             elif hasattr(fitted_model, "feature_importances_"):
                 for feature, importance in zip(X.columns, fitted_model.feature_importances_):
-                    mlflow.log_metric(f"importance_{feature}", float(importance))
+                    metrics_to_log[f"importance_{feature}"] = float(importance)
+
+            tracker.log_metrics(metrics_to_log)
 
             # Specifically track Logistic Regression for registry promotion
             if model_name == "LogisticRegression":
                 lr_f1 = f1
                 lr_pipeline = pipeline
-                lr_run_id = run.info.run_id
 
-    # Log and register the Logistic Regression model
+    # Persist and register the Logistic Regression model
     if lr_pipeline is not None:
         logging.info("Registering Logistic Regression model (F1-score: %.4f) as production model", lr_f1)
         
-        with mlflow.start_run(run_id=lr_run_id):
-            input_example = X_train.head(5)
-            predictions = lr_pipeline.predict(input_example)
-            signature = infer_signature(input_example, predictions)
-
-            mlflow.sklearn.log_model(
-                sk_model=lr_pipeline,
-                artifact_path="model",
-                input_example=input_example,
-                signature=signature
-            )
-
-            model_version_info = mlflow.register_model(
-                model_uri=f"runs:/{lr_run_id}/model",
-                name="customer_churn_model"
-            )
-
-            client = mlflow.tracking.MlflowClient()
-            client.set_registered_model_alias(
-                "customer_churn_model",
-                "production",
-                model_version_info.version
-            )
+        tracker.save_and_register_model(
+            model=lr_pipeline,
+            model_name="customer_churn_model",
+            local_path=CHURN_MODEL_PKL
+        )
             
-        logging.info("Logistic Regression model registered to MLflow registry under 'customer_churn_model' and tagged 'production'")
+        logging.info("Logistic Regression model registered under 'customer_churn_model'")
         return {
             "f1_score": float(lr_f1),
-            "model_version": int(model_version_info.version),
-            "run_id": str(lr_run_id)
+            "model_name": "customer_churn_model",
+            "status": "registered"
         }
 
 if __name__ == "__main__":

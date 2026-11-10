@@ -25,7 +25,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
-      MLFLOW_TRACKING_URI: file:/Users/Anna/ecommerce-data-pipeline/mlruns
       USE_BIGQUERY: ${USE_BIGQUERY}
       GCP_PROJECT: ${GCP_PROJECT}
       GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT}
@@ -39,18 +38,6 @@ services:
     working_dir: /Users/Anna/ecommerce-data-pipeline
     depends_on:
       - db
-    networks:
-      - pipeline-network
-
-  mlflow:
-    build: .
-    container_name: mlflow-server
-    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri file:///Users/Anna/ecommerce-data-pipeline/mlruns --default-artifact-root file:///Users/Anna/ecommerce-data-pipeline/mlruns
-    ports:
-      - "5001:5000"
-    volumes:
-      - .:/Users/Anna/ecommerce-data-pipeline
-    working_dir: /Users/Anna/ecommerce-data-pipeline
     networks:
       - pipeline-network
 

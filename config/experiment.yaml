@@ -4,5 +4,9 @@ clustering:
   cluster_range: [4]
   random_state: 42
 
+tracking:
+  experiment_name: "customer_segmentation"
+
+# Backward-compatibility alias
 mlflow:
   experiment_name: "customer_segmentation"

@@ -12,7 +12,6 @@ numpy>=1.24.0
 scikit-learn>=1.4.0
 scipy>=1.11.0
 openpyxl>=3.1.0
-mlflow>=2.10.0
 
 # Google Cloud Platform & Vertex AI
 google-cloud-bigquery>=3.14.0
