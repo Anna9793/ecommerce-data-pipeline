@@ -4,6 +4,20 @@ clustering:
   cluster_range: [4]
   random_state: 42
 
+churn:
+  cutoff_days: 90
+  test_size: 0.2
+  random_state: 42
+  features:
+    - "recency"
+    - "frequency"
+    - "avg_order_value"
+    - "spending_velocity"
+    - "cancellation_rate"
+    - "preferred_shopping_hour"
+  experiment_name: "customer_churn"
+
 tracking:
   experiment_name: "customer_segmentation"
+
 

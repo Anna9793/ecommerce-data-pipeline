@@ -18,20 +18,43 @@ from sklearn.metrics import (
     accuracy_score,
     classification_report
 )
-from config.paths import SILVER_RETAIL, CHURN_MODEL_PKL
+from config.paths import SILVER_RETAIL, CHURN_MODEL_PKL, EXPERIMENT_CONFIG_PATH
+from config.loader import load_config
+from config.schema import ChurnConfig
 from src.silver import run_silver
 from src.gold import compute_gold_features
 from src.churn_target import create_churn_target
 from src.utils.tracker import VertexExperimentTracker
 
 def run_churn_training(
-    cutoff_days=90,
-    test_size=0.2,
-    random_state=42,
-    df=None
+    cutoff_days=None,
+    test_size=None,
+    random_state=None,
+    features=None,
+    df=None,
+    config=None
 ):
+    if config is None:
+        try:
+            full_config = load_config(EXPERIMENT_CONFIG_PATH)
+            churn_cfg = full_config.churn
+        except Exception as e:
+            logging.warning("Could not load experiment config (%s), falling back to ChurnConfig defaults.", e)
+            churn_cfg = ChurnConfig()
+    elif hasattr(config, "churn"):
+        churn_cfg = config.churn
+    elif isinstance(config, ChurnConfig):
+        churn_cfg = config
+    else:
+        churn_cfg = ChurnConfig()
 
-    tracker = VertexExperimentTracker(experiment_name="customer_churn")
+    cutoff_days = cutoff_days if cutoff_days is not None else churn_cfg.cutoff_days
+    test_size = test_size if test_size is not None else churn_cfg.test_size
+    random_state = random_state if random_state is not None else churn_cfg.random_state
+    feature_cols = features if features is not None else churn_cfg.features
+    experiment_name = churn_cfg.experiment_name
+
+    tracker = VertexExperimentTracker(experiment_name=experiment_name)
 
     if df is None:
         logging.info("Loading curated transactions from Silver Layer (%s)", SILVER_RETAIL)
@@ -66,7 +89,7 @@ def run_churn_training(
     training_df = rfm_df.merge(target_df, on="customer_id", how="inner")
 
     # Separating predictor features (past) and target variable (future)
-    X = training_df[["recency", "frequency", "avg_order_value", "spending_velocity", "cancellation_rate", "preferred_shopping_hour"]]
+    X = training_df[feature_cols]
     y = training_df["churn"]
 
     # Train/Test Split
