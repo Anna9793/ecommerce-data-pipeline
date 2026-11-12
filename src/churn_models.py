@@ -1,5 +1,6 @@
 import logging
-from typing import Optional, Dict, Any, Tuple, List
+from typing import Dict, Any, List
+import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
@@ -10,15 +11,15 @@ from src.utils.plotting import plot_feature_importance
 
 
 def train_and_evaluate_churn_models(
-    X_train,
-    X_test,
-    y_train,
-    y_test,
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    y_train: pd.Series,
+    y_test: pd.Series,
     feature_cols: list,
-    cutoff_days: int = 90,
-    test_size: float = 0.2,
-    random_state: int = 42,
-    churn_rate: float = 0.0
+    cutoff_days: int,
+    test_size: float,
+    random_state: int,
+    churn_rate: float
 ):
     """Benchmarks candidate classification algorithms and returns the winning model and evaluation artifacts."""
     candidate_models = {

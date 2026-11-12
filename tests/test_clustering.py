@@ -11,8 +11,11 @@ from src.clustering import (
     build_pipeline,
     find_best_kmeans,
     profile_clusters,
-    save_outputs,
     run_clustering,
+)
+from src.pipelines.clustering_pipeline import (
+    save_clustering_outputs,
+    save_outputs,
 )
 from src.utils.plotting import (
     plot_silhouette_scores,
@@ -147,14 +150,14 @@ def test_save_outputs_local_mode(tmp_path, monkeypatch):
     profile_path = tmp_path / "profile.csv"
     customers_path = tmp_path / "customers.csv"
 
-    monkeypatch.setattr("src.clustering.CLUSTER_PROFILE", profile_path)
-    monkeypatch.setattr("src.clustering.CUSTOMER_CLUSTERS", customers_path)
+    monkeypatch.setattr("src.pipelines.clustering_pipeline.CLUSTER_PROFILE", profile_path)
+    monkeypatch.setattr("src.pipelines.clustering_pipeline.CUSTOMER_CLUSTERS", customers_path)
 
     df_profile = pd.DataFrame({"customers": [1]}, index=[0])
     df_scored = pd.DataFrame({"customer_id": ["C1"], "cluster": [0], "segment": ["Medium Customers"]})
 
     with patch("pandas_gbq.to_gbq") as mock_to_gbq:
-        save_outputs(df_profile, scored_df=df_scored)
+        save_clustering_outputs(df_profile, scored_df=df_scored)
         assert not mock_to_gbq.called
 
     assert profile_path.exists()
@@ -167,14 +170,14 @@ def test_save_outputs_bigquery_mode(tmp_path, monkeypatch):
     profile_path = tmp_path / "profile.csv"
     customers_path = tmp_path / "customers.csv"
 
-    monkeypatch.setattr("src.clustering.CLUSTER_PROFILE", profile_path)
-    monkeypatch.setattr("src.clustering.CUSTOMER_CLUSTERS", customers_path)
+    monkeypatch.setattr("src.pipelines.clustering_pipeline.CLUSTER_PROFILE", profile_path)
+    monkeypatch.setattr("src.pipelines.clustering_pipeline.CUSTOMER_CLUSTERS", customers_path)
 
     df_profile = pd.DataFrame({"customers": [1]}, index=[0])
     df_scored = pd.DataFrame({"customer_id": ["C1"], "cluster": [0], "segment": ["Medium Customers"]})
 
     with patch("pandas_gbq.to_gbq") as mock_to_gbq:
-        save_outputs(df_profile, scored_df=df_scored)
+        save_clustering_outputs(df_profile, scored_df=df_scored)
         assert mock_to_gbq.called
         call_kwargs = mock_to_gbq.call_args[1]
         assert call_kwargs["destination_table"] == "retail_data.customer_segments"
@@ -185,7 +188,7 @@ def test_save_outputs_bigquery_mode(tmp_path, monkeypatch):
     assert customers_path.exists()
 
 
-@patch("src.pipelines.clustering_pipeline.save_outputs")
+@patch("src.pipelines.clustering_pipeline.save_clustering_outputs")
 @patch("src.pipelines.clustering_pipeline.VertexExperimentTracker")
 @patch("src.pipelines.clustering_pipeline.run_clustering")
 @patch("src.pipelines.clustering_pipeline.load_gold")

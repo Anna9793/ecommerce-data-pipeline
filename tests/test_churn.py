@@ -135,3 +135,45 @@ def test_run_churn_pipeline_direct(
     assert mock_save_churn.called
 
 
+def test_train_and_evaluate_churn_models_direct():
+    import pandas as pd
+    import numpy as np
+    from src.churn_models import train_and_evaluate_churn_models
+
+    np.random.seed(42)
+    n = 20
+    X_train = pd.DataFrame({
+        "recency": np.random.uniform(5, 100, n),
+        "frequency": np.random.uniform(1, 20, n),
+        "avg_order_value": np.random.uniform(10, 500, n)
+    })
+    y_train = pd.Series([0, 1] * (n // 2))
+
+    X_test = pd.DataFrame({
+        "recency": np.random.uniform(5, 100, 10),
+        "frequency": np.random.uniform(1, 20, 10),
+        "avg_order_value": np.random.uniform(10, 500, 10)
+    })
+    y_test = pd.Series([0, 1] * 5)
+
+    features = ["recency", "frequency", "avg_order_value"]
+    pipeline, best_f1, best_name, candidate_runs, figures = train_and_evaluate_churn_models(
+        X_train=X_train,
+        X_test=X_test,
+        y_train=y_train,
+        y_test=y_test,
+        feature_cols=features,
+        cutoff_days=90,
+        test_size=0.2,
+        random_state=42,
+        churn_rate=0.5
+    )
+
+    assert pipeline is not None
+    assert isinstance(best_f1, float)
+    assert best_name == "customer_churn_model"
+    assert len(candidate_runs) == 3
+    assert "feature_importance.png" in figures
+
+
+

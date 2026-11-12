@@ -1,4 +1,3 @@
-import os
 import logging
 from typing import Dict, Any, Tuple
 import numpy as np
@@ -9,15 +8,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import silhouette_score
 
-from dotenv import load_dotenv
 from src.utils.plotting import plot_silhouette_scores, plot_pca_clusters
-
-from config.paths import (
-    CUSTOMER_CLUSTERS,
-    CLUSTER_PROFILE,
-)
-
-load_dotenv()
 
 
 def build_pipeline(k, random_state, feature_columns):
@@ -97,36 +88,6 @@ def profile_clusters(df):
     df_labeled["segment"] = df_labeled["cluster"].map(profile["segment"])
 
     return df_labeled, profile
-
-
-def save_outputs(profile, scored_df=None):
-    """Persists cluster profile and scored customers to local CSV and BigQuery."""
-    logging.info("Saving cluster profile to %s", CLUSTER_PROFILE)
-    profile.to_csv(CLUSTER_PROFILE)
-
-    if scored_df is not None:
-        logging.info("Saving batch customer segmentation to %s", CUSTOMER_CLUSTERS)
-        scored_df.to_csv(CUSTOMER_CLUSTERS, index=False)
-
-        if os.getenv("USE_BIGQUERY", "false").lower() == "true":
-            project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-            destination_table = "retail_data.customer_segments"
-            logging.info("Exporting %d scored customers to BigQuery: %s", len(scored_df), destination_table)
-            try:
-                import pandas_gbq
-                bq_df = scored_df.copy()
-                if "customer_id" in bq_df.columns:
-                    bq_df["customer_id"] = bq_df["customer_id"].astype(str)
-                pandas_gbq.to_gbq(
-                    bq_df,
-                    destination_table=destination_table,
-                    project_id=project_id,
-                    if_exists="replace"
-                )
-                logging.info("Successfully exported batch customer segments to BigQuery table %s", destination_table)
-            except Exception as e:
-                logging.error("Failed to export customer segments to BigQuery: %s", e)
-                raise
 
 
 def run_clustering(
