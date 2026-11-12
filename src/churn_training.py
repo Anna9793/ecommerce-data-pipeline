@@ -1,30 +1,10 @@
-import os
-import sys
 import logging
-from pathlib import Path
-import pandas as pd
-
-# Ensure project root is in sys.path
-BASE_DIR = Path(__file__).resolve().parent.parent
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
-
-from sklearn.model_selection import train_test_split
+from typing import Optional, Dict, Any, Tuple
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import (
-    accuracy_score,
-    classification_report
-)
-from config.paths import SILVER_RETAIL, CHURN_MODEL_PKL, EXPERIMENT_CONFIG_PATH
-from config.loader import load_config
-from config.schema import ChurnConfig
-from src.silver import run_silver
-from src.gold import compute_gold_features
-from src.churn_target import create_churn_target
-from src.utils.tracker import VertexExperimentTracker
+from sklearn.metrics import classification_report
 
 def train_and_evaluate_churn_models(
     X_train,
@@ -121,8 +101,3 @@ def run_churn_training(
         random_state=random_state,
         features=features
     )
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-    run_churn_training()
