@@ -22,15 +22,7 @@ def run_clustering_pipeline(
     random_state: Optional[int] = None,
     test_size: float = 0.2
 ) -> Dict[str, Any]:
-    """
-    Executes the end-to-end customer segmentation training pipeline:
-    1. Loads configuration from Pydantic schema (with default fallback).
-    2. Medallion ETL (Bronze -> Silver -> Gold).
-    3. Splits gold features into train/test sets.
-    4. Trains and evaluates KMeans clustering model and computes Silhouette score.
-    5. Logs metrics, parameters, figures, and registers model in Vertex AI Experiments & Model Registry.
-    6. Performs batch customer segmentation and persists to CSV and BigQuery.
-    """
+    """Executes the end-to-end Medallion customer segmentation training and batch scoring pipeline."""
     logging.info("Starting Medallion clustering training pipeline")
 
     if config is None:

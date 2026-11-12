@@ -20,14 +20,7 @@ def train_and_evaluate_churn_models(
     random_state: int = 42,
     churn_rate: float = 0.0
 ):
-    """
-    Benchmarks candidate classification algorithms (LogisticRegression,
-    RandomForest, GradientBoosting) and computes metrics, parameters, and feature importances.
-    Pure ML function, agnostic to tracker or external cloud services.
-
-    Returns:
-        tuple: (best_pipeline, best_f1, best_model_name, candidate_runs, figures_dict)
-    """
+    """Benchmarks candidate classification algorithms and returns the winning model and evaluation artifacts."""
     candidate_models = {
         "LogisticRegression": LogisticRegression(random_state=random_state),
         "RandomForest": RandomForestClassifier(random_state=random_state, n_estimators=100),

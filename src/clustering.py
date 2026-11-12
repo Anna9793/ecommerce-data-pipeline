@@ -24,13 +24,7 @@ load_rfm = load_gold  # Backward compatibility alias
 
 
 def build_pipeline(k, random_state, feature_columns):
-    """
-    Builds a native Scikit-Learn pipeline with ColumnTransformer:
-    - Applies np.log1p to heavily skewed features (frequency, avg_order_value).
-    - Passes through remaining features (recency).
-    - Applies StandardScaler globally.
-    - Fits KMeans with k clusters.
-    """
+    """Builds a Scikit-Learn KMeans pipeline with log transform and scaling."""
     logging.info("Building KMeans pipeline (k=%d)", k)
     log_features = [col for col in ["frequency", "avg_order_value"] if col in feature_columns]
     other_features = [col for col in feature_columns if col not in log_features]
@@ -50,12 +44,7 @@ def build_pipeline(k, random_state, feature_columns):
 
 
 def find_best_kmeans(train_df, feature_columns, cluster_range, random_state):
-    """
-    Evaluates KMeans over a range of k using Silhouette Score to find the optimal model.
-
-    Returns:
-        tuple: (best_pipeline, best_k, best_score, scores)
-    """
+    """Evaluates KMeans over cluster_range using Silhouette score to select best model."""
     logging.info("Searching optimal k in range %s", cluster_range)
     best_score = -1.0
     best_k = None
@@ -83,12 +72,7 @@ def find_best_kmeans(train_df, feature_columns, cluster_range, random_state):
 
 
 def profile_clusters(df):
-    """
-    Computes RFM summary statistics per cluster and assigns business segment labels.
-
-    Returns:
-        tuple: (df_with_segment, profile_summary_df)
-    """
+    """Computes RFM summary statistics per cluster and assigns business segment labels."""
     logging.info("Profiling clusters and assigning business segment labels")
     profile = (
         df.groupby("cluster")
@@ -119,11 +103,7 @@ def profile_clusters(df):
 
 
 def save_outputs(profile, scored_df=None):
-    """
-    Saves clustering artifacts:
-    - Local: CLUSTER_PROFILE and CUSTOMER_CLUSTERS (CSV)
-    - Cloud (if USE_BIGQUERY=true): Uploads batch customer segmentation to BigQuery table
-    """
+    """Persists cluster profile and scored customers to local CSV and BigQuery."""
     logging.info("Saving cluster profile to %s", CLUSTER_PROFILE)
     profile.to_csv(CLUSTER_PROFILE)
 
@@ -158,15 +138,7 @@ def run_clustering(
     cluster_range: list,
     random_state: int
 ):
-    """
-    Core clustering modeling workflow:
-    1. Evaluates candidate k values on train_df using Silhouette Score.
-    2. Profiles clusters and assigns business segment labels.
-    3. Generates Silhouette curve and PCA 2D projection figures.
-
-    Returns:
-        tuple: (best_pipeline, best_k, metrics_dict, profile_df, figures_dict)
-    """
+    """Trains KMeans clustering across candidate k, profiles clusters, and generates plots."""
     logging.info("Starting KMeans clustering model training")
 
     # 1. Hyperparameter optimization

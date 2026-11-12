@@ -15,11 +15,7 @@ from sklearn.model_selection import train_test_split
 
 
 def save_churn_outputs(scored_df: pd.DataFrame):
-    """
-    Persists batch churn predictions:
-    - Local: CHURN_PREDICTIONS (CSV)
-    - Cloud (if USE_BIGQUERY=true): Uploads batch customer churn scores to BigQuery table
-    """
+    """Persists batch customer churn predictions to local CSV and BigQuery."""
     logging.info("Saving batch customer churn predictions to %s", CHURN_PREDICTIONS)
     scored_df.to_csv(CHURN_PREDICTIONS, index=False)
 
@@ -104,14 +100,7 @@ def run_churn_pipeline(
     random_state: Optional[int] = None,
     features: Optional[list] = None
 ) -> Dict[str, Any]:
-    """
-    Executes the end-to-end customer churn training pipeline:
-    1. Loads configuration from Pydantic schema (with default fallback).
-    2. Prepares temporal feature store (Silver -> Gold RFM + Churn Target).
-    3. Trains and benchmarks candidate models (Logistic Regression, Random Forest, Gradient Boosting).
-    4. Logs metrics and hyperparameters to Vertex AI Experiments.
-    5. Persists the winning model artifact locally and registers it in GCS.
-    """
+    """Executes the end-to-end customer churn training, benchmarking, and batch prediction pipeline."""
     logging.info("Starting Customer Churn training pipeline")
 
     if config is None:
