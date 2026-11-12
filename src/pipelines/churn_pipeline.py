@@ -12,10 +12,21 @@ from config.loader import load_config
 from config.schema import ChurnConfig
 from src.silver import run_silver
 from src.gold import compute_gold_features
-from src.churn_target import create_churn_target
-from src.churn_training import train_and_evaluate_churn_models
+from src.churn_models import train_and_evaluate_churn_models
 from src.utils.tracker import VertexExperimentTracker
 from sklearn.model_selection import train_test_split
+
+
+def create_churn_target(feature_df: pd.DataFrame, future_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Computes binary churn target labels based on presence in the future evaluation window.
+    Churn = 1 if the customer made 0 purchases in the future window, 0 otherwise.
+    """
+    active_customers = set(future_df["customer_id"].unique())
+    customers = feature_df["customer_id"].drop_duplicates()
+    target_df = pd.DataFrame({"customer_id": customers})
+    target_df["churn"] = (~target_df["customer_id"].isin(active_customers)).astype(int)
+    return target_df
 
 
 def prepare_churn_data(

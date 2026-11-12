@@ -182,3 +182,39 @@ def test_save_outputs_bigquery_mode(tmp_path, monkeypatch):
 
     assert profile_path.exists()
     assert customers_path.exists()
+
+
+@patch("src.pipelines.clustering_pipeline.VertexExperimentTracker")
+@patch("src.pipelines.clustering_pipeline.run_clustering")
+@patch("src.pipelines.clustering_pipeline.load_gold")
+@patch("src.pipelines.clustering_pipeline.run_gold")
+@patch("src.pipelines.clustering_pipeline.run_silver")
+@patch("src.pipelines.clustering_pipeline.run_bronze")
+def test_run_clustering_pipeline_orchestration(
+    mock_bronze,
+    mock_silver,
+    mock_gold,
+    mock_load_gold,
+    mock_run_clustering,
+    mock_tracker_cls,
+    sample_rfm_df
+):
+    from unittest.mock import MagicMock
+    from config.schema import ExperimentConfig
+    from src.pipelines.clustering_pipeline import run_clustering_pipeline
+
+    mock_tracker = MagicMock()
+    mock_tracker_cls.return_value = mock_tracker
+    mock_load_gold.return_value = sample_rfm_df
+
+    mock_model = MagicMock()
+    mock_run_clustering.return_value = (mock_model, 4, {"silhouette": 0.45}, MagicMock(), MagicMock())
+
+    cfg = ExperimentConfig()
+    run_clustering_pipeline(cfg)
+
+    assert mock_bronze.called
+    assert mock_silver.called
+    assert mock_gold.called
+    assert mock_run_clustering.called
+    assert mock_tracker.save_and_register_model.called

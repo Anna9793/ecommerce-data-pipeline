@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from config.loader import load_config
 from config.paths import EXPERIMENT_CONFIG_PATH
-from src.pipelines.training_pipeline import run_training_pipeline
+from src.pipelines.clustering_pipeline import run_clustering_pipeline
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,7 +17,7 @@ logging.basicConfig(
 
 def main():
     config = load_config(EXPERIMENT_CONFIG_PATH)
-    run_training_pipeline(config)
+    run_clustering_pipeline(config)
 
 
 if __name__ == "__main__":

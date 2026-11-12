@@ -9,7 +9,7 @@ from src.utils.tracker import VertexExperimentTracker
 from config.paths import SEGMENTATION_MODEL_PKL
 
 
-def run_training_pipeline(config):
+def run_clustering_pipeline(config):
     """
     Executes the end-to-end customer segmentation training pipeline:
     1. Medallion ETL:
@@ -61,3 +61,7 @@ def run_training_pipeline(config):
         )
 
     logging.info("Training pipeline completed successfully")
+
+
+# Backward compatibility alias
+run_training_pipeline = run_clustering_pipeline
