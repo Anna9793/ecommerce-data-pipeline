@@ -42,6 +42,7 @@ SEGMENTATION_MODEL_PKL = MODELS_DIR / "customer_segmentation_model.pkl"
 CHURN_MODEL_PKL = MODELS_DIR / "customer_churn_model.pkl"
 CLUSTER_PROFILE = PROCESSED_DIR / "cluster_profile.csv"
 CUSTOMER_CLUSTERS = PREDICTIONS_DIR / "customer_clusters.csv"
+CHURN_PREDICTIONS = PREDICTIONS_DIR / "customer_churn_predictions.csv"
 EXPERIMENT_CONFIG_PATH = CONFIG_DIR / "experiment.yaml"
 
 # 5. Scripts SQL de Infraestructura

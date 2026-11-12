@@ -70,3 +70,40 @@ def plot_pca_clusters(df, pipeline, feature_columns):
     ax.set_title("Customer Clusters (PCA 2D Projection)")
     fig.tight_layout()
     return fig
+
+
+def plot_feature_importance(model, feature_names):
+    """
+    Plots horizontal bar chart of feature coefficients (linear models) or importances (tree models).
+
+    Args:
+        model: Trained scikit-learn estimator or Pipeline with named step 'model'.
+        feature_names: List of feature names.
+
+    Returns:
+        matplotlib.figure.Figure or None: The rendered bar chart.
+    """
+    logging.info("Generating feature importance plot")
+    fitted = model.named_steps["model"] if hasattr(model, "named_steps") and "model" in model.named_steps else model
+
+    if hasattr(fitted, "coef_"):
+        importances = fitted.coef_[0]
+        title = "Feature Coefficients (Logistic Regression)"
+    elif hasattr(fitted, "feature_importances_"):
+        importances = fitted.feature_importances_
+        title = "Feature Importances"
+    else:
+        logging.warning("Model does not expose coef_ or feature_importances_")
+        return None
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    y_pos = range(len(feature_names))
+    ax.barh(y_pos, importances, align="center", color="#2ca02c", alpha=0.8)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(feature_names)
+    ax.invert_yaxis()
+    ax.set_xlabel("Weight / Importance")
+    ax.set_title(title)
+    ax.grid(True, linestyle="--", alpha=0.6)
+    fig.tight_layout()
+    return fig

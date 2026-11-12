@@ -1,13 +1,10 @@
-"""
-Orchestration pipeline for Customer Churn Prediction.
-Coordinates data preparation, candidate model training, evaluation, and model registration.
-"""
+import os
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
 import pandas as pd
 
-from config.paths import SILVER_RETAIL, CHURN_MODEL_PKL, EXPERIMENT_CONFIG_PATH
+from config.paths import SILVER_RETAIL, CHURN_MODEL_PKL, CHURN_PREDICTIONS, EXPERIMENT_CONFIG_PATH
 from config.loader import load_config
 from config.schema import ChurnConfig
 from src.silver import run_silver
@@ -15,6 +12,36 @@ from src.gold import compute_gold_features
 from src.churn_models import train_and_evaluate_churn_models
 from src.utils.tracker import VertexExperimentTracker
 from sklearn.model_selection import train_test_split
+
+
+def save_churn_outputs(scored_df: pd.DataFrame):
+    """
+    Persists batch churn predictions:
+    - Local: CHURN_PREDICTIONS (CSV)
+    - Cloud (if USE_BIGQUERY=true): Uploads batch customer churn scores to BigQuery table
+    """
+    logging.info("Saving batch customer churn predictions to %s", CHURN_PREDICTIONS)
+    scored_df.to_csv(CHURN_PREDICTIONS, index=False)
+
+    if os.getenv("USE_BIGQUERY", "false").lower() == "true":
+        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+        destination_table = "retail_data.customer_churn_predictions"
+        logging.info("Exporting %d churn-scored customers to BigQuery: %s", len(scored_df), destination_table)
+        try:
+            import pandas_gbq
+            bq_df = scored_df.copy()
+            if "customer_id" in bq_df.columns:
+                bq_df["customer_id"] = bq_df["customer_id"].astype(str)
+            pandas_gbq.to_gbq(
+                bq_df,
+                destination_table=destination_table,
+                project_id=project_id,
+                if_exists="replace"
+            )
+            logging.info("Successfully exported churn predictions to BigQuery table %s", destination_table)
+        except Exception as e:
+            logging.error("Failed to export customer churn predictions to BigQuery: %s", e)
+            raise
 
 
 def create_churn_target(feature_df: pd.DataFrame, future_df: pd.DataFrame) -> pd.DataFrame:
@@ -124,37 +151,58 @@ def run_churn_pipeline(
         stratify=y
     )
 
-    # 2. Train and benchmark candidate models
-    best_pipeline, best_f1, best_model_name = train_and_evaluate_churn_models(
+    # 2. Train and benchmark candidate models (Pure ML, tracker-agnostic)
+    best_pipeline, best_f1, best_model_name, candidate_runs, figures = train_and_evaluate_churn_models(
         X_train=X_train,
         X_test=X_test,
         y_train=y_train,
         y_test=y_test,
         feature_cols=effective_features,
-        tracker=tracker,
         cutoff_days=effective_cutoff,
         test_size=effective_test_size,
         random_state=effective_random_state,
         churn_rate=float(training_df["churn"].mean())
     )
 
-    # 3. Persist and register the winning model artifact
-    if best_pipeline is not None:
-        logging.info(
-            "Registering %s (F1-score: %.4f) as production model",
-            best_model_name,
-            best_f1
-        )
-        tracker.save_and_register_model(
-            model=best_pipeline,
-            model_name="customer_churn_model",
-            local_path=CHURN_MODEL_PKL
-        )
+    # 3. Log candidate benchmark runs to Vertex AI Experiments
+    for run_info in candidate_runs:
+        model_name = run_info["model_name"]
+        with tracker.start_run(run_name=model_name):
+            tracker.log_params(run_info["params"])
+            tracker.log_metrics(run_info["metrics"])
 
+    # 4. Register winning model and figures inside winning model run context
+    if best_pipeline is not None:
+        with tracker.start_run(run_name="customer_churn_production"):
+            tracker.log_params({
+                "model_type": "LogisticRegression",
+                "cutoff_days": effective_cutoff,
+                "random_state": effective_random_state,
+                "test_size": effective_test_size
+            })
+            tracker.log_metrics({
+                "churn_f1": float(best_f1)
+            })
+            for fig_name, fig in figures.items():
+                tracker.log_figure(fig, fig_name)
+
+            tracker.save_and_register_model(
+                model=best_pipeline,
+                model_name="customer_churn_model",
+                local_path=CHURN_MODEL_PKL
+            )
+
+        # 5. Batch Customer Scoring & Persistence (Local CSV + BigQuery)
+        scored_churn = training_df.copy()
+        scored_churn["churn_probability"] = best_pipeline.predict_proba(X)[:, 1]
+        scored_churn["churn_prediction"] = best_pipeline.predict(X)
+        save_churn_outputs(scored_churn)
+
+        logging.info("Customer churn pipeline completed successfully")
         return {
-            "f1_score": float(best_f1),
+            "status": "registered",
             "model_name": "customer_churn_model",
-            "status": "registered"
+            "f1_score": float(best_f1)
         }
 
     return {"status": "failed", "f1_score": 0.0}

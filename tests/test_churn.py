@@ -53,15 +53,18 @@ def test_trigger_churn_retraining_endpoint(mock_submit):
     assert response.json()["status"] == "success"
 
 
+@patch("src.pipelines.churn_pipeline.save_churn_outputs")
 @patch("src.pipelines.churn_pipeline.VertexExperimentTracker")
 @patch("src.pipelines.churn_pipeline.prepare_churn_data")
 @patch("src.pipelines.churn_pipeline.train_and_evaluate_churn_models")
 def test_run_churn_pipeline_respects_custom_config(
     mock_train_models,
     mock_prepare_data,
-    mock_tracker_cls
+    mock_tracker_cls,
+    mock_save_churn
 ):
     import pandas as pd
+    import numpy as np
     from unittest.mock import MagicMock
     from config.schema import ChurnConfig
     from src.pipelines.churn_pipeline import run_churn_pipeline
@@ -82,7 +85,9 @@ def test_run_churn_pipeline_respects_custom_config(
     mock_prepare_data.return_value = (X_dummy, y_dummy, training_dummy)
 
     mock_pipeline = MagicMock()
-    mock_train_models.return_value = (mock_pipeline, 0.85, "customer_churn_model")
+    mock_pipeline.predict_proba.return_value = np.zeros((len(X_dummy), 2))
+    mock_pipeline.predict.return_value = np.zeros(len(X_dummy))
+    mock_train_models.return_value = (mock_pipeline, 0.85, "customer_churn_model", [], {})
 
     result = run_churn_pipeline(config=custom_cfg)
 
@@ -91,17 +96,21 @@ def test_run_churn_pipeline_respects_custom_config(
     assert result["f1_score"] == 0.85
     mock_tracker_cls.assert_called_with(experiment_name="custom-churn-test")
     assert mock_tracker.save_and_register_model.called
+    assert mock_save_churn.called
 
 
+@patch("src.pipelines.churn_pipeline.save_churn_outputs")
 @patch("src.pipelines.churn_pipeline.VertexExperimentTracker")
 @patch("src.pipelines.churn_pipeline.prepare_churn_data")
 @patch("src.pipelines.churn_pipeline.train_and_evaluate_churn_models")
 def test_run_churn_pipeline_direct(
     mock_train_models,
     mock_prepare_data,
-    mock_tracker_cls
+    mock_tracker_cls,
+    mock_save_churn
 ):
     import pandas as pd
+    import numpy as np
     from unittest.mock import MagicMock
     from src.pipelines.churn_pipeline import run_churn_pipeline
 
@@ -114,12 +123,15 @@ def test_run_churn_pipeline_direct(
     mock_prepare_data.return_value = (X_dummy, y_dummy, training_dummy)
 
     mock_pipeline = MagicMock()
-    mock_train_models.return_value = (mock_pipeline, 0.90, "customer_churn_model")
+    mock_pipeline.predict_proba.return_value = np.zeros((len(X_dummy), 2))
+    mock_pipeline.predict.return_value = np.zeros(len(X_dummy))
+    mock_train_models.return_value = (mock_pipeline, 0.90, "customer_churn_model", [], {})
 
     result = run_churn_pipeline()
 
     assert result["status"] == "registered"
     assert result["f1_score"] == 0.90
     assert mock_tracker.save_and_register_model.called
+    assert mock_save_churn.called
 
 

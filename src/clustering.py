@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Optional, Dict, Any, Tuple
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
@@ -152,57 +153,49 @@ def save_outputs(profile, scored_df=None):
                 raise
 
 
-def run_clustering(config, df=None, feature_columns=None, cluster_range=None):
+def run_clustering(
+    train_df: pd.DataFrame,
+    feature_columns: Optional[list] = None,
+    cluster_range=(4,),
+    random_state: int = 42
+):
     """
-    End-to-end clustering workflow:
-    1. Splits RFM data into train/test sets for model selection.
-    2. Identifies optimal k on train set using Silhouette Score.
-    3. Profiles clusters and assigns business segment labels.
-    4. Performs batch inference across all customers with segment assignment.
-    5. Generates Silhouette curve and PCA 2D projection figures.
-    6. Persists cluster profile and batch customer segmentation.
+    Core clustering modeling workflow:
+    1. Evaluates candidate k values on train_df using Silhouette Score.
+    2. Profiles clusters and assigns business segment labels.
+    3. Generates Silhouette curve and PCA 2D projection figures.
+
+    Returns:
+        tuple: (best_pipeline, best_k, metrics_dict, profile_df, figures_dict)
     """
-    logging.info("Starting clustering pipeline")
+    logging.info("Starting KMeans clustering model training")
 
-    if cluster_range is None:
-        cluster_range = config.clustering.cluster_range
-    random_state = config.clustering.random_state
+    cols = feature_columns or ["recency", "frequency", "avg_order_value"]
+    df_clean = train_df.dropna(subset=cols).copy()
 
-    if df is None:
-        df = load_gold(GOLD_RFM)
-
-    # Defensive validation: guarantee no NaNs reach Scikit-Learn
-    if feature_columns is not None:
-        initial_len = len(df)
-        df = df.dropna(subset=feature_columns).copy()
-        if len(df) < initial_len:
-            logging.warning("Dropped %d rows with NaNs in feature columns", initial_len - len(df))
-
-    # 1. Train / Test Split (for unbiased hyperparameter selection)
-    train_df, test_df = train_test_split(df, test_size=0.2, random_state=random_state)
-    train_df = train_df.copy()
-
-    # 2. Hyperparameter optimization
+    # 1. Hyperparameter optimization
     best_pipeline, best_k, best_score, scores = find_best_kmeans(
-        train_df, feature_columns, cluster_range, random_state
+        df_clean, cols, cluster_range, random_state
     )
 
-    # 3. Profile & Business segments (derived from train set)
-    train_df["cluster"] = best_pipeline.predict(train_df[feature_columns])
-    train_df, profile = profile_clusters(train_df)
+    # 2. Profile & Business segments (derived from train set)
+    df_clean["cluster"] = best_pipeline.predict(df_clean[cols])
+    df_clean, profile = profile_clusters(df_clean)
     logging.info("Cluster profile:\n%s", profile)
 
-    # 4. Batch Scoring: Score all active customers for CRM marketing usage
-    scored_customers = df.copy()
-    scored_customers["cluster"] = best_pipeline.predict(scored_customers[feature_columns])
-    scored_customers["segment"] = scored_customers["cluster"].map(profile["segment"])
-
-    # 5. Visualizations
+    # 3. Visualizations
     fig = plot_silhouette_scores(scores)
-    pca_fig = plot_pca_clusters(train_df, best_pipeline, feature_columns)
+    pca_fig = plot_pca_clusters(df_clean, best_pipeline, cols)
 
-    # 6. Save artifacts (profile for FastAPI/BI, full customer scoring for CRM)
-    save_outputs(profile, scored_df=scored_customers)
+    figures = {
+        "silhouette_plot.png": fig
+    }
+    if pca_fig is not None:
+        figures["pca_clusters.png"] = pca_fig
 
-    logging.info("Clustering pipeline completed successfully")
-    return best_pipeline, best_k, {"silhouette": best_score}, fig, pca_fig
+    metrics = {
+        "silhouette_score": float(best_score)
+    }
+
+    logging.info("KMeans clustering model training completed successfully")
+    return best_pipeline, best_k, metrics, profile, figures

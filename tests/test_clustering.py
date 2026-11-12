@@ -184,6 +184,7 @@ def test_save_outputs_bigquery_mode(tmp_path, monkeypatch):
     assert customers_path.exists()
 
 
+@patch("src.pipelines.clustering_pipeline.save_outputs")
 @patch("src.pipelines.clustering_pipeline.VertexExperimentTracker")
 @patch("src.pipelines.clustering_pipeline.run_clustering")
 @patch("src.pipelines.clustering_pipeline.load_gold")
@@ -197,6 +198,7 @@ def test_run_clustering_pipeline_orchestration(
     mock_load_gold,
     mock_run_clustering,
     mock_tracker_cls,
+    mock_save_outputs,
     sample_rfm_df
 ):
     from unittest.mock import MagicMock
@@ -208,13 +210,20 @@ def test_run_clustering_pipeline_orchestration(
     mock_load_gold.return_value = sample_rfm_df
 
     mock_model = MagicMock()
-    mock_run_clustering.return_value = (mock_model, 4, {"silhouette": 0.45}, MagicMock(), MagicMock())
+    mock_model.predict.return_value = np.zeros(len(sample_rfm_df), dtype=int)
+    mock_profile = pd.DataFrame({"segment": ["Medium Customers"]}, index=[0])
+    mock_run_clustering.return_value = (mock_model, 4, {"silhouette_score": 0.45}, mock_profile, {})
 
     cfg = ExperimentConfig()
-    run_clustering_pipeline(cfg)
+    result = run_clustering_pipeline(cfg)
 
+    assert result["status"] == "registered"
+    assert result["model_name"] == "customer_segmentation_model"
+    assert result["best_k"] == 4
+    assert result["silhouette_score"] == 0.45
     assert mock_bronze.called
     assert mock_silver.called
     assert mock_gold.called
     assert mock_run_clustering.called
     assert mock_tracker.save_and_register_model.called
+    assert mock_save_outputs.called
