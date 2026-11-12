@@ -10,17 +10,14 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import silhouette_score
 
 from dotenv import load_dotenv
-from src.gold import load_gold
 from src.utils.plotting import plot_silhouette_scores, plot_pca_clusters
 
 from config.paths import (
-    GOLD_RFM,
     CUSTOMER_CLUSTERS,
     CLUSTER_PROFILE,
 )
 
 load_dotenv()
-load_rfm = load_gold  # Backward compatibility alias
 
 
 def build_pipeline(k, random_state, feature_columns):
