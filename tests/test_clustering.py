@@ -12,6 +12,7 @@ from src.clustering import (
     find_best_kmeans,
     profile_clusters,
     save_outputs,
+    run_clustering,
 )
 from src.utils.plotting import (
     plot_silhouette_scores,
@@ -227,3 +228,25 @@ def test_run_clustering_pipeline_orchestration(
     assert mock_run_clustering.called
     assert mock_tracker.save_and_register_model.called
     assert mock_save_outputs.called
+
+
+def test_run_clustering_direct(sample_rfm_df):
+    features = ["recency", "frequency", "avg_order_value"]
+    cluster_range = [3, 4]
+    random_state = 42
+
+    pipeline, best_k, metrics, profile, figures = run_clustering(
+        train_df=sample_rfm_df,
+        feature_columns=features,
+        cluster_range=cluster_range,
+        random_state=random_state
+    )
+
+    assert pipeline is not None
+    assert best_k in cluster_range
+    assert "silhouette_score" in metrics
+    assert isinstance(metrics["silhouette_score"], float)
+    assert "segment" in profile.columns
+    assert "silhouette_plot.png" in figures
+    assert "pca_clusters.png" in figures
+

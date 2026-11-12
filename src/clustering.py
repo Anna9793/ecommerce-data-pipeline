@@ -1,12 +1,11 @@
 import os
 import logging
-from typing import Optional, Dict, Any, Tuple
+from typing import Dict, Any, Tuple
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler, FunctionTransformer
 from sklearn.compose import ColumnTransformer
-from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import silhouette_score
 
@@ -155,9 +154,9 @@ def save_outputs(profile, scored_df=None):
 
 def run_clustering(
     train_df: pd.DataFrame,
-    feature_columns: Optional[list] = None,
-    cluster_range=(4,),
-    random_state: int = 42
+    feature_columns: list,
+    cluster_range: list,
+    random_state: int
 ):
     """
     Core clustering modeling workflow:
@@ -170,22 +169,20 @@ def run_clustering(
     """
     logging.info("Starting KMeans clustering model training")
 
-    cols = feature_columns or ["recency", "frequency", "avg_order_value"]
-    df_clean = train_df.dropna(subset=cols).copy()
-
     # 1. Hyperparameter optimization
     best_pipeline, best_k, best_score, scores = find_best_kmeans(
-        df_clean, cols, cluster_range, random_state
+        train_df, feature_columns, cluster_range, random_state
     )
 
     # 2. Profile & Business segments (derived from train set)
-    df_clean["cluster"] = best_pipeline.predict(df_clean[cols])
-    df_clean, profile = profile_clusters(df_clean)
+    train_df_scored = train_df.copy()
+    train_df_scored["cluster"] = best_pipeline.predict(train_df_scored[feature_columns])
+    train_df_scored, profile = profile_clusters(train_df_scored)
     logging.info("Cluster profile:\n%s", profile)
 
     # 3. Visualizations
     fig = plot_silhouette_scores(scores)
-    pca_fig = plot_pca_clusters(df_clean, best_pipeline, cols)
+    pca_fig = plot_pca_clusters(train_df_scored, best_pipeline, feature_columns)
 
     figures = {
         "silhouette_plot.png": fig
