@@ -22,7 +22,7 @@ def get_candidate_models(random_state: int) -> Dict[str, Any]:
     """Instantiates benchmark candidate classification algorithms."""
     return {
         "LogisticRegression": LogisticRegression(random_state=random_state),
-        "RandomForest": RandomForestClassifier(random_state=random_state, n_estimators=100),
+        "RandomForest": RandomForestClassifier(random_state=random_state),
         "GradientBoosting": GradientBoostingClassifier(random_state=random_state)
     }
 

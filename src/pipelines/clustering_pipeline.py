@@ -67,20 +67,17 @@ def run_clustering_pipeline(
         try:
             full_config = load_config(EXPERIMENT_CONFIG_PATH)
             clustering_cfg = full_config.clustering
-            experiment_name = full_config.tracking.experiment_name
         except Exception as e:
-            logging.warning("Could not load experiment config (%s), falling back to defaults.", e)
+            logging.warning("Could not load experiment config (%s), falling back to ClusteringConfig defaults.", e)
             clustering_cfg = ClusteringConfig()
-            experiment_name = "customer_segmentation"
     elif hasattr(config, "clustering"):
         clustering_cfg = config.clustering
-        experiment_name = getattr(config.tracking, "experiment_name", "customer_segmentation")
     elif isinstance(config, ClusteringConfig):
         clustering_cfg = config
-        experiment_name = "customer_segmentation"
     else:
         clustering_cfg = ClusteringConfig()
-        experiment_name = "customer_segmentation"
+
+    experiment_name = clustering_cfg.experiment_name
 
     effective_features = feature_cols if feature_cols is not None else clustering_cfg.features
     effective_range = cluster_range if cluster_range is not None else clustering_cfg.cluster_range

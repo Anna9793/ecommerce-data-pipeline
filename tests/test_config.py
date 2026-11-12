@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 from config.loader import load_config
-from config.schema import ExperimentConfig, ClusteringConfig, TrackingConfig, ChurnConfig
+from config.schema import ExperimentConfig, ClusteringConfig, ChurnConfig
 from config.paths import EXPERIMENT_CONFIG_PATH
 
 
@@ -11,13 +11,12 @@ def test_load_production_config():
 
     assert isinstance(config, ExperimentConfig)
     assert isinstance(config.clustering, ClusteringConfig)
-    assert isinstance(config.tracking, TrackingConfig)
     assert isinstance(config.churn, ChurnConfig)
 
+    assert config.clustering.experiment_name == "customer_segmentation"
     assert config.clustering.features == ["recency", "frequency", "avg_order_value"]
     assert config.clustering.cluster_range == [4]
     assert config.clustering.random_state == 42
-    assert config.tracking.experiment_name == "customer_segmentation"
 
     assert config.churn.cutoff_days == 90
     assert config.churn.test_size == 0.2
@@ -34,11 +33,11 @@ def test_empty_yaml_uses_default_factories(tmp_path):
     config = load_config(empty_yaml)
 
     assert isinstance(config.clustering, ClusteringConfig)
-    assert isinstance(config.tracking, TrackingConfig)
     assert isinstance(config.churn, ChurnConfig)
+    assert config.clustering.experiment_name == "customer_segmentation"
     assert config.clustering.cluster_range == [4]
     assert config.churn.cutoff_days == 90
-    assert config.tracking.experiment_name == "customer_segmentation"
+    assert config.churn.experiment_name == "customer_churn"
 
 
 def test_config_validation_rejects_invalid_types(tmp_path):
@@ -51,8 +50,6 @@ clustering:
   random_state: "not-an-int"
 churn:
   cutoff_days: "noventa"
-tracking:
-  experiment_name: "test"
 """)
 
     with pytest.raises(ValidationError):

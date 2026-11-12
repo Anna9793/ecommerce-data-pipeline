@@ -1,10 +1,12 @@
 clustering:
   # k=4 locked for production stability (derived from silhouette analysis & business segments)
+  experiment_name: "customer_segmentation"
   features: ["recency", "frequency", "avg_order_value"]
   cluster_range: [4]
   random_state: 42
 
 churn:
+  experiment_name: "customer_churn"
   cutoff_days: 90
   test_size: 0.2
   random_state: 42
@@ -15,9 +17,5 @@ churn:
     - "spending_velocity"
     - "cancellation_rate"
     - "preferred_shopping_hour"
-  experiment_name: "customer_churn"
-
-tracking:
-  experiment_name: "customer_segmentation"
 
 
