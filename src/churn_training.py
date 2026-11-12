@@ -78,26 +78,3 @@ def train_and_evaluate_churn_models(
                 lr_pipeline = pipeline
 
     return lr_pipeline, lr_f1, "customer_churn_model"
-
-
-def run_churn_training(
-    cutoff_days=None,
-    test_size=None,
-    random_state=None,
-    features=None,
-    df=None,
-    config=None
-):
-    """
-    Backward-compatible entry point for churn model training.
-    Delegates orchestration to src.pipelines.churn_pipeline.run_churn_pipeline.
-    """
-    from src.pipelines.churn_pipeline import run_churn_pipeline
-    return run_churn_pipeline(
-        config=config,
-        df=df,
-        cutoff_days=cutoff_days,
-        test_size=test_size,
-        random_state=random_state,
-        features=features
-    )

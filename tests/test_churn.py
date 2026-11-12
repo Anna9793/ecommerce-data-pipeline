@@ -56,7 +56,7 @@ def test_trigger_churn_retraining_endpoint(mock_submit):
 @patch("src.pipelines.churn_pipeline.VertexExperimentTracker")
 @patch("src.pipelines.churn_pipeline.prepare_churn_data")
 @patch("src.pipelines.churn_pipeline.train_and_evaluate_churn_models")
-def test_run_churn_training_respects_custom_config(
+def test_run_churn_pipeline_respects_custom_config(
     mock_train_models,
     mock_prepare_data,
     mock_tracker_cls
@@ -64,7 +64,7 @@ def test_run_churn_training_respects_custom_config(
     import pandas as pd
     from unittest.mock import MagicMock
     from config.schema import ChurnConfig
-    from src.churn_training import run_churn_training
+    from src.pipelines.churn_pipeline import run_churn_pipeline
 
     mock_tracker = MagicMock()
     mock_tracker_cls.return_value = mock_tracker
@@ -84,7 +84,7 @@ def test_run_churn_training_respects_custom_config(
     mock_pipeline = MagicMock()
     mock_train_models.return_value = (mock_pipeline, 0.85, "customer_churn_model")
 
-    result = run_churn_training(config=custom_cfg)
+    result = run_churn_pipeline(config=custom_cfg)
 
     assert result["status"] == "registered"
     assert result["model_name"] == "customer_churn_model"
