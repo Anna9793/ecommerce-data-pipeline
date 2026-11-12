@@ -176,4 +176,38 @@ def test_train_and_evaluate_churn_models_direct():
     assert "feature_importance.png" in figures
 
 
+def test_build_churn_pipeline():
+    from sklearn.linear_model import LogisticRegression
+    from src.churn_models import build_pipeline
+
+    pipe = build_pipeline(LogisticRegression())
+    assert "scaler" in pipe.named_steps
+    assert "model" in pipe.named_steps
+
+
+def test_get_candidate_models():
+    from src.churn_models import get_candidate_models
+
+    models = get_candidate_models(42)
+    assert "LogisticRegression" in models
+    assert "RandomForest" in models
+    assert "GradientBoosting" in models
+
+
+def test_extract_feature_effects():
+    import pandas as pd
+    from sklearn.linear_model import LogisticRegression
+    from src.churn_models import build_pipeline, extract_feature_effects
+
+    X = pd.DataFrame({"feat1": [1, 2, 3, 4], "feat2": [4, 3, 2, 1]})
+    y = pd.Series([0, 0, 1, 1])
+    pipe = build_pipeline(LogisticRegression())
+    pipe.fit(X, y)
+
+    effects = extract_feature_effects(pipe, ["feat1", "feat2"])
+    assert "coef_feat1" in effects
+    assert "coef_feat2" in effects
+
+
+
 

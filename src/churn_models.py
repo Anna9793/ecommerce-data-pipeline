@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
@@ -10,36 +10,56 @@ from sklearn.metrics import classification_report
 from src.utils.plotting import plot_feature_importance
 
 
-def train_and_evaluate_churn_models(
-    X_train: pd.DataFrame,
-    X_test: pd.DataFrame,
-    y_train: pd.Series,
-    y_test: pd.Series,
-    feature_cols: list,
-    cutoff_days: int,
-    test_size: float,
-    random_state: int,
-    churn_rate: float
-):
-    """Benchmarks candidate classification algorithms and returns the winning model and evaluation artifacts."""
-    candidate_models = {
+def build_pipeline(model_instance) -> Pipeline:
+    """Builds a classification pipeline with StandardScaler and the specified estimator."""
+    return Pipeline([
+        ("scaler", StandardScaler()),
+        ("model", model_instance)
+    ])
+
+
+def get_candidate_models(random_state: int) -> Dict[str, Any]:
+    """Instantiates benchmark candidate classification algorithms."""
+    return {
         "LogisticRegression": LogisticRegression(random_state=random_state),
         "RandomForest": RandomForestClassifier(random_state=random_state, n_estimators=100),
         "GradientBoosting": GradientBoostingClassifier(random_state=random_state)
     }
 
+
+def extract_feature_effects(pipeline: Pipeline, feature_cols: list) -> Dict[str, float]:
+    """Extracts coefficients or feature importances from a fitted pipeline."""
+    effects: Dict[str, float] = {}
+    model = pipeline.named_steps["model"]
+    if hasattr(model, "coef_"):
+        for feature, coef in zip(feature_cols, model.coef_[0]):
+            effects[f"coef_{feature}"] = float(coef)
+    elif hasattr(model, "feature_importances_"):
+        for feature, importance in zip(feature_cols, model.feature_importances_):
+            effects[f"importance_{feature}"] = float(importance)
+    return effects
+
+
+def benchmark_candidate_models(
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    y_train: pd.Series,
+    y_test: pd.Series,
+    feature_cols: list,
+    candidate_models: Dict[str, Any],
+    cutoff_days: int,
+    test_size: float,
+    random_state: int,
+    churn_rate: float
+) -> Tuple[Pipeline, float, List[Dict[str, Any]]]:
+    """Trains and evaluates candidate classifiers, returning winning pipeline and benchmark runs."""
     lr_f1 = -1.0
     lr_pipeline = None
     candidate_runs: List[Dict[str, Any]] = []
 
     for model_name, model_instance in candidate_models.items():
         logging.info("Training candidate model: %s", model_name)
-
-        pipeline = Pipeline([
-            ("scaler", StandardScaler()),
-            ("model", model_instance)
-        ])
-
+        pipeline = build_pipeline(model_instance)
         pipeline.fit(X_train, y_train)
         y_pred = pipeline.predict(X_test)
 
@@ -61,14 +81,7 @@ def train_and_evaluate_churn_models(
             "churn_f1": f1,
             "churn_rate": float(churn_rate)
         }
-
-        fitted_model = pipeline.named_steps["model"]
-        if hasattr(fitted_model, "coef_"):
-            for feature, coef in zip(feature_cols, fitted_model.coef_[0]):
-                metrics[f"coef_{feature}"] = float(coef)
-        elif hasattr(fitted_model, "feature_importances_"):
-            for feature, importance in zip(feature_cols, fitted_model.feature_importances_):
-                metrics[f"importance_{feature}"] = float(importance)
+        metrics.update(extract_feature_effects(pipeline, feature_cols))
 
         candidate_runs.append({
             "model_name": model_name,
@@ -82,11 +95,41 @@ def train_and_evaluate_churn_models(
             lr_f1 = f1
             lr_pipeline = pipeline
 
+    return lr_pipeline, lr_f1, candidate_runs
+
+
+def train_and_evaluate_churn_models(
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    y_train: pd.Series,
+    y_test: pd.Series,
+    feature_cols: list,
+    cutoff_days: int,
+    test_size: float,
+    random_state: int,
+    churn_rate: float
+):
+    """Benchmarks candidate classification algorithms and returns the winning model and evaluation artifacts."""
+    candidate_models = get_candidate_models(random_state)
+    best_pipeline, best_f1, candidate_runs = benchmark_candidate_models(
+        X_train=X_train,
+        X_test=X_test,
+        y_train=y_train,
+        y_test=y_test,
+        feature_cols=feature_cols,
+        candidate_models=candidate_models,
+        cutoff_days=cutoff_days,
+        test_size=test_size,
+        random_state=random_state,
+        churn_rate=churn_rate
+    )
+
     figures = {}
-    if lr_pipeline is not None:
-        fig = plot_feature_importance(lr_pipeline, feature_cols)
+    if best_pipeline is not None:
+        fig = plot_feature_importance(best_pipeline, feature_cols)
         if fig is not None:
             figures["feature_importance.png"] = fig
 
-    logging.info("Candidate models evaluated. Best model: %s (F1=%.4f)", "customer_churn_model", lr_f1)
-    return lr_pipeline, lr_f1, "customer_churn_model", candidate_runs, figures
+    best_model_name = "customer_churn_model"
+    logging.info("Candidate models evaluated. Best model: %s (F1=%.4f)", best_model_name, best_f1)
+    return best_pipeline, best_f1, best_model_name, candidate_runs, figures
