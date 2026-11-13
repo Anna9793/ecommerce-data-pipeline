@@ -6,11 +6,9 @@ from sklearn.model_selection import train_test_split
 
 from config.paths import (
     SEGMENTATION_MODEL_PKL,
-    EXPERIMENT_CONFIG_PATH,
     CUSTOMER_CLUSTERS,
     CLUSTER_PROFILE,
 )
-from config.loader import load_config
 from config.schema import ClusteringConfig
 from src.bronze import run_bronze
 from src.silver import run_silver
@@ -20,24 +18,13 @@ from src.utils.tracker import VertexExperimentTracker
 
 
 def run_clustering_pipeline(
-    config: Optional[ClusteringConfig] = None,
+    config: ClusteringConfig,
     df: Optional[pd.DataFrame] = None
 ) -> Dict[str, Any]:
     """Executes the end-to-end Medallion customer segmentation training and batch scoring pipeline."""
     logging.info("Starting Medallion clustering training pipeline")
 
-    if config is None:
-        try:
-            clustering_cfg = load_config(EXPERIMENT_CONFIG_PATH).clustering
-        except Exception as e:
-            logging.warning("Could not load experiment config (%s), falling back to ClusteringConfig defaults.", e)
-            clustering_cfg = ClusteringConfig()
-    elif hasattr(config, "clustering"):
-        clustering_cfg = config.clustering
-    else:
-        clustering_cfg = config
-
-    tracker = VertexExperimentTracker(experiment_name=clustering_cfg.experiment_name)
+    tracker = VertexExperimentTracker(experiment_name=config.experiment_name)
 
     # 1. Medallion Feature Engineering (Local deterministic execution)
     if df is None:
@@ -46,13 +33,13 @@ def run_clustering_pipeline(
         run_gold()
         df = load_gold(use_bigquery=False)
 
-    df_clean = df.dropna(subset=clustering_cfg.features).copy()
+    df_clean = df.dropna(subset=config.features).copy()
 
     # 2. Train / Test Split (for unbiased hyperparameter selection)
     train_df, test_df = train_test_split(
         df_clean,
-        test_size=clustering_cfg.test_size,
-        random_state=clustering_cfg.random_state
+        test_size=config.test_size,
+        random_state=config.random_state
     )
     train_df = train_df.copy()
 
@@ -62,17 +49,17 @@ def run_clustering_pipeline(
 
         model, best_k, metrics, profile, figures = run_clustering(
             train_df=train_df,
-            feature_columns=clustering_cfg.features,
-            cluster_range=clustering_cfg.cluster_range,
-            random_state=clustering_cfg.random_state
+            feature_columns=config.features,
+            cluster_range=config.cluster_range,
+            random_state=config.random_state
         )
 
         tracker.log_metrics(metrics)
         tracker.log_params({
-            "feature_set": ",".join(clustering_cfg.features),
+            "feature_set": ",".join(config.features),
             "n_clusters": int(best_k),
-            "random_state": clustering_cfg.random_state,
-            "test_size": clustering_cfg.test_size
+            "random_state": config.random_state,
+            "test_size": config.test_size
         })
 
         for fig_name, fig in figures.items():
@@ -86,7 +73,7 @@ def run_clustering_pipeline(
 
     # 4. Batch Scoring & Persistence (Local CSV + BigQuery)
     scored_customers = df_clean.copy()
-    scored_customers["cluster"] = model.predict(scored_customers[clustering_cfg.features])
+    scored_customers["cluster"] = model.predict(scored_customers[config.features])
     scored_customers["segment"] = scored_customers["cluster"].map(profile["segment"])
     save_clustering_outputs(profile, scored_df=scored_customers)
 

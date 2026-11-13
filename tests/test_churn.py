@@ -112,6 +112,7 @@ def test_run_churn_pipeline_direct(
     import pandas as pd
     import numpy as np
     from unittest.mock import MagicMock
+    from config.schema import ChurnConfig
     from src.pipelines.churn_pipeline import run_churn_pipeline
 
     mock_tracker = MagicMock()
@@ -127,7 +128,8 @@ def test_run_churn_pipeline_direct(
     mock_pipeline.predict.return_value = np.zeros(len(X_dummy))
     mock_train_models.return_value = (mock_pipeline, 0.90, "customer_churn_model", [], {})
 
-    result = run_churn_pipeline()
+    cfg = ChurnConfig()
+    result = run_churn_pipeline(cfg)
 
     assert result["status"] == "registered"
     assert result["f1_score"] == 0.90
