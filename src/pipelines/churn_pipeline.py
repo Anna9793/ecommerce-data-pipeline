@@ -26,9 +26,9 @@ def create_churn_target(feature_df: pd.DataFrame, future_df: pd.DataFrame) -> pd
 
 
 def prepare_churn_data(
-    df: Optional[pd.DataFrame] = None,
-    cutoff_days: int = 90,
-    feature_cols: Optional[list] = None
+    cutoff_days: int,
+    feature_cols: list,
+    df: Optional[pd.DataFrame] = None
 ):
     """
     Loads curated transactions and constructs the churn feature matrix X and target y
@@ -56,11 +56,7 @@ def prepare_churn_data(
     target_df = create_churn_target(feature_df, future_df)
     training_df = rfm_df.merge(target_df, on="customer_id", how="inner")
 
-    cols = feature_cols or [
-        "recency", "frequency", "avg_order_value",
-        "spending_velocity", "cancellation_rate", "preferred_shopping_hour"
-    ]
-    X = training_df[cols]
+    X = training_df[feature_cols]
     y = training_df["churn"]
     return X, y, training_df
 

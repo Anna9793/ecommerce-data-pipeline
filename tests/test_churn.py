@@ -211,5 +211,46 @@ def test_extract_feature_effects():
     assert "coef_feat2" in effects
 
 
+def test_create_churn_target_direct():
+    import pandas as pd
+    from src.pipelines.churn_pipeline import create_churn_target
+
+    feature_df = pd.DataFrame({"customer_id": ["C1", "C2", "C3"]})
+    future_df = pd.DataFrame({"customer_id": ["C1"]})
+
+    target_df = create_churn_target(feature_df, future_df)
+    assert len(target_df) == 3
+    assert target_df.loc[target_df["customer_id"] == "C1", "churn"].values[0] == 0
+    assert target_df.loc[target_df["customer_id"] == "C2", "churn"].values[0] == 1
+    assert target_df.loc[target_df["customer_id"] == "C3", "churn"].values[0] == 1
 
 
+def test_prepare_churn_data_direct():
+    import pandas as pd
+    from src.pipelines.churn_pipeline import prepare_churn_data
+
+    base_date = pd.Timestamp("2026-01-01")
+    df = pd.DataFrame({
+        "customer_id": ["C1", "C1", "C2", "C2"],
+        "invoice_date": [
+            base_date,
+            base_date + pd.Timedelta(days=10),
+            base_date + pd.Timedelta(days=5),
+            base_date + pd.Timedelta(days=100)
+        ],
+        "quantity": [2, 1, 3, 1],
+        "unit_price": [10.0, 20.0, 15.0, 50.0],
+        "order_value": [20.0, 20.0, 45.0, 50.0],
+        "invoice_no": ["INV1", "INV2", "INV3", "INV4"]
+    })
+
+    feature_cols = ["recency", "frequency", "avg_order_value"]
+    X, y, training_df = prepare_churn_data(
+        cutoff_days=30,
+        feature_cols=feature_cols,
+        df=df
+    )
+
+    assert list(X.columns) == feature_cols
+    assert len(X) == len(y)
+    assert "churn" in training_df.columns
