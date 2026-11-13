@@ -40,21 +40,21 @@ def extract_feature_effects(pipeline: Pipeline, feature_cols: list) -> Dict[str,
     return effects
 
 
-def benchmark_candidate_models(
+def train_and_evaluate_churn_models(
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
     y_train: pd.Series,
     y_test: pd.Series,
     feature_cols: list,
-    candidate_models: Dict[str, Any],
     cutoff_days: int,
     test_size: float,
     random_state: int,
     churn_rate: float
-) -> Tuple[Pipeline, float, List[Dict[str, Any]]]:
-    """Trains and evaluates candidate classifiers, returning winning pipeline and benchmark runs."""
-    lr_f1 = -1.0
-    lr_pipeline = None
+) -> Tuple[Pipeline, float, str, List[Dict[str, Any]], Dict[str, Any]]:
+    """Trains candidate classifiers, evaluates benchmarks, and returns winning model and artifacts."""
+    candidate_models = get_candidate_models(random_state)
+    best_f1 = -1.0
+    best_pipeline = None
     candidate_runs: List[Dict[str, Any]] = []
 
     for model_name, model_instance in candidate_models.items():
@@ -92,37 +92,8 @@ def benchmark_candidate_models(
         })
 
         if model_name == "LogisticRegression":
-            lr_f1 = f1
-            lr_pipeline = pipeline
-
-    return lr_pipeline, lr_f1, candidate_runs
-
-
-def train_and_evaluate_churn_models(
-    X_train: pd.DataFrame,
-    X_test: pd.DataFrame,
-    y_train: pd.Series,
-    y_test: pd.Series,
-    feature_cols: list,
-    cutoff_days: int,
-    test_size: float,
-    random_state: int,
-    churn_rate: float
-):
-    """Benchmarks candidate classification algorithms and returns the winning model and evaluation artifacts."""
-    candidate_models = get_candidate_models(random_state)
-    best_pipeline, best_f1, candidate_runs = benchmark_candidate_models(
-        X_train=X_train,
-        X_test=X_test,
-        y_train=y_train,
-        y_test=y_test,
-        feature_cols=feature_cols,
-        candidate_models=candidate_models,
-        cutoff_days=cutoff_days,
-        test_size=test_size,
-        random_state=random_state,
-        churn_rate=churn_rate
-    )
+            best_f1 = f1
+            best_pipeline = pipeline
 
     figures = {}
     if best_pipeline is not None:
