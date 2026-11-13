@@ -79,9 +79,9 @@ def benchmark_candidate_models(
             "churn_precision": float(report["1"]["precision"]),
             "churn_recall": float(report["1"]["recall"]),
             "churn_f1": f1,
-            "churn_rate": float(churn_rate)
+            "churn_rate": float(churn_rate),
+            **extract_feature_effects(pipeline, feature_cols)
         }
-        metrics.update(extract_feature_effects(pipeline, feature_cols))
 
         candidate_runs.append({
             "model_name": model_name,
