@@ -28,11 +28,9 @@ def run_clustering_pipeline(
     if df is None:
         df = load_gold(use_bigquery=False)
 
-    df_clean = df.dropna(subset=config.features).copy()
-
     # 2. Train / Test Split (for unbiased hyperparameter selection)
     train_df, test_df = train_test_split(
-        df_clean,
+        df,
         test_size=config.test_size,
         random_state=config.random_state
     )
@@ -67,7 +65,7 @@ def run_clustering_pipeline(
         )
 
     # 4. Batch Scoring & Persistence (Local CSV + BigQuery)
-    scored_customers = df_clean.copy()
+    scored_customers = df.copy()
     scored_customers["cluster"] = model.predict(scored_customers[config.features])
     scored_customers["segment"] = scored_customers["cluster"].map(profile["segment"])
     save_clustering_outputs(profile, scored_df=scored_customers)
