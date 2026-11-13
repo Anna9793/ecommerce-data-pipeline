@@ -13,10 +13,7 @@ from src.clustering import (
     profile_clusters,
     run_clustering,
 )
-from src.pipelines.clustering_pipeline import (
-    save_clustering_outputs,
-    save_outputs,
-)
+from src.pipelines.clustering_pipeline import save_clustering_outputs
 from src.utils.plotting import (
     plot_silhouette_scores,
     plot_pca_clusters,
@@ -145,7 +142,7 @@ def test_plot_pca_clusters(sample_rfm_df):
     assert fig_single is None
 
 
-def test_save_outputs_local_mode(tmp_path, monkeypatch):
+def test_save_clustering_outputs_local_mode(tmp_path, monkeypatch):
     monkeypatch.setenv("USE_BIGQUERY", "false")
     profile_path = tmp_path / "profile.csv"
     customers_path = tmp_path / "customers.csv"
@@ -164,7 +161,7 @@ def test_save_outputs_local_mode(tmp_path, monkeypatch):
     assert customers_path.exists()
 
 
-def test_save_outputs_bigquery_mode(tmp_path, monkeypatch):
+def test_save_clustering_outputs_bigquery_mode(tmp_path, monkeypatch):
     monkeypatch.setenv("USE_BIGQUERY", "true")
     monkeypatch.setenv("GCP_PROJECT", "test-project")
     profile_path = tmp_path / "profile.csv"
@@ -202,7 +199,7 @@ def test_run_clustering_pipeline_orchestration(
     mock_load_gold,
     mock_run_clustering,
     mock_tracker_cls,
-    mock_save_outputs,
+    mock_save_clustering_outputs,
     sample_rfm_df
 ):
     from unittest.mock import MagicMock
@@ -230,7 +227,7 @@ def test_run_clustering_pipeline_orchestration(
     assert mock_gold.called
     assert mock_run_clustering.called
     assert mock_tracker.save_and_register_model.called
-    assert mock_save_outputs.called
+    assert mock_save_clustering_outputs.called
 
 
 def test_run_clustering_direct(sample_rfm_df):

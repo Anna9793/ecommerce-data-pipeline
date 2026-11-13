@@ -49,8 +49,6 @@ def save_clustering_outputs(profile: pd.DataFrame, scored_df: Optional[pd.DataFr
                 raise
 
 
-save_outputs = save_clustering_outputs  # Backward compatibility alias
-
 
 def run_clustering_pipeline(
     config=None,
