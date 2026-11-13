@@ -67,50 +67,37 @@ def prepare_churn_data(
 
 
 def run_churn_pipeline(
-    config=None,
-    df: Optional[pd.DataFrame] = None,
-    cutoff_days: Optional[int] = None,
-    test_size: Optional[float] = None,
-    random_state: Optional[int] = None,
-    features: Optional[list] = None
+    config: Optional[ChurnConfig] = None,
+    df: Optional[pd.DataFrame] = None
 ) -> Dict[str, Any]:
     """Executes the end-to-end customer churn training, benchmarking, and batch prediction pipeline."""
     logging.info("Starting Customer Churn training pipeline")
 
     if config is None:
         try:
-            full_config = load_config(EXPERIMENT_CONFIG_PATH)
-            churn_cfg = full_config.churn
+            churn_cfg = load_config(EXPERIMENT_CONFIG_PATH).churn
         except Exception as e:
             logging.warning("Could not load experiment config (%s), falling back to ChurnConfig defaults.", e)
             churn_cfg = ChurnConfig()
     elif hasattr(config, "churn"):
         churn_cfg = config.churn
-    elif isinstance(config, ChurnConfig):
-        churn_cfg = config
     else:
-        churn_cfg = ChurnConfig()
+        churn_cfg = config
 
-    effective_cutoff = cutoff_days if cutoff_days is not None else churn_cfg.cutoff_days
-    effective_test_size = test_size if test_size is not None else churn_cfg.test_size
-    effective_random_state = random_state if random_state is not None else churn_cfg.random_state
-    effective_features = features if features is not None else churn_cfg.features
-    experiment_name = churn_cfg.experiment_name
-
-    tracker = VertexExperimentTracker(experiment_name=experiment_name)
+    tracker = VertexExperimentTracker(experiment_name=churn_cfg.experiment_name)
 
     # 1. Prepare data
     X, y, training_df = prepare_churn_data(
         df=df,
-        cutoff_days=effective_cutoff,
-        feature_cols=effective_features
+        cutoff_days=churn_cfg.cutoff_days,
+        feature_cols=churn_cfg.features
     )
 
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
-        test_size=effective_test_size,
-        random_state=effective_random_state,
+        test_size=churn_cfg.test_size,
+        random_state=churn_cfg.random_state,
         stratify=y
     )
 
@@ -120,10 +107,10 @@ def run_churn_pipeline(
         X_test=X_test,
         y_train=y_train,
         y_test=y_test,
-        feature_cols=effective_features,
-        cutoff_days=effective_cutoff,
-        test_size=effective_test_size,
-        random_state=effective_random_state,
+        feature_cols=churn_cfg.features,
+        cutoff_days=churn_cfg.cutoff_days,
+        test_size=churn_cfg.test_size,
+        random_state=churn_cfg.random_state,
         churn_rate=float(training_df["churn"].mean())
     )
 
@@ -139,9 +126,9 @@ def run_churn_pipeline(
         with tracker.start_run(run_name="customer_churn_production"):
             tracker.log_params({
                 "model_type": "LogisticRegression",
-                "cutoff_days": effective_cutoff,
-                "random_state": effective_random_state,
-                "test_size": effective_test_size
+                "cutoff_days": churn_cfg.cutoff_days,
+                "random_state": churn_cfg.random_state,
+                "test_size": churn_cfg.test_size
             })
             tracker.log_metrics({
                 "churn_f1": float(best_f1)

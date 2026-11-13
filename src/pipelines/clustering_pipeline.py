@@ -20,37 +20,24 @@ from src.utils.tracker import VertexExperimentTracker
 
 
 def run_clustering_pipeline(
-    config=None,
-    df: Optional[pd.DataFrame] = None,
-    feature_cols: Optional[list] = None,
-    cluster_range: Optional[list] = None,
-    random_state: Optional[int] = None,
-    test_size: float = 0.2
+    config: Optional[ClusteringConfig] = None,
+    df: Optional[pd.DataFrame] = None
 ) -> Dict[str, Any]:
     """Executes the end-to-end Medallion customer segmentation training and batch scoring pipeline."""
     logging.info("Starting Medallion clustering training pipeline")
 
     if config is None:
         try:
-            full_config = load_config(EXPERIMENT_CONFIG_PATH)
-            clustering_cfg = full_config.clustering
+            clustering_cfg = load_config(EXPERIMENT_CONFIG_PATH).clustering
         except Exception as e:
             logging.warning("Could not load experiment config (%s), falling back to ClusteringConfig defaults.", e)
             clustering_cfg = ClusteringConfig()
     elif hasattr(config, "clustering"):
         clustering_cfg = config.clustering
-    elif isinstance(config, ClusteringConfig):
-        clustering_cfg = config
     else:
-        clustering_cfg = ClusteringConfig()
+        clustering_cfg = config
 
-    experiment_name = clustering_cfg.experiment_name
-
-    effective_features = feature_cols if feature_cols is not None else clustering_cfg.features
-    effective_range = cluster_range if cluster_range is not None else clustering_cfg.cluster_range
-    effective_random_state = random_state if random_state is not None else clustering_cfg.random_state
-
-    tracker = VertexExperimentTracker(experiment_name=experiment_name)
+    tracker = VertexExperimentTracker(experiment_name=clustering_cfg.experiment_name)
 
     # 1. Medallion Feature Engineering (Local deterministic execution)
     if df is None:
@@ -59,10 +46,14 @@ def run_clustering_pipeline(
         run_gold()
         df = load_gold(use_bigquery=False)
 
-    df_clean = df.dropna(subset=effective_features).copy()
+    df_clean = df.dropna(subset=clustering_cfg.features).copy()
 
     # 2. Train / Test Split (for unbiased hyperparameter selection)
-    train_df, test_df = train_test_split(df_clean, test_size=test_size, random_state=effective_random_state)
+    train_df, test_df = train_test_split(
+        df_clean,
+        test_size=clustering_cfg.test_size,
+        random_state=clustering_cfg.random_state
+    )
     train_df = train_df.copy()
 
     # 3. Model Training, Evaluation, and Vertex AI Tracking
@@ -71,17 +62,17 @@ def run_clustering_pipeline(
 
         model, best_k, metrics, profile, figures = run_clustering(
             train_df=train_df,
-            feature_columns=effective_features,
-            cluster_range=effective_range,
-            random_state=effective_random_state
+            feature_columns=clustering_cfg.features,
+            cluster_range=clustering_cfg.cluster_range,
+            random_state=clustering_cfg.random_state
         )
 
         tracker.log_metrics(metrics)
         tracker.log_params({
-            "feature_set": ",".join(effective_features),
+            "feature_set": ",".join(clustering_cfg.features),
             "n_clusters": int(best_k),
-            "random_state": effective_random_state,
-            "test_size": test_size
+            "random_state": clustering_cfg.random_state,
+            "test_size": clustering_cfg.test_size
         })
 
         for fig_name, fig in figures.items():
@@ -95,7 +86,7 @@ def run_clustering_pipeline(
 
     # 4. Batch Scoring & Persistence (Local CSV + BigQuery)
     scored_customers = df_clean.copy()
-    scored_customers["cluster"] = model.predict(scored_customers[effective_features])
+    scored_customers["cluster"] = model.predict(scored_customers[clustering_cfg.features])
     scored_customers["segment"] = scored_customers["cluster"].map(profile["segment"])
     save_clustering_outputs(profile, scored_df=scored_customers)
 

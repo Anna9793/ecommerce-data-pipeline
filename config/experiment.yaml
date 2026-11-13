@@ -4,6 +4,7 @@ clustering:
   features: ["recency", "frequency", "avg_order_value"]
   cluster_range: [4]
   random_state: 42
+  test_size: 0.2
 
 churn:
   experiment_name: "customer_churn"

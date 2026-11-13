@@ -7,6 +7,7 @@ class ClusteringConfig(BaseModel):
     features: List[str] = ["recency", "frequency", "avg_order_value"]
     cluster_range: List[int] = [4]
     random_state: int = 42
+    test_size: float = 0.2
 
 
 class ChurnConfig(BaseModel):

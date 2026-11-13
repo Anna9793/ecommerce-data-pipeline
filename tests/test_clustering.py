@@ -203,7 +203,7 @@ def test_run_clustering_pipeline_orchestration(
     sample_rfm_df
 ):
     from unittest.mock import MagicMock
-    from config.schema import ExperimentConfig
+    from config.schema import ClusteringConfig
     from src.pipelines.clustering_pipeline import run_clustering_pipeline
 
     mock_tracker = MagicMock()
@@ -215,7 +215,7 @@ def test_run_clustering_pipeline_orchestration(
     mock_profile = pd.DataFrame({"segment": ["Medium Customers"]}, index=[0])
     mock_run_clustering.return_value = (mock_model, 4, {"silhouette_score": 0.45}, mock_profile, {})
 
-    cfg = ExperimentConfig()
+    cfg = ClusteringConfig()
     result = run_clustering_pipeline(cfg)
 
     assert result["status"] == "registered"

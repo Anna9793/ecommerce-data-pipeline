@@ -17,7 +17,7 @@ logging.basicConfig(
 
 def main():
     config = load_config(EXPERIMENT_CONFIG_PATH)
-    run_churn_pipeline(config)
+    run_churn_pipeline(config.churn)
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@ def test_load_production_config():
     assert config.clustering.features == ["recency", "frequency", "avg_order_value"]
     assert config.clustering.cluster_range == [4]
     assert config.clustering.random_state == 42
+    assert config.clustering.test_size == 0.2
 
     assert config.churn.cutoff_days == 90
     assert config.churn.test_size == 0.2

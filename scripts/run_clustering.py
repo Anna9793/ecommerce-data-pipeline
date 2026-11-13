@@ -17,7 +17,7 @@ logging.basicConfig(
 
 def main():
     config = load_config(EXPERIMENT_CONFIG_PATH)
-    run_clustering_pipeline(config)
+    run_clustering_pipeline(config.clustering)
 
 
 if __name__ == "__main__":
