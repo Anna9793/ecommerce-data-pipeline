@@ -10,9 +10,7 @@ from config.paths import (
     CLUSTER_PROFILE,
 )
 from config.schema import ClusteringConfig
-from src.bronze import run_bronze
-from src.silver import run_silver
-from src.gold import run_gold, load_gold
+from src.gold import load_gold
 from src.clustering import run_clustering
 from src.utils.tracker import VertexExperimentTracker
 
@@ -26,11 +24,8 @@ def run_clustering_pipeline(
 
     tracker = VertexExperimentTracker(experiment_name=config.experiment_name)
 
-    # 1. Medallion Feature Engineering (Local deterministic execution)
+    # 1. Load customer feature store (falls back to generation if missing)
     if df is None:
-        run_bronze()
-        run_silver()
-        run_gold()
         df = load_gold(use_bigquery=False)
 
     df_clean = df.dropna(subset=config.features).copy()

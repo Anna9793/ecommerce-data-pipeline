@@ -189,13 +189,7 @@ def test_save_clustering_outputs_bigquery_mode(tmp_path, monkeypatch):
 @patch("src.pipelines.clustering_pipeline.VertexExperimentTracker")
 @patch("src.pipelines.clustering_pipeline.run_clustering")
 @patch("src.pipelines.clustering_pipeline.load_gold")
-@patch("src.pipelines.clustering_pipeline.run_gold")
-@patch("src.pipelines.clustering_pipeline.run_silver")
-@patch("src.pipelines.clustering_pipeline.run_bronze")
 def test_run_clustering_pipeline_orchestration(
-    mock_bronze,
-    mock_silver,
-    mock_gold,
     mock_load_gold,
     mock_run_clustering,
     mock_tracker_cls,
@@ -222,9 +216,7 @@ def test_run_clustering_pipeline_orchestration(
     assert result["model_name"] == "customer_segmentation_model"
     assert result["best_k"] == 4
     assert result["silhouette_score"] == 0.45
-    assert mock_bronze.called
-    assert mock_silver.called
-    assert mock_gold.called
+    assert mock_load_gold.called
     assert mock_run_clustering.called
     assert mock_tracker.save_and_register_model.called
     assert mock_save_clustering_outputs.called
