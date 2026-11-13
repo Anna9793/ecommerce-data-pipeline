@@ -14,32 +14,6 @@ from src.utils.tracker import VertexExperimentTracker
 from sklearn.model_selection import train_test_split
 
 
-def save_churn_outputs(scored_df: pd.DataFrame):
-    """Persists batch customer churn predictions to local CSV and BigQuery."""
-    logging.info("Saving batch customer churn predictions to %s", CHURN_PREDICTIONS)
-    scored_df.to_csv(CHURN_PREDICTIONS, index=False)
-
-    if os.getenv("USE_BIGQUERY", "false").lower() == "true":
-        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        destination_table = "retail_data.customer_churn_predictions"
-        logging.info("Exporting %d churn-scored customers to BigQuery: %s", len(scored_df), destination_table)
-        try:
-            import pandas_gbq
-            bq_df = scored_df.copy()
-            if "customer_id" in bq_df.columns:
-                bq_df["customer_id"] = bq_df["customer_id"].astype(str)
-            pandas_gbq.to_gbq(
-                bq_df,
-                destination_table=destination_table,
-                project_id=project_id,
-                if_exists="replace"
-            )
-            logging.info("Successfully exported churn predictions to BigQuery table %s", destination_table)
-        except Exception as e:
-            logging.error("Failed to export customer churn predictions to BigQuery: %s", e)
-            raise
-
-
 def create_churn_target(feature_df: pd.DataFrame, future_df: pd.DataFrame) -> pd.DataFrame:
     """
     Computes binary churn target labels based on presence in the future evaluation window.
@@ -195,3 +169,29 @@ def run_churn_pipeline(
         }
 
     return {"status": "failed", "f1_score": 0.0}
+
+
+def save_churn_outputs(scored_df: pd.DataFrame):
+    """Persists batch customer churn predictions to local CSV and BigQuery."""
+    logging.info("Saving batch customer churn predictions to %s", CHURN_PREDICTIONS)
+    scored_df.to_csv(CHURN_PREDICTIONS, index=False)
+
+    if os.getenv("USE_BIGQUERY", "false").lower() == "true":
+        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+        destination_table = "retail_data.customer_churn_predictions"
+        logging.info("Exporting %d churn-scored customers to BigQuery: %s", len(scored_df), destination_table)
+        try:
+            import pandas_gbq
+            bq_df = scored_df.copy()
+            if "customer_id" in bq_df.columns:
+                bq_df["customer_id"] = bq_df["customer_id"].astype(str)
+            pandas_gbq.to_gbq(
+                bq_df,
+                destination_table=destination_table,
+                project_id=project_id,
+                if_exists="replace"
+            )
+            logging.info("Successfully exported churn predictions to BigQuery table %s", destination_table)
+        except Exception as e:
+            logging.error("Failed to export customer churn predictions to BigQuery: %s", e)
+            raise

@@ -19,37 +19,6 @@ from src.clustering import run_clustering
 from src.utils.tracker import VertexExperimentTracker
 
 
-def save_clustering_outputs(profile: pd.DataFrame, scored_df: Optional[pd.DataFrame] = None):
-    """Persists cluster profile and scored customers to local CSV and BigQuery."""
-    logging.info("Saving cluster profile to %s", CLUSTER_PROFILE)
-    profile.to_csv(CLUSTER_PROFILE)
-
-    if scored_df is not None:
-        logging.info("Saving batch customer segmentation to %s", CUSTOMER_CLUSTERS)
-        scored_df.to_csv(CUSTOMER_CLUSTERS, index=False)
-
-        if os.getenv("USE_BIGQUERY", "false").lower() == "true":
-            project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-            destination_table = "retail_data.customer_segments"
-            logging.info("Exporting %d scored customers to BigQuery: %s", len(scored_df), destination_table)
-            try:
-                import pandas_gbq
-                bq_df = scored_df.copy()
-                if "customer_id" in bq_df.columns:
-                    bq_df["customer_id"] = bq_df["customer_id"].astype(str)
-                pandas_gbq.to_gbq(
-                    bq_df,
-                    destination_table=destination_table,
-                    project_id=project_id,
-                    if_exists="replace"
-                )
-                logging.info("Successfully exported batch customer segments to BigQuery table %s", destination_table)
-            except Exception as e:
-                logging.error("Failed to export customer segments to BigQuery: %s", e)
-                raise
-
-
-
 def run_clustering_pipeline(
     config=None,
     df: Optional[pd.DataFrame] = None,
@@ -139,5 +108,31 @@ def run_clustering_pipeline(
     }
 
 
-# Backward compatibility alias
-run_training_pipeline = run_clustering_pipeline
+def save_clustering_outputs(profile: pd.DataFrame, scored_df: Optional[pd.DataFrame] = None):
+    """Persists cluster profile and scored customers to local CSV and BigQuery."""
+    logging.info("Saving cluster profile to %s", CLUSTER_PROFILE)
+    profile.to_csv(CLUSTER_PROFILE)
+
+    if scored_df is not None:
+        logging.info("Saving batch customer segmentation to %s", CUSTOMER_CLUSTERS)
+        scored_df.to_csv(CUSTOMER_CLUSTERS, index=False)
+
+        if os.getenv("USE_BIGQUERY", "false").lower() == "true":
+            project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+            destination_table = "retail_data.customer_segments"
+            logging.info("Exporting %d scored customers to BigQuery: %s", len(scored_df), destination_table)
+            try:
+                import pandas_gbq
+                bq_df = scored_df.copy()
+                if "customer_id" in bq_df.columns:
+                    bq_df["customer_id"] = bq_df["customer_id"].astype(str)
+                pandas_gbq.to_gbq(
+                    bq_df,
+                    destination_table=destination_table,
+                    project_id=project_id,
+                    if_exists="replace"
+                )
+                logging.info("Successfully exported batch customer segments to BigQuery table %s", destination_table)
+            except Exception as e:
+                logging.error("Failed to export customer segments to BigQuery: %s", e)
+                raise
