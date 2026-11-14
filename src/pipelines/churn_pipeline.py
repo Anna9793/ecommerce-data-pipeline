@@ -91,16 +91,14 @@ def run_churn_pipeline(
     )
 
     # 3. Log candidate benchmark runs & register winning model in Vertex AI Experiments
-    winner_registered = False
     for run_info in candidate_runs:
         model_name = run_info["model_name"]
-        is_winner = (model_name == best_model_name)
 
         with tracker.start_run(run_name=model_name):
             tracker.log_params(run_info["params"])
             tracker.log_metrics(run_info["metrics"])
 
-            if is_winner and best_pipeline is not None:
+            if model_name == best_model_name and best_pipeline is not None:
                 for fig_name, fig in figures.items():
                     tracker.log_figure(fig, fig_name)
 
@@ -109,20 +107,8 @@ def run_churn_pipeline(
                     model_name="customer_churn_model",
                     local_path=CHURN_MODEL_PKL
                 )
-                winner_registered = True
 
     if best_pipeline is not None:
-        if not winner_registered:
-            with tracker.start_run(run_name=best_model_name or "customer_churn_model"):
-                for fig_name, fig in figures.items():
-                    tracker.log_figure(fig, fig_name)
-
-                tracker.save_and_register_model(
-                    model=best_pipeline,
-                    model_name="customer_churn_model",
-                    local_path=CHURN_MODEL_PKL
-                )
-
         # 4. Batch Customer Scoring & Persistence (Local CSV + BigQuery)
         scored_churn = training_df.copy()
         scored_churn["churn_probability"] = best_pipeline.predict_proba(X)[:, 1]
