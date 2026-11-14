@@ -176,6 +176,8 @@ def test_train_and_evaluate_churn_models_direct():
     assert best_name in ["LogisticRegression", "RandomForest", "GradientBoosting"]
     assert len(candidate_runs) == 3
     assert "feature_importance.png" in figures
+    assert "confusion_matrix.png" in figures
+    assert "roc_curve.png" in figures
 
 
 def test_build_churn_pipeline():
@@ -244,3 +246,34 @@ def test_prepare_churn_data_direct():
     assert training_df.loc[training_df["customer_id"] == "C2", "churn"].values[0] == 0
     # C1 only bought in past -> churn = 1
     assert training_df.loc[training_df["customer_id"] == "C1", "churn"].values[0] == 1
+
+
+def test_plot_confusion_matrix():
+    import numpy as np
+    from src.utils.plotting import plot_confusion_matrix
+
+    y_true = np.array([0, 1, 0, 1])
+    y_pred = np.array([0, 1, 1, 0])
+    fig = plot_confusion_matrix(y_true, y_pred)
+    assert fig is not None
+
+
+def test_plot_roc_curve():
+    import numpy as np
+    from src.utils.plotting import plot_roc_curve
+
+    y_true = np.array([0, 1, 0, 1])
+    y_prob = np.array([0.1, 0.8, 0.4, 0.9])
+    fig = plot_roc_curve(y_true, y_prob)
+    assert fig is not None
+
+
+def test_plot_roc_curve_single_class():
+    import numpy as np
+    from src.utils.plotting import plot_roc_curve
+
+    y_true = np.array([0, 0, 0, 0])
+    y_prob = np.array([0.1, 0.2, 0.3, 0.4])
+    fig = plot_roc_curve(y_true, y_prob)
+    assert fig is None
+

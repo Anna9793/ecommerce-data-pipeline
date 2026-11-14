@@ -1,6 +1,8 @@
 import logging
+import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, roc_curve, auc
 
 
 def plot_silhouette_scores(scores):
@@ -107,3 +109,61 @@ def plot_feature_importance(model, feature_names):
     ax.grid(True, linestyle="--", alpha=0.6)
     fig.tight_layout()
     return fig
+
+
+def plot_confusion_matrix(y_true, y_pred, display_labels=("Active (0)", "Churn (1)")):
+    """
+    Plots confusion matrix for binary churn classification.
+
+    Args:
+        y_true: True binary labels (0 or 1).
+        y_pred: Predicted binary labels (0 or 1).
+        display_labels: Tuple of class display labels.
+
+    Returns:
+        matplotlib.figure.Figure: The rendered confusion matrix heatmap.
+    """
+    logging.info("Generating confusion matrix plot")
+    cm = confusion_matrix(y_true, y_pred)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=display_labels)
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    disp.plot(ax=ax, cmap="Blues", values_format="d")
+    ax.set_title("Customer Churn Confusion Matrix")
+    fig.tight_layout()
+    return fig
+
+
+def plot_roc_curve(y_true, y_prob):
+    """
+    Plots Receiver Operating Characteristic (ROC) curve with AUC score.
+
+    Args:
+        y_true: True binary labels (0 or 1).
+        y_prob: Predicted churn probabilities (scores for class 1).
+
+    Returns:
+        matplotlib.figure.Figure or None: The rendered ROC curve figure,
+        or None if y_true contains fewer than 2 distinct classes.
+    """
+    logging.info("Generating ROC curve plot")
+    if len(np.unique(y_true)) < 2:
+        logging.warning("Skipping ROC curve plot: at least 2 distinct classes required in y_true")
+        return None
+
+    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    roc_auc = auc(fpr, tpr)
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(fpr, tpr, color="#1f77b4", lw=2, label=f"ROC Curve (AUC = {roc_auc:.3f})")
+    ax.plot([0, 1], [0, 1], color="#7f7f7f", lw=1.5, linestyle="--", label="Random Chance (AUC = 0.500)")
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel("False Positive Rate (1 - Specificity)")
+    ax.set_ylabel("True Positive Rate (Recall / Sensitivity)")
+    ax.set_title("Receiver Operating Characteristic (ROC) Curve")
+    ax.legend(loc="lower right")
+    ax.grid(True, linestyle="--", alpha=0.6)
+    fig.tight_layout()
+    return fig
+
