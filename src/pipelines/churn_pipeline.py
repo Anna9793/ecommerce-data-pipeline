@@ -13,18 +13,6 @@ from src.utils.tracker import VertexExperimentTracker
 from sklearn.model_selection import train_test_split
 
 
-def create_churn_target(feature_df: pd.DataFrame, future_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Computes binary churn target labels based on presence in the future evaluation window.
-    Churn = 1 if the customer made 0 purchases in the future window, 0 otherwise.
-    """
-    active_customers = set(future_df["customer_id"].unique())
-    customers = feature_df["customer_id"].drop_duplicates()
-    target_df = pd.DataFrame({"customer_id": customers})
-    target_df["churn"] = (~target_df["customer_id"].isin(active_customers)).astype(int)
-    return target_df
-
-
 def prepare_churn_data(
     cutoff_days: int,
     feature_cols: list,
@@ -52,9 +40,13 @@ def prepare_churn_data(
     future_df = df[df["invoice_date"] >= cutoff_date]
     logging.info("Historical feature rows: %d | Future target rows: %d", len(feature_df), len(future_df))
 
-    rfm_df = compute_gold_features(feature_df)
-    target_df = create_churn_target(feature_df, future_df)
-    training_df = rfm_df.merge(target_df, on="customer_id", how="inner")
+    # 1. Feature engineering on historical window (past)
+    training_df = compute_gold_features(feature_df)
+
+    # 2. Churn target labeling on evaluation window (future)
+    # Churn = 1 if customer did not purchase in future window, 0 if active
+    active_in_future = set(future_df["customer_id"].unique())
+    training_df["churn"] = (~training_df["customer_id"].isin(active_in_future)).astype(int)
 
     X = training_df[feature_cols]
     y = training_df["churn"]
