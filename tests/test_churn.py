@@ -173,7 +173,7 @@ def test_train_and_evaluate_churn_models_direct():
 
     assert pipeline is not None
     assert isinstance(best_f1, float)
-    assert best_name == "customer_churn_model"
+    assert best_name in ["LogisticRegression", "RandomForest", "GradientBoosting"]
     assert len(candidate_runs) == 3
     assert "feature_importance.png" in figures
 

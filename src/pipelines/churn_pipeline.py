@@ -101,7 +101,7 @@ def run_churn_pipeline(
     if best_pipeline is not None:
         with tracker.start_run(run_name="customer_churn_production"):
             tracker.log_params({
-                "model_type": "LogisticRegression",
+                "model_type": best_model_name,
                 "cutoff_days": config.cutoff_days,
                 "random_state": config.random_state,
                 "test_size": config.test_size

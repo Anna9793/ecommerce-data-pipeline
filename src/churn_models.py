@@ -55,6 +55,7 @@ def train_and_evaluate_churn_models(
     candidate_models = get_candidate_models(random_state)
     best_f1 = -1.0
     best_pipeline = None
+    best_model_name = ""
     candidate_runs: List[Dict[str, Any]] = []
 
     for model_name, model_instance in candidate_models.items():
@@ -91,9 +92,10 @@ def train_and_evaluate_churn_models(
             "f1_score": f1
         })
 
-        if model_name == "LogisticRegression":
+        if f1 > best_f1:
             best_f1 = f1
             best_pipeline = pipeline
+            best_model_name = model_name
 
     figures = {}
     if best_pipeline is not None:
@@ -101,6 +103,5 @@ def train_and_evaluate_churn_models(
         if fig is not None:
             figures["feature_importance.png"] = fig
 
-    best_model_name = "customer_churn_model"
     logging.info("Candidate models evaluated. Best model: %s (F1=%.4f)", best_model_name, best_f1)
     return best_pipeline, best_f1, best_model_name, candidate_runs, figures
