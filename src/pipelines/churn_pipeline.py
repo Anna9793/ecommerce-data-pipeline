@@ -90,35 +90,40 @@ def run_churn_pipeline(
         churn_rate=float(training_df["churn"].mean())
     )
 
-    # 3. Log candidate benchmark runs to Vertex AI Experiments
+    # 3. Log candidate benchmark runs & register winning model in Vertex AI Experiments
+    winner_registered = False
     for run_info in candidate_runs:
         model_name = run_info["model_name"]
+        is_winner = (model_name == best_model_name)
+
         with tracker.start_run(run_name=model_name):
             tracker.log_params(run_info["params"])
             tracker.log_metrics(run_info["metrics"])
 
-    # 4. Register winning model and figures inside winning model run context
+            if is_winner and best_pipeline is not None:
+                for fig_name, fig in figures.items():
+                    tracker.log_figure(fig, fig_name)
+
+                tracker.save_and_register_model(
+                    model=best_pipeline,
+                    model_name="customer_churn_model",
+                    local_path=CHURN_MODEL_PKL
+                )
+                winner_registered = True
+
     if best_pipeline is not None:
-        with tracker.start_run(run_name="customer_churn_production"):
-            tracker.log_params({
-                "model_type": best_model_name,
-                "cutoff_days": config.cutoff_days,
-                "random_state": config.random_state,
-                "test_size": config.test_size
-            })
-            tracker.log_metrics({
-                "churn_f1": float(best_f1)
-            })
-            for fig_name, fig in figures.items():
-                tracker.log_figure(fig, fig_name)
+        if not winner_registered:
+            with tracker.start_run(run_name=best_model_name or "customer_churn_model"):
+                for fig_name, fig in figures.items():
+                    tracker.log_figure(fig, fig_name)
 
-            tracker.save_and_register_model(
-                model=best_pipeline,
-                model_name="customer_churn_model",
-                local_path=CHURN_MODEL_PKL
-            )
+                tracker.save_and_register_model(
+                    model=best_pipeline,
+                    model_name="customer_churn_model",
+                    local_path=CHURN_MODEL_PKL
+                )
 
-        # 5. Batch Customer Scoring & Persistence (Local CSV + BigQuery)
+        # 4. Batch Customer Scoring & Persistence (Local CSV + BigQuery)
         scored_churn = training_df.copy()
         scored_churn["churn_probability"] = best_pipeline.predict_proba(X)[:, 1]
         scored_churn["churn_prediction"] = best_pipeline.predict(X)

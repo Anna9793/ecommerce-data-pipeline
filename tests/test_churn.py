@@ -86,8 +86,8 @@ def test_run_churn_pipeline_respects_custom_config(
 
     mock_pipeline = MagicMock()
     mock_pipeline.predict_proba.return_value = np.zeros((len(X_dummy), 2))
-    mock_pipeline.predict.return_value = np.zeros(len(X_dummy))
-    mock_train_models.return_value = (mock_pipeline, 0.85, "customer_churn_model", [], {})
+    candidate_mock = [{"model_name": "LogisticRegression", "params": {}, "metrics": {}}]
+    mock_train_models.return_value = (mock_pipeline, 0.85, "LogisticRegression", candidate_mock, {})
 
     result = run_churn_pipeline(config=custom_cfg)
 
@@ -125,8 +125,8 @@ def test_run_churn_pipeline_direct(
 
     mock_pipeline = MagicMock()
     mock_pipeline.predict_proba.return_value = np.zeros((len(X_dummy), 2))
-    mock_pipeline.predict.return_value = np.zeros(len(X_dummy))
-    mock_train_models.return_value = (mock_pipeline, 0.90, "customer_churn_model", [], {})
+    candidate_mock = [{"model_name": "LogisticRegression", "params": {}, "metrics": {}}]
+    mock_train_models.return_value = (mock_pipeline, 0.90, "LogisticRegression", candidate_mock, {})
 
     cfg = ChurnConfig()
     result = run_churn_pipeline(cfg)
