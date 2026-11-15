@@ -101,22 +101,16 @@ def train_and_evaluate_churn_models(
             best_pipeline = pipeline
             best_model_name = model_name
 
-    figures = {}
-    if best_pipeline is not None:
-        fig_importance = plot_feature_importance(best_pipeline, feature_cols)
-        if fig_importance is not None:
-            figures["feature_importance.png"] = fig_importance
+    # Generate evaluation and explainability visualizations for winning model
+    y_test_pred = best_pipeline.predict(X_test)
+    y_test_prob = best_pipeline.predict_proba(X_test)[:, 1]
 
-        y_test_pred = best_pipeline.predict(X_test)
-        fig_cm = plot_confusion_matrix(y_test, y_test_pred)
-        if fig_cm is not None:
-            figures["confusion_matrix.png"] = fig_cm
-
-        if hasattr(best_pipeline, "predict_proba"):
-            y_test_prob = best_pipeline.predict_proba(X_test)[:, 1]
-            fig_roc = plot_roc_curve(y_test, y_test_prob)
-            if fig_roc is not None:
-                figures["roc_curve.png"] = fig_roc
+    raw_figures = {
+        "feature_importance.png": plot_feature_importance(best_pipeline, feature_cols),
+        "confusion_matrix.png": plot_confusion_matrix(y_test, y_test_pred),
+        "roc_curve.png": plot_roc_curve(y_test, y_test_prob),
+    }
+    figures = {name: fig for name, fig in raw_figures.items() if fig is not None}
 
     logging.info("Candidate models evaluated. Best model: %s (F1=%.4f)", best_model_name, best_f1)
     return best_pipeline, best_f1, best_model_name, candidate_runs, figures
