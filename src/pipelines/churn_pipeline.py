@@ -102,6 +102,14 @@ def run_churn_pipeline(
                 for fig_name, fig in figures.items():
                     tracker.log_figure(fig, fig_name)
 
+                tracker.log_classification_metrics(
+                    y_true=y_test,
+                    y_pred=best_pipeline.predict(X_test),
+                    y_prob=best_pipeline.predict_proba(X_test)[:, 1],
+                    labels=("Active", "Churn"),
+                    display_name="churn-evaluation"
+                )
+
                 tracker.save_and_register_model(
                     model=best_pipeline,
                     model_name="customer_churn_model",

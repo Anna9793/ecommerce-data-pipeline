@@ -96,6 +96,7 @@ def test_run_churn_pipeline_respects_custom_config(
     assert result["f1_score"] == 0.85
     mock_tracker_cls.assert_called_with(experiment_name="custom-churn-test")
     assert mock_tracker.save_and_register_model.called
+    assert mock_tracker.log_classification_metrics.called
     assert mock_save_churn.called
 
 
@@ -134,6 +135,7 @@ def test_run_churn_pipeline_direct(
     assert result["status"] == "registered"
     assert result["f1_score"] == 0.90
     assert mock_tracker.save_and_register_model.called
+    assert mock_tracker.log_classification_metrics.called
     assert mock_save_churn.called
 
 

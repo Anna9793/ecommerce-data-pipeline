@@ -6,7 +6,7 @@ import os
 import logging
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import joblib
 
 logger = logging.getLogger(__name__)
@@ -103,7 +103,7 @@ class VertexExperimentTracker:
                 logger.warning("Failed to log metrics to Vertex AI: %s", e)
 
     def log_figure(self, fig, filename: str) -> None:
-        """Saves a matplotlib figure locally and logs as artifact."""
+        """Saves a matplotlib figure locally and syncs to GCS."""
         from config.paths import MODELS_DIR
 
         out_path = MODELS_DIR / filename
@@ -112,6 +112,59 @@ class VertexExperimentTracker:
             logger.info("Figure saved locally to %s", out_path)
         except Exception as e:
             logger.warning("Could not save figure %s: %s", filename, e)
+
+        if self._is_cloud_active:
+            bucket_name = os.getenv("GCS_BUCKET", "anna-ml-pipeline-bucket")
+            try:
+                from google.cloud import storage
+
+                client = storage.Client(project=self.project_id)
+                bucket = client.bucket(bucket_name)
+                blob = bucket.blob(f"models/{filename}")
+                blob.upload_from_filename(str(out_path))
+                logger.info("Uploaded figure to gs://%s/models/%s", bucket_name, filename)
+            except Exception as e:
+                logger.warning("Failed to upload figure to GCS: %s", e)
+
+    def log_classification_metrics(
+        self,
+        y_true: Any,
+        y_pred: Any,
+        y_prob: Optional[Any] = None,
+        labels: Tuple[str, ...] = ("Active", "Churn"),
+        display_name: str = "classification-evaluation"
+    ) -> None:
+        """Logs native interactive Confusion Matrix and ROC Curve to Vertex AI."""
+        if not self._is_cloud_active or not self.active_run:
+            logger.info("Local classification evaluation (cloud inactive)")
+            return
+
+        try:
+            import numpy as np
+            from sklearn.metrics import confusion_matrix, roc_curve
+            from google.cloud import aiplatform
+
+            cm = confusion_matrix(y_true, y_pred).tolist()
+            fpr_list, tpr_list, thresh_list = None, None, None
+
+            if y_prob is not None and len(np.unique(y_true)) >= 2:
+                fpr, tpr, thresh = roc_curve(y_true, y_prob)
+                fpr_list = fpr.tolist()
+                tpr_list = tpr.tolist()
+                thresh_list = thresh.tolist()
+
+            aiplatform.log_classification_metrics(
+                labels=list(labels),
+                matrix=cm,
+                fpr=fpr_list,
+                tpr=tpr_list,
+                threshold=thresh_list,
+                display_name=display_name
+            )
+            logger.info("Logged native classification metrics to Vertex AI: %s", display_name)
+        except Exception as e:
+            logger.warning("Failed to log native classification metrics to Vertex AI: %s", e)
+
 
     def save_and_register_model(self, model: Any, model_name: str, local_path: Path) -> None:
         """Persists model artifact locally and syncs to GCS / Vertex AI Model Registry."""
