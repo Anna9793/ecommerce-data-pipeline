@@ -149,9 +149,9 @@ class VertexExperimentTracker:
 
             if y_prob is not None and len(np.unique(y_true)) >= 2:
                 fpr, tpr, thresh = roc_curve(y_true, y_prob)
-                fpr_list = fpr.tolist()
-                tpr_list = tpr.tolist()
-                thresh_list = thresh.tolist()
+                fpr_list = [float(x) for x in fpr]
+                tpr_list = [float(x) for x in tpr]
+                thresh_list = [1.0 if np.isinf(x) or np.isnan(x) else float(x) for x in thresh]
 
             aiplatform.log_classification_metrics(
                 labels=list(labels),
