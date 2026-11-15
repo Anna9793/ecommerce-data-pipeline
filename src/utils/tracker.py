@@ -66,7 +66,7 @@ class VertexExperimentTracker:
             from google.cloud import aiplatform
 
             try:
-                with aiplatform.start_run(run=run_name) as run:
+                with aiplatform.start_run(run=run_name, resume=True) as run:
                     self.active_run = run
                     logger.info("Started Vertex AI run: %s", run_name)
                     yield self
