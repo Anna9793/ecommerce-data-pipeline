@@ -97,8 +97,8 @@ def train_and_evaluate_churn_models(
     test_size: float,
     random_state: int,
     churn_rate: float,
-    classification_threshold: float = 0.40,
-    auto_optimize_threshold: bool = True
+    classification_threshold: float,
+    auto_optimize_threshold: bool
 ) -> Tuple[Pipeline, float, str, List[Dict[str, Any]], Dict[str, Any], float]:
     """Trains candidate classifiers, evaluates benchmarks with threshold tuning, and returns winning model and artifacts."""
     candidate_models = get_candidate_models(random_state)

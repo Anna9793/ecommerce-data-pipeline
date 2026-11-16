@@ -101,7 +101,14 @@ def predict_cluster(features: dict):
     
     return cluster, label
 
-DEFAULT_CHURN_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", "0.40"))
+try:
+    from config.paths import EXPERIMENT_CONFIG_PATH
+    from config.loader import load_config
+    _default_threshold = float(load_config(EXPERIMENT_CONFIG_PATH).churn.classification_threshold)
+except Exception:
+    _default_threshold = 0.40
+
+DEFAULT_CHURN_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", str(_default_threshold)))
 
 def predict_churn_service(features: dict, threshold: Optional[float] = None):
     applied_threshold = threshold if threshold is not None else DEFAULT_CHURN_THRESHOLD

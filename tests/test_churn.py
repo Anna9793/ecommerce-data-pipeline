@@ -170,7 +170,9 @@ def test_train_and_evaluate_churn_models_direct():
         cutoff_days=90,
         test_size=0.2,
         random_state=42,
-        churn_rate=0.5
+        churn_rate=0.5,
+        classification_threshold=0.40,
+        auto_optimize_threshold=True
     )
 
     assert pipeline is not None
