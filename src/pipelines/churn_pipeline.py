@@ -78,7 +78,7 @@ def run_churn_pipeline(
     )
 
     # 2. Train and benchmark candidate models (Pure ML, tracker-agnostic)
-    best_pipeline, best_f1, best_model_name, candidate_runs, figures = train_and_evaluate_churn_models(
+    res = train_and_evaluate_churn_models(
         X_train=X_train,
         X_test=X_test,
         y_train=y_train,
@@ -87,8 +87,15 @@ def run_churn_pipeline(
         cutoff_days=config.cutoff_days,
         test_size=config.test_size,
         random_state=config.random_state,
-        churn_rate=float(training_df["churn"].mean())
+        churn_rate=float(training_df["churn"].mean()),
+        classification_threshold=config.classification_threshold,
+        auto_optimize_threshold=config.auto_optimize_threshold
     )
+    if len(res) == 6:
+        best_pipeline, best_f1, best_model_name, candidate_runs, figures, best_threshold = res
+    else:
+        best_pipeline, best_f1, best_model_name, candidate_runs, figures = res
+        best_threshold = config.classification_threshold
 
     # 3. Log candidate benchmark runs & register winning model in Vertex AI Experiments
     for run_info in candidate_runs:
@@ -102,10 +109,11 @@ def run_churn_pipeline(
                 for fig_name, fig in figures.items():
                     tracker.log_figure(fig, fig_name)
 
+                best_prob = best_pipeline.predict_proba(X_test)[:, 1]
                 tracker.log_classification_metrics(
                     y_true=y_test,
-                    y_pred=best_pipeline.predict(X_test),
-                    y_prob=best_pipeline.predict_proba(X_test)[:, 1],
+                    y_pred=(best_prob >= best_threshold).astype(int),
+                    y_prob=best_prob,
                     labels=("Active", "Churn"),
                     display_name="churn-evaluation"
                 )
@@ -119,14 +127,18 @@ def run_churn_pipeline(
     # 4. Batch Customer Scoring & Persistence (Local CSV + BigQuery)
     scored_churn = training_df.copy()
     scored_churn["churn_probability"] = best_pipeline.predict_proba(X)[:, 1]
-    scored_churn["churn_prediction"] = best_pipeline.predict(X)
+    scored_churn["churn_prediction"] = (scored_churn["churn_probability"] >= best_threshold).astype(int)
     save_churn_outputs(scored_churn)
 
-    logging.info("Customer churn pipeline completed successfully")
+    logging.info(
+        "Customer churn pipeline completed successfully (winner: %s, F1=%.4f, threshold=%.4f)",
+        best_model_name, best_f1, best_threshold
+    )
     return {
         "status": "registered",
         "model_name": "customer_churn_model",
-        "f1_score": float(best_f1)
+        "f1_score": float(best_f1),
+        "decision_threshold": float(best_threshold)
     }
 
 

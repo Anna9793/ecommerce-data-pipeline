@@ -179,7 +179,12 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
     else:
         raise HTTPException(status_code=400, detail="Missing required features and no customer_id provided.")
 
-    is_churn, churn_probability = predict_churn_service(features)
+    res = predict_churn_service(features, threshold=request.threshold)
+    if isinstance(res, tuple) and len(res) == 3:
+        is_churn, churn_probability, applied_threshold = res
+    else:
+        is_churn, churn_probability = res
+        applied_threshold = request.threshold if request.threshold is not None else 0.40
 
     record = {
         "request_id": str(uuid.uuid4()),
@@ -201,7 +206,8 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
     return ChurnPredictionResponse(
         customer_id=customer_id,
         churn_probability=churn_probability,
-        is_churn=is_churn
+        is_churn=is_churn,
+        threshold_applied=applied_threshold
     )
 
 

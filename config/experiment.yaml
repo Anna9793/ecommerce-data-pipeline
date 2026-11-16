@@ -11,6 +11,8 @@ churn:
   cutoff_days: 90
   test_size: 0.2
   random_state: 42
+  classification_threshold: 0.40
+  auto_optimize_threshold: true
   features:
     - "recency"
     - "frequency"

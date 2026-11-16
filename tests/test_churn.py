@@ -161,7 +161,7 @@ def test_train_and_evaluate_churn_models_direct():
     y_test = pd.Series([0, 1] * 5)
 
     features = ["recency", "frequency", "avg_order_value"]
-    pipeline, best_f1, best_name, candidate_runs, figures = train_and_evaluate_churn_models(
+    pipeline, best_f1, best_name, candidate_runs, figures, best_threshold = train_and_evaluate_churn_models(
         X_train=X_train,
         X_test=X_test,
         y_train=y_train,
@@ -180,6 +180,8 @@ def test_train_and_evaluate_churn_models_direct():
     assert "feature_importance.png" in figures
     assert "confusion_matrix.png" in figures
     assert "roc_curve.png" in figures
+    assert isinstance(best_threshold, float)
+    assert 0.0 < best_threshold < 1.0
 
 
 def test_build_churn_pipeline():
@@ -278,4 +280,60 @@ def test_plot_roc_curve_single_class():
     y_prob = np.array([0.1, 0.2, 0.3, 0.4])
     fig = plot_roc_curve(y_true, y_prob)
     assert fig is None
+
+
+def test_find_optimal_threshold():
+    import numpy as np
+    import pandas as pd
+    from src.churn_models import find_optimal_threshold
+
+    y_true = pd.Series([0, 0, 1, 1, 1])
+    y_prob = np.array([0.1, 0.2, 0.45, 0.7, 0.9])
+
+    thresh, metrics = find_optimal_threshold(y_true, y_prob)
+    assert isinstance(thresh, float)
+    assert 0.1 <= thresh <= 0.9
+    assert metrics["f1"] > 0.0
+
+
+@patch("app.main.insert_churn_prediction")
+@patch("app.main.predict_churn_service")
+def test_predict_churn_endpoint_custom_threshold(mock_predict, mock_insert):
+    mock_predict.return_value = (1, 0.45, 0.40)
+    response = client.post(
+        "/predict/churn",
+        json={
+            "recency": 90,
+            "frequency": 2,
+            "avg_order_value": 50,
+            "spending_velocity": 1.0,
+            "cancellation_rate": 0.0,
+            "preferred_shopping_hour": 12,
+            "threshold": 0.40
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["is_churn"] == 1
+    assert data["churn_probability"] == 0.45
+    assert data["threshold_applied"] == 0.40
+
+
+def test_predict_churn_service_threshold_logic():
+    from app.service import predict_churn_service
+    features = {
+        "recency": 90.0,
+        "frequency": 2.0,
+        "avg_order_value": 50.0,
+        "spending_velocity": 1.0,
+        "cancellation_rate": 0.0,
+        "preferred_shopping_hour": 12
+    }
+    is_churn_high, prob_high, applied_high = predict_churn_service(features, threshold=0.999)
+    assert applied_high == 0.999
+    assert is_churn_high == 0
+
+    is_churn_low, prob_low, applied_low = predict_churn_service(features, threshold=0.001)
+    assert applied_low == 0.001
+    assert is_churn_low == 1
 

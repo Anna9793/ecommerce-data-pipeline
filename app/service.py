@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Optional
 import joblib
 import pandas as pd
 from config.paths import CLUSTER_PROFILE, SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL
@@ -100,12 +101,14 @@ def predict_cluster(features: dict):
     
     return cluster, label
 
-def predict_churn_service(features: dict):
+DEFAULT_CHURN_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", "0.40"))
 
+def predict_churn_service(features: dict, threshold: Optional[float] = None):
+    applied_threshold = threshold if threshold is not None else DEFAULT_CHURN_THRESHOLD
     df = pd.DataFrame([features])
 
-    is_churn = int(prod_churn_pipeline.predict(df)[0])
     churn_probability = float(prod_churn_pipeline.predict_proba(df)[0][1])
+    is_churn = int(churn_probability >= applied_threshold)
 
-    return is_churn, churn_probability
+    return is_churn, churn_probability, applied_threshold
 

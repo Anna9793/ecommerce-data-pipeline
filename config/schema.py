@@ -15,6 +15,8 @@ class ChurnConfig(BaseModel):
     cutoff_days: int = 90
     test_size: float = 0.2
     random_state: int = 42
+    classification_threshold: float = 0.40
+    auto_optimize_threshold: bool = True
     features: List[str] = [
         "recency",
         "frequency",

@@ -20,11 +20,13 @@ class ChurnPredictionRequest(BaseModel):
     spending_velocity: Optional[float] = None
     cancellation_rate: Optional[float] = None
     preferred_shopping_hour: Optional[int] = None
+    threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="Custom decision threshold (default: 0.40)")
 
 class ChurnPredictionResponse(BaseModel):
     customer_id: Optional[str] = None
     churn_probability: float
     is_churn: int
+    threshold_applied: float = Field(0.40, description="Decision threshold applied for churn classification")
 
 class ProductAdvisorRequest(BaseModel):
     query: str = Field(..., description="Customer natural language search query")
