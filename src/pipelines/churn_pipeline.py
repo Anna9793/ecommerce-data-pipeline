@@ -78,7 +78,7 @@ def run_churn_pipeline(
     )
 
     # 2. Train and benchmark candidate models (Pure ML, tracker-agnostic)
-    res = train_and_evaluate_churn_models(
+    best_pipeline, best_f1, best_model_name, candidate_runs, figures, best_threshold = train_and_evaluate_churn_models(
         X_train=X_train,
         X_test=X_test,
         y_train=y_train,
@@ -91,11 +91,6 @@ def run_churn_pipeline(
         classification_threshold=config.classification_threshold,
         auto_optimize_threshold=config.auto_optimize_threshold
     )
-    if len(res) == 6:
-        best_pipeline, best_f1, best_model_name, candidate_runs, figures, best_threshold = res
-    else:
-        best_pipeline, best_f1, best_model_name, candidate_runs, figures = res
-        best_threshold = config.classification_threshold
 
     # 3. Log candidate benchmark runs & register winning model in Vertex AI Experiments
     for run_info in candidate_runs:
