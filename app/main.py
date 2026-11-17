@@ -176,15 +176,22 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
         features = get_online_features(customer_id)
         if not features:
             raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found in the Feature Store.")
+        required_features = [
+            "recency", "frequency", "avg_order_value",
+            "spending_velocity", "cancellation_rate", "preferred_shopping_hour"
+        ]
+        missing = [f for f in required_features if f not in features or features[f] is None]
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Incomplete feature set in Feature Store for customer {customer_id}. Missing: {missing}"
+            )
     else:
         raise HTTPException(status_code=400, detail="Missing required features and no customer_id provided.")
 
-    res = predict_churn_service(features, threshold=request.threshold)
-    if isinstance(res, tuple) and len(res) == 3:
-        is_churn, churn_probability, applied_threshold = res
-    else:
-        is_churn, churn_probability = res
-        applied_threshold = request.threshold if request.threshold is not None else 0.40
+    is_churn, churn_probability, applied_threshold = predict_churn_service(
+        features, threshold=request.threshold
+    )
 
     record = {
         "request_id": str(uuid.uuid4()),
@@ -192,9 +199,9 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
         "recency": features["recency"],
         "frequency": features["frequency"],
         "avg_order_value": features["avg_order_value"],
-        "spending_velocity": features.get("spending_velocity", 1.0),
-        "cancellation_rate": features.get("cancellation_rate", 0.0),
-        "preferred_shopping_hour": features.get("preferred_shopping_hour", 12),
+        "spending_velocity": features["spending_velocity"],
+        "cancellation_rate": features["cancellation_rate"],
+        "preferred_shopping_hour": features["preferred_shopping_hour"],
         "churn_probability": churn_probability,
         "is_churn": is_churn,
         "model_version": str(CHURN_MODEL_VERSION),

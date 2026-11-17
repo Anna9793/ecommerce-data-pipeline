@@ -11,7 +11,7 @@ def test_predict_churn_endpoint_returns_prediction(
     mock_predict,
     mock_insert):
     
-    mock_predict.return_value = (1, 0.85)
+    mock_predict.return_value = (1, 0.85, 0.31)
 
     response = client.post(
         "/predict/churn",
@@ -31,6 +31,7 @@ def test_predict_churn_endpoint_returns_prediction(
 
     assert data["is_churn"] == 1
     assert data["churn_probability"] == 0.85
+    assert data["threshold_applied"] == 0.31
     assert mock_insert.called
 
 def test_predict_churn_reject_invalid_input():

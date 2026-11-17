@@ -112,7 +112,7 @@ def test_predict_by_customer_id_via_feature_store(mock_get_features, mock_predic
         "cancellation_rate": 0.05,
         "preferred_shopping_hour": 14
     }
-    mock_predict.return_value = (1, 0.85)
+    mock_predict.return_value = (1, 0.85, 0.31)
     
     response = client.post(
         "/predict/churn",
@@ -124,7 +124,25 @@ def test_predict_by_customer_id_via_feature_store(mock_get_features, mock_predic
     assert data["customer_id"] == "12345"
     assert data["is_churn"] == 1
     assert data["churn_probability"] == 0.85
+    assert data["threshold_applied"] == 0.31
     mock_get_features.assert_called_once_with("12345")
+
+
+@patch("app.db_postgres.get_online_features")
+def test_predict_by_customer_id_incomplete_features(mock_get_features):
+    mock_get_features.return_value = {
+        "customer_id": "999",
+        "recency": 10.0,
+        "frequency": 2,
+        "avg_order_value": 50.0
+        # Missing spending_velocity, cancellation_rate, preferred_shopping_hour
+    }
+    response = client.post(
+        "/predict/churn",
+        json={"customer_id": "999"}
+    )
+    assert response.status_code == 422
+    assert "Incomplete feature set" in response.json()["detail"]
 
 
 @patch("app.main.close_pool")
