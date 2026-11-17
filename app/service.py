@@ -14,19 +14,11 @@ from config.loader import load_config
 
 logger = logging.getLogger(__name__)
 
-try:
-    _exp_config = load_config(EXPERIMENT_CONFIG_PATH)
-    _default_rfm_ver = _exp_config.clustering.feature_version
-    _default_churn_ver = _exp_config.churn.feature_version
-    _default_threshold = float(_exp_config.churn.classification_threshold)
-except Exception:
-    _default_rfm_ver = "rfm_v1"
-    _default_churn_ver = "churn_v2"
-    _default_threshold = 0.40
+config = load_config(EXPERIMENT_CONFIG_PATH)
 
-RFM_FEATURE_VERSION = os.getenv("RFM_FEATURE_VERSION", _default_rfm_ver)
-CHURN_FEATURE_VERSION = os.getenv("CHURN_FEATURE_VERSION", _default_churn_ver)
-DEFAULT_CHURN_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", str(_default_threshold)))
+RFM_FEATURE_VERSION = os.getenv("RFM_FEATURE_VERSION", config.clustering.feature_version)
+CHURN_FEATURE_VERSION = os.getenv("CHURN_FEATURE_VERSION", config.churn.feature_version)
+DEFAULT_CHURN_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", config.churn.classification_threshold))
 
 def load_model_from_gcs(model_name: str, force_download: bool = False):
     from google.cloud import storage
