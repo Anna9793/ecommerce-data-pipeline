@@ -108,6 +108,7 @@ def run_clustering(
     train_df_scored = train_df.copy()
     train_df_scored["cluster"] = best_pipeline.predict(train_df_scored[feature_columns])
     train_df_scored, profile = profile_clusters(train_df_scored)
+    best_pipeline.cluster_labels_ = profile["segment"].to_dict()
     logging.info("Cluster profile:\n%s", profile)
 
     # 3. Visualizations

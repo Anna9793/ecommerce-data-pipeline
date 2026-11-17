@@ -235,6 +235,9 @@ def test_run_clustering_direct(sample_rfm_df):
     )
 
     assert pipeline is not None
+    assert hasattr(pipeline, "cluster_labels_")
+    assert isinstance(pipeline.cluster_labels_, dict)
+    assert len(pipeline.cluster_labels_) == best_k
     assert best_k in cluster_range
     assert "silhouette_score" in metrics
     assert isinstance(metrics["silhouette_score"], float)

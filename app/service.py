@@ -6,7 +6,6 @@ from pydantic import BaseModel
 import joblib
 import pandas as pd
 from config.paths import (
-    CLUSTER_PROFILE,
     SEGMENTATION_MODEL_PKL,
     CHURN_MODEL_PKL,
     EXPERIMENT_CONFIG_PATH,
@@ -82,31 +81,23 @@ def reload_production_models():
     logger.info("Production models reloaded successfully. Churn model version: %s", CHURN_MODEL_VERSION)
 
 
-try:
-    profile_df = pd.read_csv(CLUSTER_PROFILE)
-    cluster_labels = dict(
-        zip(
-            profile_df["cluster"],
-            profile_df["segment"]
-        )
-    )
-except Exception as e:
-    logger.warning("Cluster profile file missing: %s. Using default cluster labels mapping.", e)
-    cluster_labels = {
-        0: "Inactive Customers",
-        1: "Medium Customers",
-        2: "Frequent Buyers",
-        3: "Occasional High Value Buyers"
-    }
+DEFAULT_CLUSTER_LABELS = {
+    0: "Frequent Buyers",
+    1: "Medium Customers",
+    2: "Inactive Customers",
+    3: "Occasional High Value Buyers",
+}
 
 
 def predict_cluster(features: dict):
-
     df = pd.DataFrame([features])
-
     cluster = int(prod_pipeline.predict(df)[0])
+
+    cluster_labels = getattr(prod_pipeline, "cluster_labels_", None)
+    if not isinstance(cluster_labels, dict):
+        cluster_labels = DEFAULT_CLUSTER_LABELS
+
     label = cluster_labels.get(cluster, "Unknown")
-    
     return cluster, label
 
 
