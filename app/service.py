@@ -26,7 +26,6 @@ def load_model_from_gcs(model_name: str, force_download: bool = False):
     project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
     bucket_name = os.getenv("GCS_BUCKET", "anna-ml-pipeline-bucket")
     local_path = f"/tmp/{model_name}"
-    version_str = "gcs_v1"
 
     try:
         storage_client = storage.Client(project=project_id)
