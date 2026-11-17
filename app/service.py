@@ -21,7 +21,7 @@ RFM_FEATURE_VERSION = os.getenv("RFM_FEATURE_VERSION", config.clustering.feature
 CHURN_FEATURE_VERSION = os.getenv("CHURN_FEATURE_VERSION", config.churn.feature_version)
 CHURN_DECISION_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", config.churn.classification_threshold))
 
-def load_model_from_gcs(model_name: str, force_download: bool = False):
+def _load_model_from_gcs(model_name: str, force_download: bool = False):
     from google.cloud import storage
 
     project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
@@ -61,8 +61,8 @@ def _load_all_models(force_download=False):
     try:
         if os.getenv("USE_BIGQUERY", "false").lower() == "true":
             logger.info("Cloud mode active: loading models dynamically from GCS")
-            seg_pipeline, seg_version = load_model_from_gcs("customer_segmentation_model.pkl", force_download)
-            churn_pipeline, churn_version = load_model_from_gcs("customer_churn_model.pkl", force_download)
+            seg_pipeline, seg_version = _load_model_from_gcs("customer_segmentation_model.pkl", force_download)
+            churn_pipeline, churn_version = _load_model_from_gcs("customer_churn_model.pkl", force_download)
         else:
             # Local mode: load directly from local artifacts with dynamic file timestamp version
             logger.info("Local mode active: loading models from local filesystem (%s, %s)", SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL)
