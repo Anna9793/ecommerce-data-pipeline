@@ -1,5 +1,6 @@
 import os
 import logging
+from datetime import datetime
 from typing import Optional, Union, Any
 from pydantic import BaseModel
 import joblib
@@ -47,20 +48,29 @@ def load_model_from_gcs(model_name: str, force_download: bool = False):
     model = joblib.load(local_path)
     return model, version_str
 
+def _get_local_model_version(path) -> str:
+    """Computes a dynamic local model version based on file modification timestamp."""
+    try:
+        mtime = datetime.fromtimestamp(os.path.getmtime(path)).strftime("%Y%m%d")
+        return f"local_{mtime}"
+    except Exception:
+        return "local_v1"
+
+
 def _load_all_models(force_download=False):
     try:
         if os.getenv("USE_BIGQUERY", "false").lower() == "true":
             logger.info("Cloud mode active: loading models dynamically from GCS")
-            p_pipeline, p_version = load_model_from_gcs("customer_segmentation_model.pkl", force_download)
-            p_churn_pipeline, p_churn_version = load_model_from_gcs("customer_churn_model.pkl", force_download)
+            seg_pipeline, seg_version = load_model_from_gcs("customer_segmentation_model.pkl", force_download)
+            churn_pipeline, churn_version = load_model_from_gcs("customer_churn_model.pkl", force_download)
         else:
-            # Local mode: load directly from local artifacts
+            # Local mode: load directly from local artifacts with dynamic file timestamp version
             logger.info("Local mode active: loading models from local filesystem (%s, %s)", SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL)
-            p_pipeline = joblib.load(SEGMENTATION_MODEL_PKL)
-            p_churn_pipeline = joblib.load(CHURN_MODEL_PKL)
-            p_version = "local_v1"
-            p_churn_version = "local_v1"
-        return p_pipeline, p_churn_pipeline, p_version, p_churn_version
+            seg_pipeline = joblib.load(SEGMENTATION_MODEL_PKL)
+            churn_pipeline = joblib.load(CHURN_MODEL_PKL)
+            seg_version = _get_local_model_version(SEGMENTATION_MODEL_PKL)
+            churn_version = _get_local_model_version(CHURN_MODEL_PKL)
+        return seg_pipeline, churn_pipeline, seg_version, churn_version
     except Exception as e:
         logger.warning("Model loading failed: %s. Using mock fallback models.", e)
         class MockModel:
