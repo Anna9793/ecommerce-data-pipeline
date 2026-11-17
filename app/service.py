@@ -4,12 +4,29 @@ from typing import Optional, Union, Any
 from pydantic import BaseModel
 import joblib
 import pandas as pd
-from config.paths import CLUSTER_PROFILE, SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL
+from config.paths import (
+    CLUSTER_PROFILE,
+    SEGMENTATION_MODEL_PKL,
+    CHURN_MODEL_PKL,
+    EXPERIMENT_CONFIG_PATH,
+)
+from config.loader import load_config
 
 logger = logging.getLogger(__name__)
 
-RFM_FEATURE_VERSION = os.getenv("RFM_FEATURE_VERSION", "rfm_v1")
-CHURN_FEATURE_VERSION = os.getenv("CHURN_FEATURE_VERSION", "churn_v2")
+try:
+    _exp_config = load_config(EXPERIMENT_CONFIG_PATH)
+    _default_rfm_ver = _exp_config.clustering.feature_version
+    _default_churn_ver = _exp_config.churn.feature_version
+    _default_threshold = float(_exp_config.churn.classification_threshold)
+except Exception:
+    _default_rfm_ver = "rfm_v1"
+    _default_churn_ver = "churn_v2"
+    _default_threshold = 0.40
+
+RFM_FEATURE_VERSION = os.getenv("RFM_FEATURE_VERSION", _default_rfm_ver)
+CHURN_FEATURE_VERSION = os.getenv("CHURN_FEATURE_VERSION", _default_churn_ver)
+DEFAULT_CHURN_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", str(_default_threshold)))
 
 def load_model_from_gcs(model_name: str, force_download: bool = False):
     from google.cloud import storage
@@ -102,14 +119,6 @@ def predict_cluster(features: dict):
     
     return cluster, label
 
-try:
-    from config.paths import EXPERIMENT_CONFIG_PATH
-    from config.loader import load_config
-    _default_threshold = float(load_config(EXPERIMENT_CONFIG_PATH).churn.classification_threshold)
-except Exception:
-    _default_threshold = 0.40
-
-DEFAULT_CHURN_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", str(_default_threshold)))
 
 def predict_churn_service(features: Any, threshold: Optional[float] = None):
     applied_threshold = threshold if threshold is not None else DEFAULT_CHURN_THRESHOLD
