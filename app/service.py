@@ -58,29 +58,18 @@ def _get_local_model_version(path) -> str:
 
 
 def _load_all_models(force_download=False):
-    try:
-        if os.getenv("USE_BIGQUERY", "false").lower() == "true":
-            logger.info("Cloud mode active: loading models dynamically from GCS")
-            seg_pipeline, seg_version = _load_model_from_gcs("customer_segmentation_model.pkl", force_download)
-            churn_pipeline, churn_version = _load_model_from_gcs("customer_churn_model.pkl", force_download)
-        else:
-            # Local mode: load directly from local artifacts with dynamic file timestamp version
-            logger.info("Local mode active: loading models from local filesystem (%s, %s)", SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL)
-            seg_pipeline = joblib.load(SEGMENTATION_MODEL_PKL)
-            churn_pipeline = joblib.load(CHURN_MODEL_PKL)
-            seg_version = _get_local_model_version(SEGMENTATION_MODEL_PKL)
-            churn_version = _get_local_model_version(CHURN_MODEL_PKL)
-        return seg_pipeline, churn_pipeline, seg_version, churn_version
-    except Exception as e:
-        logger.warning("Model loading failed: %s. Using mock fallback models.", e)
-        class MockModel:
-            def predict(self, df):
-                return [1]
-            def predict_proba(self, df):
-                import numpy as np
-                return np.array([[0.8, 0.2]])
-                
-        return MockModel(), MockModel(), "mock_v1", "mock_v1"
+    if os.getenv("USE_BIGQUERY", "false").lower() == "true":
+        logger.info("Cloud mode active: loading models dynamically from GCS")
+        seg_pipeline, seg_version = _load_model_from_gcs("customer_segmentation_model.pkl", force_download)
+        churn_pipeline, churn_version = _load_model_from_gcs("customer_churn_model.pkl", force_download)
+    else:
+        # Local mode: load directly from local artifacts with dynamic file timestamp version
+        logger.info("Local mode active: loading models from local filesystem (%s, %s)", SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL)
+        seg_pipeline = joblib.load(SEGMENTATION_MODEL_PKL)
+        churn_pipeline = joblib.load(CHURN_MODEL_PKL)
+        seg_version = _get_local_model_version(SEGMENTATION_MODEL_PKL)
+        churn_version = _get_local_model_version(CHURN_MODEL_PKL)
+    return seg_pipeline, churn_pipeline, seg_version, churn_version
 
 # Initial load during startup
 prod_pipeline, prod_churn_pipeline, MODEL_VERSION, CHURN_MODEL_VERSION = _load_all_models(force_download=False)
