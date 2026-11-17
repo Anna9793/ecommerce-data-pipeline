@@ -18,7 +18,7 @@ config = load_config(EXPERIMENT_CONFIG_PATH)
 
 RFM_FEATURE_VERSION = os.getenv("RFM_FEATURE_VERSION", config.clustering.feature_version)
 CHURN_FEATURE_VERSION = os.getenv("CHURN_FEATURE_VERSION", config.churn.feature_version)
-DEFAULT_CHURN_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", config.churn.classification_threshold))
+CHURN_DECISION_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", config.churn.classification_threshold))
 
 def load_model_from_gcs(model_name: str, force_download: bool = False):
     from google.cloud import storage
@@ -113,7 +113,7 @@ def predict_cluster(features: dict):
 
 
 def predict_churn_service(features: Any, threshold: Optional[float] = None):
-    applied_threshold = threshold if threshold is not None else DEFAULT_CHURN_THRESHOLD
+    applied_threshold = threshold if threshold is not None else CHURN_DECISION_THRESHOLD
     features_dict = features.model_dump() if isinstance(features, BaseModel) else features
     df = pd.DataFrame([features_dict])
 
