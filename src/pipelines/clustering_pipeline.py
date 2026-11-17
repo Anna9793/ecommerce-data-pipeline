@@ -58,6 +58,13 @@ def run_clustering_pipeline(
         for fig_name, fig in figures.items():
             tracker.log_figure(fig, fig_name)
 
+        # Enforce model inference contract before persistence and registration
+        if not hasattr(model, "cluster_labels_") or not isinstance(model.cluster_labels_, dict):
+            raise ValueError(
+                "Model Contract Violation: El modelo de segmentación no contiene "
+                "el atributo obligatorio 'cluster_labels_'. Registro abortado."
+            )
+
         tracker.save_and_register_model(
             model=model,
             model_name="customer_segmentation_model",

@@ -206,6 +206,7 @@ def test_run_clustering_pipeline_orchestration(
 
     mock_model = MagicMock()
     mock_model.predict.return_value = np.zeros(len(sample_rfm_df), dtype=int)
+    mock_model.cluster_labels_ = {0: "Medium Customers"}
     mock_profile = pd.DataFrame({"segment": ["Medium Customers"]}, index=[0])
     mock_run_clustering.return_value = (mock_model, 4, {"silhouette_score": 0.45}, mock_profile, {})
 
@@ -220,6 +221,33 @@ def test_run_clustering_pipeline_orchestration(
     assert mock_run_clustering.called
     assert mock_tracker.save_and_register_model.called
     assert mock_save_clustering_outputs.called
+
+
+@patch("src.pipelines.clustering_pipeline.save_clustering_outputs")
+@patch("src.pipelines.clustering_pipeline.VertexExperimentTracker")
+@patch("src.pipelines.clustering_pipeline.run_clustering")
+@patch("src.pipelines.clustering_pipeline.load_gold")
+def test_run_clustering_pipeline_rejects_missing_contract(
+    mock_load_gold,
+    mock_run_clustering,
+    mock_tracker_cls,
+    mock_save_clustering_outputs,
+    sample_rfm_df
+):
+    import pytest
+    from unittest.mock import MagicMock
+    from config.schema import ClusteringConfig
+    from src.pipelines.clustering_pipeline import run_clustering_pipeline
+
+    mock_load_gold.return_value = sample_rfm_df
+    # Model without cluster_labels_
+    mock_model = MagicMock(spec=["predict"])
+    mock_profile = pd.DataFrame({"segment": ["Medium Customers"]}, index=[0])
+    mock_run_clustering.return_value = (mock_model, 4, {"silhouette_score": 0.45}, mock_profile, {})
+
+    cfg = ClusteringConfig()
+    with pytest.raises(ValueError, match="Model Contract Violation"):
+        run_clustering_pipeline(cfg)
 
 
 def test_run_clustering_direct(sample_rfm_df):

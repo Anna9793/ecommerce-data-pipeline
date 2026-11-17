@@ -53,3 +53,16 @@ def test_predict_cluster_uses_pipeline_cluster_labels(mock_pipeline):
 
     assert cluster == 1
     assert label == "VIP Champions"
+
+
+@patch("joblib.load")
+def test_load_all_models_enforces_cluster_labels_contract(mock_joblib_load):
+    import pytest
+    from unittest.mock import MagicMock
+    from app.service import _load_all_models
+
+    mock_bad_model = MagicMock(spec=["predict"])
+    mock_joblib_load.return_value = mock_bad_model
+
+    with pytest.raises(ValueError, match="Model Contract Violation"):
+        _load_all_models()

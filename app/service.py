@@ -68,6 +68,14 @@ def _load_all_models(force_download=False):
         churn_pipeline = joblib.load(CHURN_MODEL_PKL)
         seg_version = _get_local_model_version(SEGMENTATION_MODEL_PKL)
         churn_version = _get_local_model_version(CHURN_MODEL_PKL)
+
+    # Enforce strict model contract
+    if not hasattr(seg_pipeline, "cluster_labels_") or not isinstance(seg_pipeline.cluster_labels_, dict):
+        raise ValueError(
+            "Model Contract Violation: El modelo de segmentación cargado no contiene "
+            "el atributo obligatorio 'cluster_labels_'."
+        )
+
     return seg_pipeline, churn_pipeline, seg_version, churn_version
 
 # Initial load during startup
@@ -81,21 +89,13 @@ def reload_production_models():
     logger.info("Production models reloaded successfully. Churn model version: %s", CHURN_MODEL_VERSION)
 
 
-DEFAULT_CLUSTER_LABELS = {
-    0: "Frequent Buyers",
-    1: "Medium Customers",
-    2: "Inactive Customers",
-    3: "Occasional High Value Buyers",
-}
-
-
 def predict_cluster(features: dict):
     df = pd.DataFrame([features])
     cluster = int(prod_pipeline.predict(df)[0])
 
-    cluster_labels = getattr(prod_pipeline, "cluster_labels_", None)
+    cluster_labels = getattr(prod_pipeline, "cluster_labels_", {})
     if not isinstance(cluster_labels, dict):
-        cluster_labels = DEFAULT_CLUSTER_LABELS
+        cluster_labels = {}
 
     label = cluster_labels.get(cluster, "Unknown")
     return cluster, label
