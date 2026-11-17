@@ -25,6 +25,7 @@ def test_predict_cluster_returns_unknown_for_unmapped_cluster(
 ):
 
     mock_pipeline.predict.return_value = [999]
+    mock_pipeline.cluster_labels_ = {}
 
     features = {
         "recency": 30,

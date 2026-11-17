@@ -92,12 +92,7 @@ def reload_production_models():
 def predict_cluster(features: dict):
     df = pd.DataFrame([features])
     cluster = int(prod_pipeline.predict(df)[0])
-
-    cluster_labels = getattr(prod_pipeline, "cluster_labels_", {})
-    if not isinstance(cluster_labels, dict):
-        cluster_labels = {}
-
-    label = cluster_labels.get(cluster, "Unknown")
+    label = prod_pipeline.cluster_labels_.get(cluster, "Unknown")
     return cluster, label
 
 
