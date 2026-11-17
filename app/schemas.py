@@ -12,6 +12,14 @@ class PredictionResponse(BaseModel):
     cluster: int = Field(description="Assigned RFM cluster index")
     label: str = Field(description="Human-readable RFM segment label")
 
+class ChurnFeatures(BaseModel):
+    recency: float = Field(description="Days since last customer transaction")
+    frequency: float = Field(description="Total number of purchases")
+    avg_order_value: float = Field(description="Average order monetary value")
+    spending_velocity: float = Field(description="Recent vs historical spending ratio")
+    cancellation_rate: float = Field(description="Ratio of cancelled orders")
+    preferred_shopping_hour: int = Field(description="Peak shopping hour of day (0-23)")
+
 class ChurnPredictionRequest(BaseModel):
     customer_id: Optional[str] = None
     recency: Optional[float] = None

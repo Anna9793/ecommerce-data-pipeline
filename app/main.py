@@ -6,9 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from pydantic import ValidationError
 from app.schemas import (
     PredictionRequest,
     PredictionResponse,
+    ChurnFeatures,
     ChurnPredictionRequest,
     ChurnPredictionResponse,
     ProductAdvisorRequest,
@@ -157,51 +159,34 @@ def predict(request: PredictionRequest):
 def predict_churn_endpoint(request: ChurnPredictionRequest):
     customer_id = request.customer_id
     
-    # 1. Resolve features: Direct inputs vs Online Feature Store lookup
-    feature_fields = [
-        request.recency, request.frequency, request.avg_order_value, 
-        request.spending_velocity, request.cancellation_rate, request.preferred_shopping_hour
-    ]
-    if all(f is not None for f in feature_fields):
-        features = {
-            "recency": request.recency,
-            "frequency": request.frequency,
-            "avg_order_value": request.avg_order_value,
-            "spending_velocity": request.spending_velocity,
-            "cancellation_rate": request.cancellation_rate,
-            "preferred_shopping_hour": request.preferred_shopping_hour
-        }
-    elif customer_id:
+    # 1. Resolve raw data: Online Feature Store lookup vs Direct inputs
+    if customer_id:
         from app.db_postgres import get_online_features
-        features = get_online_features(customer_id)
-        if not features:
+        raw_data = get_online_features(customer_id)
+        if not raw_data:
             raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found in the Feature Store.")
-        required_features = [
-            "recency", "frequency", "avg_order_value",
-            "spending_velocity", "cancellation_rate", "preferred_shopping_hour"
-        ]
-        missing = [f for f in required_features if f not in features or features[f] is None]
-        if missing:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Incomplete feature set in Feature Store for customer {customer_id}. Missing: {missing}"
-            )
     else:
-        raise HTTPException(status_code=400, detail="Missing required features and no customer_id provided.")
+        raw_data = request.model_dump(exclude={"customer_id", "threshold"}, exclude_none=True)
 
+    # 2. Strict Pydantic validation: ensures all 6 features exist with correct types
+    try:
+        features = ChurnFeatures(**raw_data)
+    except ValidationError as err:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Incomplete feature set in Feature Store or payload: {err.errors()}"
+        )
+
+    # 3. Model inference
     is_churn, churn_probability, applied_threshold = predict_churn_service(
         features, threshold=request.threshold
     )
 
+    # 4. Audit persistence
     record = {
         "request_id": str(uuid.uuid4()),
         "customer_id": customer_id,
-        "recency": features["recency"],
-        "frequency": features["frequency"],
-        "avg_order_value": features["avg_order_value"],
-        "spending_velocity": features["spending_velocity"],
-        "cancellation_rate": features["cancellation_rate"],
-        "preferred_shopping_hour": features["preferred_shopping_hour"],
+        **features.model_dump(),
         "churn_probability": churn_probability,
         "is_churn": is_churn,
         "model_version": str(CHURN_MODEL_VERSION),

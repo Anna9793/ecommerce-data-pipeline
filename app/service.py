@@ -1,6 +1,7 @@
 import os
 import logging
-from typing import Optional
+from typing import Optional, Union, Any
+from pydantic import BaseModel
 import joblib
 import pandas as pd
 from config.paths import CLUSTER_PROFILE, SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL
@@ -110,9 +111,10 @@ except Exception:
 
 DEFAULT_CHURN_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", str(_default_threshold)))
 
-def predict_churn_service(features: dict, threshold: Optional[float] = None):
+def predict_churn_service(features: Any, threshold: Optional[float] = None):
     applied_threshold = threshold if threshold is not None else DEFAULT_CHURN_THRESHOLD
-    df = pd.DataFrame([features])
+    features_dict = features.model_dump() if isinstance(features, BaseModel) else features
+    df = pd.DataFrame([features_dict])
 
     churn_probability = float(prod_churn_pipeline.predict_proba(df)[0][1])
     is_churn = int(churn_probability >= applied_threshold)
