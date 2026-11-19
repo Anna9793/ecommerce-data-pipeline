@@ -58,6 +58,55 @@ def test_predict_reject_invalid_input():
 
     assert "detail" in response.json()
 
+
+def test_predict_missing_features_rejects_with_422():
+    response = client.post(
+        "/predict",
+        json={"recency": 10.0}
+    )
+    assert response.status_code == 422
+    assert "Incomplete RFM feature set" in response.json()["detail"]
+
+
+@patch("app.main.insert_prediction")
+@patch("app.main.predict_cluster")
+@patch("app.db_postgres.get_online_features")
+def test_predict_by_customer_id_via_feature_store_rfm(mock_get_features, mock_predict, mock_insert):
+    mock_get_features.return_value = {
+        "customer_id": "C_101",
+        "recency": 15.0,
+        "frequency": 8.0,
+        "avg_order_value": 250.0
+    }
+    mock_predict.return_value = (0, "Frequent Buyers")
+
+    response = client.post(
+        "/predict",
+        json={"customer_id": "C_101"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["customer_id"] == "C_101"
+    assert data["cluster"] == 0
+    assert data["label"] == "Frequent Buyers"
+    mock_get_features.assert_called_once_with("C_101")
+    assert mock_insert.called
+
+
+@patch("app.db_postgres.get_online_features")
+def test_predict_by_customer_id_incomplete_rfm_features(mock_get_features):
+    mock_get_features.return_value = {
+        "customer_id": "C_102",
+        "recency": 15.0
+        # Missing frequency and avg_order_value
+    }
+    response = client.post(
+        "/predict",
+        json={"customer_id": "C_102"}
+    )
+    assert response.status_code == 422
+    assert "Incomplete RFM feature set" in response.json()["detail"]
+
 @patch("app.service.reload_production_models")
 def test_reload_models_endpoint(mock_reload):
     response = client.post("/reload-models")

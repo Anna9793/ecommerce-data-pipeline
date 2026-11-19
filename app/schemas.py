@@ -1,6 +1,11 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
+class RFMFeatures(BaseModel):
+    recency: float = Field(description="Days since last customer transaction")
+    frequency: float = Field(description="Total number of purchases")
+    avg_order_value: float = Field(description="Average order monetary value")
+
 class PredictionRequest(BaseModel):
     customer_id: Optional[str] = None
     recency: Optional[float] = None

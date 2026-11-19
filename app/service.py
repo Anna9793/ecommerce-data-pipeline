@@ -89,8 +89,9 @@ def reload_production_models():
     logger.info("Production models reloaded successfully. Churn model version: %s", CHURN_MODEL_VERSION)
 
 
-def predict_cluster(features: dict):
-    df = pd.DataFrame([features])
+def predict_cluster(features: Any):
+    features_dict = features.model_dump() if isinstance(features, BaseModel) else features
+    df = pd.DataFrame([features_dict])
     cluster = int(prod_pipeline.predict(df)[0])
     label = prod_pipeline.cluster_labels_.get(cluster, "Unknown")
     return cluster, label

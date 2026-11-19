@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from app.schemas import (
     PredictionRequest,
     PredictionResponse,
+    RFMFeatures,
     ChurnFeatures,
     ChurnPredictionRequest,
     ChurnPredictionResponse,
@@ -117,29 +118,32 @@ def health_check():
 def predict(request: PredictionRequest):
     customer_id = request.customer_id
     
-    # 1. Resolve features: Direct inputs vs Online Feature Store lookup
-    if request.recency is not None and request.frequency is not None and request.avg_order_value is not None:
-        features = {
-            "recency": request.recency,
-            "frequency": request.frequency,
-            "avg_order_value": request.avg_order_value
-        }
-    elif customer_id:
+    # 1. Resolve raw data: Online Feature Store lookup vs Direct inputs
+    if customer_id:
         from app.db_postgres import get_online_features
-        features = get_online_features(customer_id)
-        if not features:
+        raw_data = get_online_features(customer_id)
+        if not raw_data:
             raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found in the Feature Store.")
     else:
-        raise HTTPException(status_code=400, detail="Missing required features and no customer_id provided.")
+        raw_data = request.model_dump(exclude={"customer_id"})
 
+    # 2. Strict Pydantic validation: ensures all 3 RFM features exist with correct types
+    try:
+        features = RFMFeatures(**raw_data)
+    except ValidationError as err:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Incomplete RFM feature set in Feature Store or payload: {err.errors()}"
+        )
+
+    # 3. Model inference
     cluster, label = predict_cluster(features)
 
+    # 4. Audit persistence
     record = {
         "request_id": str(uuid.uuid4()),
         "customer_id": customer_id,
-        "recency": features["recency"],
-        "frequency": features["frequency"],
-        "avg_order_value": features["avg_order_value"],
+        **features.model_dump(),
         "cluster": cluster,
         "label": label,
         "model_version": str(MODEL_VERSION),
@@ -166,7 +170,7 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
         if not raw_data:
             raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found in the Feature Store.")
     else:
-        raw_data = request.model_dump(exclude={"customer_id", "threshold"}, exclude_none=True)
+        raw_data = request.model_dump(exclude={"customer_id", "threshold"})
 
     # 2. Strict Pydantic validation: ensures all 6 features exist with correct types
     try:
