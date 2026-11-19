@@ -42,8 +42,8 @@ def _get_bigquery_client():
     return _bigquery_client
 
 def close_pool():
-    """Gracefully closes all connections in the ThreadedConnectionPool (12-Factor App Factor IX: Disposability)."""
-    global _connection_pool, _bigquery_client
+    """Gracefully closes all connections in the PostgreSQL ThreadedConnectionPool (12-Factor App Factor IX: Disposability)."""
+    global _connection_pool
     if _connection_pool is not None:
         try:
             _connection_pool.closeall()
@@ -52,7 +52,6 @@ def close_pool():
             logger.warning("Error closing ThreadedConnectionPool: %s", e)
         finally:
             _connection_pool = None
-    _bigquery_client = None
 
 def get_connection():
     """Fetches an active, pre-established connection from the thread-safe connection pool."""
