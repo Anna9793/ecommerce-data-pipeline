@@ -26,7 +26,7 @@ from app.service import (
     CHURN_FEATURE_VERSION,
 )
 import sys
-from app.db_postgres import insert_prediction, insert_churn_prediction, close_pool
+from app.db_postgres import get_pool, insert_prediction, insert_churn_prediction, close_pool
 
 # Configure application-wide logging
 logging.basicConfig(
@@ -42,9 +42,14 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """
     FastAPI Lifespan Context Manager implementing 12-Factor App Factor IX (Disposability).
-    Handles graceful resource initialization and clean connection teardown upon SIGTERM/shutdown.
+    Handles pre-warming connection pools on startup and clean connection teardown upon SIGTERM/shutdown.
     """
     logger.info("Starting up E-Commerce ML & AI Platform (12-Factor App Factor IX: Fast Startup)...")
+    db_pool = get_pool()
+    if db_pool:
+        logger.info("PostgreSQL connection pool pre-warmed and ready.")
+    else:
+        logger.warning("PostgreSQL connection pool unavailable; operating in BigQuery/Firestore or direct fallback mode.")
     yield
     logger.info("Shutting down gracefully: closing PostgreSQL connection pools...")
     close_pool()
