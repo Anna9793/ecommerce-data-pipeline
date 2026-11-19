@@ -12,50 +12,18 @@ logger = logging.getLogger(__name__)
 _connection_pool = None
 _bigquery_client = None
 
-def _get_postgres_conn_params() -> dict:
-    """
-    Validates and retrieves PostgreSQL connection parameters according to
-    12-Factor App config (Factor III) and Fail-Fast principles.
-    """
-    dbname = os.getenv("POSTGRES_DB")
-    user = os.getenv("POSTGRES_USER")
-    password = os.getenv("POSTGRES_PASSWORD")
-
-    missing = []
-    if not dbname:
-        missing.append("POSTGRES_DB")
-    if not user:
-        missing.append("POSTGRES_USER")
-    if not password:
-        missing.append("POSTGRES_PASSWORD")
-
-    if missing:
-        raise ValueError(
-            f"Missing required PostgreSQL environment variable(s): {', '.join(missing)}"
-        )
-
-    return {
-        "dbname": dbname,
-        "user": user,
-        "password": password,
-        "host": os.getenv("POSTGRES_HOST", "localhost"),
-        "port": os.getenv("POSTGRES_PORT", "5432"),
-    }
-
 def get_pool():
     global _connection_pool
     if _connection_pool is None:
         try:
-            params = _get_postgres_conn_params()
-        except ValueError as e:
-            logger.warning("Could not initialize ThreadedConnectionPool: %s", e)
-            return None
-
-        try:
             _connection_pool = pool.ThreadedConnectionPool(
                 minconn=1,
                 maxconn=20,
-                **params,
+                dbname=os.getenv("POSTGRES_DB", "postgres"),
+                user=os.getenv("POSTGRES_USER", "postgres"),
+                password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+                host=os.getenv("POSTGRES_HOST", "localhost"),
+                port=os.getenv("POSTGRES_PORT", "5432"),
             )
             logger.info("ThreadedConnectionPool initialized successfully (minconn=1, maxconn=20).")
         except Exception as e:
@@ -93,8 +61,13 @@ def get_connection():
             return pool_inst.getconn()
         except Exception as e:
             logger.warning("Failed to get connection from pool: %s. Falling back to direct connect.", e)
-    params = _get_postgres_conn_params()
-    return psycopg2.connect(**params)
+    return psycopg2.connect(
+        dbname=os.getenv("POSTGRES_DB", "postgres"),
+        user=os.getenv("POSTGRES_USER", "postgres"),
+        password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+        host=os.getenv("POSTGRES_HOST", "localhost"),
+        port=os.getenv("POSTGRES_PORT", "5432"),
+    )
 
 def release_connection(conn):
     """Releases an open connection back to the ThreadedConnectionPool for reuse."""
