@@ -12,15 +12,10 @@ logger = logging.getLogger(__name__)
 _connection_pool = None
 _bigquery_client = None
 
-def _get_database_url() -> str:
-    """Returns DATABASE_URL if defined, or constructs DSN from individual PostgreSQL variables with Docker fallbacks."""
-    return os.getenv("DATABASE_URL") or (
-        f"postgresql://{os.getenv('POSTGRES_USER', 'postgres')}:"
-        f"{os.getenv('POSTGRES_PASSWORD', 'postgres')}@"
-        f"{os.getenv('POSTGRES_HOST', 'localhost')}:"
-        f"{os.getenv('POSTGRES_PORT', '5432')}/"
-        f"{os.getenv('POSTGRES_DB', 'postgres')}"
-    )
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:postgres@localhost:5432/postgres",
+)
 
 def get_pool():
     global _connection_pool
@@ -29,7 +24,7 @@ def get_pool():
             _connection_pool = pool.ThreadedConnectionPool(
                 minconn=1,
                 maxconn=20,
-                dsn=_get_database_url(),
+                dsn=DATABASE_URL,
             )
             logger.info("ThreadedConnectionPool initialized successfully (minconn=1, maxconn=20).")
         except Exception as e:
@@ -67,7 +62,7 @@ def get_connection():
             return pool_inst.getconn()
         except Exception as e:
             logger.warning("Failed to get connection from pool: %s. Falling back to direct connect.", e)
-    return psycopg2.connect(_get_database_url())
+    return psycopg2.connect(DATABASE_URL)
 
 def release_connection(conn):
     """Releases an open connection back to the ThreadedConnectionPool for reuse."""
