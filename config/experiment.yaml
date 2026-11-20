@@ -9,7 +9,7 @@ clustering:
 
 churn:
   experiment_name: "customer_churn"
-  feature_version: "churn_v2"
+  feature_version: "churn_v1"
   cutoff_days: 90
   test_size: 0.2
   random_state: 42

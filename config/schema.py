@@ -13,7 +13,7 @@ class ClusteringConfig(BaseModel):
 
 class ChurnConfig(BaseModel):
     experiment_name: str = "customer_churn"
-    feature_version: str = "churn_v2"
+    feature_version: str = "churn_v1"
     cutoff_days: int = 90
     test_size: float = 0.2
     random_state: int = 42
