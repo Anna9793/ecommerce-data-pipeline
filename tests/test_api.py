@@ -24,7 +24,7 @@ def test_predict_endpoint_returns_prediction(
     
     mock_predict.return_value = (123, "Test Segment")
 
-    # Test new symmetrical endpoint /predict/clustering
+    # Test symmetrical endpoint /predict/clustering
     response = client.post(
         "/predict/clustering",
         json={
@@ -44,22 +44,10 @@ def test_predict_endpoint_returns_prediction(
 
     assert mock_insert.called
 
-    # Test legacy backward-compatibility endpoint /predict
-    response_legacy = client.post(
-        "/predict",
-        json={
-            "recency": 30,
-            "frequency": 40,
-            "avg_order_value": 100
-        }
-    )
-    assert response_legacy.status_code == 200
-    assert response_legacy.json()["cluster"] == 123
-
 def test_predict_reject_invalid_input():
 
     response = client.post(
-        "/predict",
+        "/predict/clustering",
         json={
             "recency":"banana",
             "frequency": 5,
@@ -74,11 +62,11 @@ def test_predict_reject_invalid_input():
 
 def test_predict_missing_features_rejects_with_422():
     response = client.post(
-        "/predict",
+        "/predict/clustering",
         json={"recency": 10.0}
     )
     assert response.status_code == 422
-    assert "Incomplete RFM feature set" in response.json()["detail"]
+    assert "Incomplete Cluster feature set" in response.json()["detail"]
 
 
 @patch("app.main.insert_prediction")
@@ -94,7 +82,7 @@ def test_predict_by_customer_id_via_feature_store_rfm(mock_get_features, mock_pr
     mock_predict.return_value = (0, "Frequent Buyers")
 
     response = client.post(
-        "/predict",
+        "/predict/clustering",
         json={"customer_id": "C_101"}
     )
     assert response.status_code == 200
@@ -114,11 +102,11 @@ def test_predict_by_customer_id_incomplete_rfm_features(mock_get_features):
         # Missing frequency and avg_order_value
     }
     response = client.post(
-        "/predict",
+        "/predict/clustering",
         json={"customer_id": "C_102"}
     )
     assert response.status_code == 422
-    assert "Incomplete RFM feature set" in response.json()["detail"]
+    assert "Incomplete Cluster feature set" in response.json()["detail"]
 
 @patch("app.service.reload_production_models")
 def test_reload_models_endpoint(mock_reload):

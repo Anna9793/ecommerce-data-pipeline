@@ -1,7 +1,7 @@
 import pandas as pd 
 from unittest.mock import patch
 
-from app.service import predict_clustering_service, predict_cluster
+from app.service import predict_clustering_service
 
 def test_predict_cluster_returns_cluster_and_label():
 
@@ -16,11 +16,6 @@ def test_predict_cluster_returns_cluster_and_label():
     assert isinstance(cluster, int)
     assert isinstance(label, str)
     assert len(label) > 0
-
-    # Verify backward compatibility alias
-    c_alias, l_alias = predict_cluster(features)
-    assert c_alias == cluster
-    assert l_alias == label
 
 @patch("app.service.prod_clustering_pipeline")
 def test_predict_cluster_returns_unknown_for_unmapped_cluster(

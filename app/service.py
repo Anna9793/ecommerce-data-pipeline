@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 
 config = load_config(EXPERIMENT_CONFIG_PATH)
 
-CLUSTERING_FEATURE_VERSION = os.getenv("CLUSTERING_FEATURE_VERSION", os.getenv("RFM_FEATURE_VERSION", config.clustering.feature_version))
-RFM_FEATURE_VERSION = CLUSTERING_FEATURE_VERSION
+CLUSTERING_FEATURE_VERSION = os.getenv("CLUSTERING_FEATURE_VERSION", config.clustering.feature_version)
 CHURN_FEATURE_VERSION = os.getenv("CHURN_FEATURE_VERSION", config.churn.feature_version)
 CHURN_DECISION_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", config.churn.classification_threshold))
 
@@ -82,17 +81,11 @@ def _load_all_models(force_download=False):
 # Initial load during startup
 prod_clustering_pipeline, prod_churn_pipeline, CLUSTERING_MODEL_VERSION, CHURN_MODEL_VERSION = _load_all_models(force_download=False)
 
-# Backward compatibility aliases
-prod_pipeline = prod_clustering_pipeline
-MODEL_VERSION = CLUSTERING_MODEL_VERSION
-
 def reload_production_models():
     """Forces reloading of models from GCS/local storage by bypassing caches."""
-    global prod_clustering_pipeline, prod_churn_pipeline, CLUSTERING_MODEL_VERSION, CHURN_MODEL_VERSION, prod_pipeline, MODEL_VERSION
+    global prod_clustering_pipeline, prod_churn_pipeline, CLUSTERING_MODEL_VERSION, CHURN_MODEL_VERSION
     logger.info("Request received to reload production models.")
     prod_clustering_pipeline, prod_churn_pipeline, CLUSTERING_MODEL_VERSION, CHURN_MODEL_VERSION = _load_all_models(force_download=True)
-    prod_pipeline = prod_clustering_pipeline
-    MODEL_VERSION = CLUSTERING_MODEL_VERSION
     logger.info("Production models reloaded successfully. Churn model version: %s", CHURN_MODEL_VERSION)
 
 
@@ -102,9 +95,6 @@ def predict_clustering_service(features: Any):
     cluster = int(prod_clustering_pipeline.predict(df)[0])
     label = prod_clustering_pipeline.cluster_labels_.get(cluster, "Unknown")
     return cluster, label
-
-# Backward compatibility alias
-predict_cluster = predict_clustering_service
 
 
 def predict_churn_service(features: Any, threshold: Optional[float] = None):

@@ -6,7 +6,7 @@ import plotly.express as px
 
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
-from app.service import MODEL_VERSION, CHURN_MODEL_VERSION
+from app.service import CLUSTERING_MODEL_VERSION, CHURN_MODEL_VERSION
 from app.repository import (
     get_total_predictions,
     get_average_response_time,
@@ -102,7 +102,7 @@ with tab1:
     with col2:
         st.metric(label="Average Response Time (ms)", value=round(avg_response, 2) if avg_response else 0)
     with col3:
-        st.metric(label="Segmentation Model version", value=MODEL_VERSION)
+        st.metric(label="Segmentation Model version", value=CLUSTERING_MODEL_VERSION)
 
     st.divider()
 
@@ -146,7 +146,7 @@ with tab1:
                     "frequency": frequency,
                     "avg_order_value": avg_order_value
                 }
-                response = requests.post(f"{API_URL}/predict", json=payload)
+                response = requests.post(f"{API_URL}/predict/clustering", json=payload)
                 if response.status_code == 200:
                     st.session_state["last_prediction"] = response.json()
                     st.cache_data.clear()

@@ -10,10 +10,7 @@ from pydantic import ValidationError
 from app.schemas import (
     ClusterPredictionRequest,
     ClusterPredictionResponse,
-    PredictionRequest,
-    PredictionResponse,
     ClusterFeatures,
-    RFMFeatures,
     ChurnFeatures,
     ChurnPredictionRequest,
     ChurnPredictionResponse,
@@ -22,13 +19,10 @@ from app.schemas import (
 )
 from app.service import (
     predict_clustering_service,
-    predict_cluster,
     CLUSTERING_MODEL_VERSION,
-    MODEL_VERSION,
     predict_churn_service,
     CHURN_MODEL_VERSION,
     CLUSTERING_FEATURE_VERSION,
-    RFM_FEATURE_VERSION,
     CHURN_FEATURE_VERSION,
 )
 import sys
@@ -126,7 +120,6 @@ def health_check():
 
 
 @app.post("/predict/clustering", response_model=ClusterPredictionResponse, tags=["Inference"])
-@app.post("/predict", response_model=ClusterPredictionResponse, include_in_schema=False)
 def predict_clustering_endpoint(request: ClusterPredictionRequest):
     customer_id = request.customer_id
     
@@ -139,13 +132,13 @@ def predict_clustering_endpoint(request: ClusterPredictionRequest):
     else:
         raw_data = request.model_dump(exclude={"customer_id"})
 
-    # 2. Strict Pydantic validation: ensures all 3 RFM features exist with correct types
+    # 2. Strict Pydantic validation: ensures all 3 Cluster features exist with correct types
     try:
         features = ClusterFeatures(**raw_data)
     except ValidationError as err:
         raise HTTPException(
             status_code=422,
-            detail=f"Incomplete RFM feature set in Feature Store or payload: {err.errors()}"
+            detail=f"Incomplete Cluster feature set in Feature Store or payload: {err.errors()}"
         )
 
     # 3. Model inference with latency profiling

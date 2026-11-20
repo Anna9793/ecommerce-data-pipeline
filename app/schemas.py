@@ -6,25 +6,16 @@ class ClusterFeatures(BaseModel):
     frequency: float = Field(description="Total number of purchases")
     avg_order_value: float = Field(description="Average order monetary value")
 
-# Backward compatibility alias
-RFMFeatures = ClusterFeatures
-
 class ClusterPredictionRequest(BaseModel):
     customer_id: Optional[str] = None
     recency: Optional[float] = None
     frequency: Optional[float] = None
     avg_order_value: Optional[float] = None
 
-# Backward compatibility alias
-PredictionRequest = ClusterPredictionRequest
-
 class ClusterPredictionResponse(BaseModel):
     customer_id: Optional[str] = Field(None, description="Customer identifier")
     cluster: int = Field(description="Assigned RFM cluster index")
     label: str = Field(description="Human-readable RFM segment label")
-
-# Backward compatibility alias
-PredictionResponse = ClusterPredictionResponse
 
 class ChurnFeatures(BaseModel):
     recency: float = Field(description="Days since last customer transaction")
