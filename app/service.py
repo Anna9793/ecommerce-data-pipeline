@@ -79,22 +79,31 @@ def _load_all_models(force_download=False):
     return seg_pipeline, churn_pipeline, seg_version, churn_version
 
 # Initial load during startup
-prod_pipeline, prod_churn_pipeline, MODEL_VERSION, CHURN_MODEL_VERSION = _load_all_models(force_download=False)
+prod_clustering_pipeline, prod_churn_pipeline, CLUSTERING_MODEL_VERSION, CHURN_MODEL_VERSION = _load_all_models(force_download=False)
+
+# Backward compatibility aliases
+prod_pipeline = prod_clustering_pipeline
+MODEL_VERSION = CLUSTERING_MODEL_VERSION
 
 def reload_production_models():
     """Forces reloading of models from GCS/local storage by bypassing caches."""
-    global prod_pipeline, prod_churn_pipeline, MODEL_VERSION, CHURN_MODEL_VERSION
+    global prod_clustering_pipeline, prod_churn_pipeline, CLUSTERING_MODEL_VERSION, CHURN_MODEL_VERSION, prod_pipeline, MODEL_VERSION
     logger.info("Request received to reload production models.")
-    prod_pipeline, prod_churn_pipeline, MODEL_VERSION, CHURN_MODEL_VERSION = _load_all_models(force_download=True)
+    prod_clustering_pipeline, prod_churn_pipeline, CLUSTERING_MODEL_VERSION, CHURN_MODEL_VERSION = _load_all_models(force_download=True)
+    prod_pipeline = prod_clustering_pipeline
+    MODEL_VERSION = CLUSTERING_MODEL_VERSION
     logger.info("Production models reloaded successfully. Churn model version: %s", CHURN_MODEL_VERSION)
 
 
-def predict_cluster(features: Any):
+def predict_clustering_service(features: Any):
     features_dict = features.model_dump() if isinstance(features, BaseModel) else features
     df = pd.DataFrame([features_dict])
-    cluster = int(prod_pipeline.predict(df)[0])
-    label = prod_pipeline.cluster_labels_.get(cluster, "Unknown")
+    cluster = int(prod_clustering_pipeline.predict(df)[0])
+    label = prod_clustering_pipeline.cluster_labels_.get(cluster, "Unknown")
     return cluster, label
+
+# Backward compatibility alias
+predict_cluster = predict_clustering_service
 
 
 def predict_churn_service(features: Any, threshold: Optional[float] = None):

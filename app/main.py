@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 
 from pydantic import ValidationError
 from app.schemas import (
+    ClusterPredictionRequest,
+    ClusterPredictionResponse,
     PredictionRequest,
     PredictionResponse,
     RFMFeatures,
@@ -18,7 +20,9 @@ from app.schemas import (
     ProductAdvisorResponse,
 )
 from app.service import (
+    predict_clustering_service,
     predict_cluster,
+    CLUSTERING_MODEL_VERSION,
     MODEL_VERSION,
     predict_churn_service,
     CHURN_MODEL_VERSION,
@@ -119,8 +123,9 @@ def health_check():
     return {"status": "healthy"}
 
 
-@app.post("/predict", response_model=PredictionResponse)
-def predict(request: PredictionRequest):
+@app.post("/predict/clustering", response_model=ClusterPredictionResponse, tags=["Inference"])
+@app.post("/predict", response_model=ClusterPredictionResponse, include_in_schema=False)
+def predict_clustering_endpoint(request: ClusterPredictionRequest):
     customer_id = request.customer_id
     
     # 1. Resolve raw data: Online Feature Store lookup vs Direct inputs
@@ -141,8 +146,10 @@ def predict(request: PredictionRequest):
             detail=f"Incomplete RFM feature set in Feature Store or payload: {err.errors()}"
         )
 
-    # 3. Model inference
-    cluster, label = predict_cluster(features)
+    # 3. Model inference with latency profiling
+    start_time = time.perf_counter()
+    cluster, label = predict_clustering_service(features)
+    duration_ms = (time.perf_counter() - start_time) * 1000.0
 
     # 4. Audit persistence
     record = {
@@ -151,20 +158,21 @@ def predict(request: PredictionRequest):
         **features.model_dump(),
         "cluster": cluster,
         "label": label,
-        "model_version": str(MODEL_VERSION),
-        "feature_version": str(RFM_FEATURE_VERSION)
+        "model_version": str(CLUSTERING_MODEL_VERSION),
+        "feature_version": str(RFM_FEATURE_VERSION),
+        "response_time_ms": round(duration_ms, 2)
     }
 
     insert_prediction(record)
 
-    return PredictionResponse(
+    return ClusterPredictionResponse(
         customer_id=customer_id or "unknown",
         cluster=cluster,
         label=label        
     )
 
 
-@app.post("/predict/churn", response_model=ChurnPredictionResponse)
+@app.post("/predict/churn", response_model=ChurnPredictionResponse, tags=["Inference"])
 def predict_churn_endpoint(request: ChurnPredictionRequest):
     customer_id = request.customer_id
     
@@ -186,10 +194,12 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
             detail=f"Incomplete feature set in Feature Store or payload: {err.errors()}"
         )
 
-    # 3. Model inference
+    # 3. Model inference with latency profiling
+    start_time = time.perf_counter()
     is_churn, churn_probability, applied_threshold = predict_churn_service(
         features, threshold=request.threshold
     )
+    duration_ms = (time.perf_counter() - start_time) * 1000.0
 
     # 4. Audit persistence
     record = {
@@ -199,7 +209,8 @@ def predict_churn_endpoint(request: ChurnPredictionRequest):
         "churn_probability": churn_probability,
         "is_churn": is_churn,
         "model_version": str(CHURN_MODEL_VERSION),
-        "feature_version": str(CHURN_FEATURE_VERSION)
+        "feature_version": str(CHURN_FEATURE_VERSION),
+        "response_time_ms": round(duration_ms, 2)
     }
 
     insert_churn_prediction(record)

@@ -17,15 +17,16 @@ def test_health_check():
     }
 
 @patch("app.main.insert_prediction")
-@patch("app.main.predict_cluster")
+@patch("app.main.predict_clustering_service")
 def test_predict_endpoint_returns_prediction(
     mock_predict,
     mock_insert):
     
     mock_predict.return_value = (123, "Test Segment")
 
+    # Test new symmetrical endpoint /predict/clustering
     response = client.post(
-        "/predict",
+        "/predict/clustering",
         json={
             "recency": 30,
             "frequency": 40,
@@ -42,6 +43,18 @@ def test_predict_endpoint_returns_prediction(
     assert data["label"] == "Test Segment"
 
     assert mock_insert.called
+
+    # Test legacy backward-compatibility endpoint /predict
+    response_legacy = client.post(
+        "/predict",
+        json={
+            "recency": 30,
+            "frequency": 40,
+            "avg_order_value": 100
+        }
+    )
+    assert response_legacy.status_code == 200
+    assert response_legacy.json()["cluster"] == 123
 
 def test_predict_reject_invalid_input():
 
@@ -69,7 +82,7 @@ def test_predict_missing_features_rejects_with_422():
 
 
 @patch("app.main.insert_prediction")
-@patch("app.main.predict_cluster")
+@patch("app.main.predict_clustering_service")
 @patch("app.db_postgres.get_online_features")
 def test_predict_by_customer_id_via_feature_store_rfm(mock_get_features, mock_predict, mock_insert):
     mock_get_features.return_value = {
