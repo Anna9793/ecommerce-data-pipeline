@@ -16,61 +16,40 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 def sync_product_vectors():
     """
-    Extracts product catalog items, enriches taxonomy using BigQuery ML (Gemini 1.5 Flash),
-    generates 768d vector embeddings, and upserts into PostgreSQL pgvector table.
+    Extracts product catalog items from Silver layer, enriches taxonomy using
+    BigQuery ML (Gemini 1.5 Flash), generates 768d vector embeddings, and
+    upserts into PostgreSQL pgvector table.
     """
-    logging.info("Starting Product Catalog Vector Sync via BigQuery ML...")
+    logging.info("Starting Product Catalog Vector Sync via BigQuery ML (Silver Layer)...")
     
-    # 1. Load unique products (BigQuery in production vs CSV in local/CI)
+    # 1. Load unique products from Silver Layer (BigQuery in production vs CSV in local/CI)
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
-        logging.info("Querying latest product transactions directly from BigQuery table...")
+        logging.info("Querying Silver clean transactions from BigQuery view 'clean_transactions'...")
         from google.cloud import bigquery
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
         client = bigquery.Client(project=project_id)
         query = f"""
-            SELECT 
-                StockCode AS stock_code, 
-                Description AS description, 
-                UnitPrice AS unit_price, 
-                InvoiceNo AS invoice_no
-            FROM `{project_id}.retail_data.transactions`
-            WHERE Description IS NOT NULL AND UnitPrice > 0
+            SELECT stock_code, description, unit_price, invoice_no
+            FROM `{project_id}.retail_data.clean_transactions`
         """
         df = client.query(query).to_dataframe()
     else:
-        logging.info("Loading product transactions from local CSV fallback...")
-        csv_path = "data/processed/clean_retail.csv"
-        if os.path.exists(csv_path):
-            df = pd.read_csv(csv_path)
-        else:
-            csv_path = "data/raw/online_retail.csv"
-            df = pd.read_csv(csv_path)
+        logging.info("Loading Silver product transactions from local CSV fallback...")
+        csv_path = "data/processed/silver_retail.csv"
+        if not os.path.exists(csv_path):
+            csv_path = "data/processed/clean_retail.csv"
+        df = pd.read_csv(csv_path)
         
-    df.columns = df.columns.str.lower()
-    
-    stock_col = "stock_code" if "stock_code" in df.columns else "stockcode"
-    unit_col = "unit_price" if "unit_price" in df.columns else "unitprice"
-    desc_col = "description"
-    inv_col = "invoice_no" if "invoice_no" in df.columns else "invoiceno"
-    
-    df = df.dropna(subset=[desc_col, stock_col, unit_col])
-    df = df[df[unit_col] > 0]
-    
-    catalog = df.groupby(desc_col).agg({
-        stock_col: "first",
-        unit_col: "median",
-        inv_col: "count"
+    # Silver layer guarantees clean schema and standardized columns
+    catalog = df.groupby("description").agg({
+        "stock_code": "first",
+        "unit_price": "median",
+        "invoice_no": "count"
     }).reset_index()
     
-    catalog.rename(columns={
-        desc_col: "description",
-        stock_col: "stock_code",
-        unit_col: "unit_price",
-        inv_col: "sales_count"
-    }, inplace=True)
-    
+    catalog.rename(columns={"invoice_no": "sales_count"}, inplace=True)
     catalog = catalog.sort_values(by="sales_count", ascending=False).head(500)
-    logging.info("Selected top %d unique products from retail catalog.", len(catalog))
+    logging.info("Selected top %d unique products from Silver catalog.", len(catalog))
     
     # 2. BigQuery ML Automated Taxonomy Enrichment (Gemini 1.5 Flash)
     bqml_service = BigQueryMLEnrichmentService()
