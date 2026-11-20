@@ -211,21 +211,17 @@ def init_pgvector_table():
             cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS product_catalog_vectors (
-                    stock_code VARCHAR(50) NOT NULL,
-                    tenant_id VARCHAR(50) NOT NULL DEFAULT 'giftshop_uk',
+                    stock_code VARCHAR(50) PRIMARY KEY,
                     description TEXT NOT NULL,
                     category VARCHAR(100),
                     unit_price DOUBLE PRECISION NOT NULL,
                     document_text TEXT NOT NULL,
                     embedding vector(768),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (stock_code, tenant_id)
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
                 CREATE INDEX IF NOT EXISTS product_vector_idx 
                 ON product_catalog_vectors 
                 USING hnsw (embedding vector_cosine_ops);
-                CREATE INDEX IF NOT EXISTS idx_product_catalog_tenant 
-                ON product_catalog_vectors (tenant_id);
             """)
         logger.info("pgvector schema and HNSW index successfully initialized.")
     except Exception as e:
