@@ -28,9 +28,13 @@ def sync_product_vectors():
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
         client = bigquery.Client(project=project_id)
         query = f"""
-            SELECT stock_code, description, unit_price, invoice_no
+            SELECT 
+                StockCode AS stock_code, 
+                Description AS description, 
+                UnitPrice AS unit_price, 
+                InvoiceNo AS invoice_no
             FROM `{project_id}.retail_data.transactions`
-            WHERE description IS NOT NULL AND unit_price > 0
+            WHERE Description IS NOT NULL AND UnitPrice > 0
         """
         df = client.query(query).to_dataframe()
     else:
