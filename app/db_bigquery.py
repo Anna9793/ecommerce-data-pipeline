@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Optional
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
@@ -59,13 +60,11 @@ def insert_churn_prediction_bigquery(record: dict) -> None:
         raise RuntimeError(f"Errors inserting churn rows to BigQuery: {errors}")
 
 
-def get_cloud_customer_features(customer_id: str) -> dict:
+def get_cloud_customer_features(customer_id: str) -> Optional[dict]:
     """
-    Fetches online customer features from Google Cloud:
-    1. Attempts low-latency lookup from Google Cloud Firestore (Feature Store).
-    2. Falls back to BigQuery view rfm_features if Firestore misses or fails.
+    Fetches online customer features from Google Cloud Firestore (Low-latency Online Feature Store).
+    Returns None if customer does not exist or lookup fails.
     """
-    # 1. Try Firestore first (Online Feature Store)
     try:
         from google.cloud import firestore
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
@@ -75,40 +74,8 @@ def get_cloud_customer_features(customer_id: str) -> dict:
         if doc.exists:
             logger.info("Successfully fetched features for customer %s from Firestore", customer_id)
             return doc.to_dict()
+        logger.info("Customer %s not found in Firestore Online Feature Store", customer_id)
     except Exception as e:
-        logger.warning("Failed to fetch features from Firestore: %s. Trying BigQuery fallback.", e)
-
-    # 2. Fallback to BigQuery view
-    try:
-        from google.cloud import bigquery
-        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        client = get_bigquery_client()
-        query = f"""
-            SELECT recency, frequency, avg_order_value, spending_velocity, cancellation_rate, preferred_shopping_hour 
-            FROM `{project_id}.retail_data.customer_features` 
-            WHERE CAST(customer_id AS STRING) = @customer_id 
-            LIMIT 1
-        """
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("customer_id", "STRING", str(customer_id))
-            ]
-        )
-        query_job = client.query(query, job_config=job_config)
-        results = list(query_job.result())
-        if results:
-            row = results[0]
-            logger.info("Successfully fetched features for customer %s from BigQuery view fallback", customer_id)
-            return {
-                "customer_id": customer_id,
-                "recency": float(row.recency),
-                "frequency": int(row.frequency),
-                "avg_order_value": float(row.avg_order_value),
-                "spending_velocity": float(row.spending_velocity) if "spending_velocity" in row else 1.0,
-                "cancellation_rate": float(row.cancellation_rate) if "cancellation_rate" in row else 0.0,
-                "preferred_shopping_hour": int(row.preferred_shopping_hour) if "preferred_shopping_hour" in row else 12
-            }
-    except Exception as e:
-        logger.error("Failed to fetch features from BigQuery fallback: %s", e)
+        logger.error("Failed to fetch features from Firestore: %s", e)
 
     return None
