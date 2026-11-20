@@ -30,8 +30,8 @@ def calculate_feature_drift(project_id: str = "anna-ml-pipeline") -> dict:
     # 2. Load Target (Live) Dataset
     if use_bigquery:
         try:
-            logging.info("Querying live RFM features from BigQuery view...")
-            query = f"SELECT * FROM `{project_id}.retail_data.rfm_features`"
+            logging.info("Querying live customer features from BigQuery view...")
+            query = f"SELECT * FROM `{project_id}.retail_data.customer_features`"
             from google.cloud import bigquery
             client = bigquery.Client(project=project_id)
             target_df = client.query(query).to_dataframe()

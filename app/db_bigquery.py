@@ -18,8 +18,8 @@ def get_bigquery_client():
 
 
 def insert_clustering_prediction_bigquery(record: dict) -> None:
-    """Logs clustering prediction to BigQuery predictions_log table."""
-    logger.info("Logging clustering prediction to BigQuery predictions_log table")
+    """Logs clustering prediction to BigQuery clustering_predictions_log table."""
+    logger.info("Logging clustering prediction to BigQuery clustering_predictions_log table")
     record = record.copy()
     record["created_at"] = datetime.now(timezone.utc).isoformat()
     
@@ -30,7 +30,7 @@ def insert_clustering_prediction_bigquery(record: dict) -> None:
 
     project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
     client = get_bigquery_client()
-    table_id = f"{project_id}.retail_data.predictions_log"
+    table_id = f"{project_id}.retail_data.clustering_predictions_log"
 
     errors = client.insert_rows_json(table_id, [record])
     if errors:
@@ -85,7 +85,7 @@ def get_cloud_customer_features(customer_id: str) -> dict:
         client = get_bigquery_client()
         query = f"""
             SELECT recency, frequency, avg_order_value, spending_velocity, cancellation_rate, preferred_shopping_hour 
-            FROM `{project_id}.retail_data.rfm_features` 
+            FROM `{project_id}.retail_data.customer_features` 
             WHERE CAST(customer_id AS STRING) = @customer_id 
             LIMIT 1
         """

@@ -130,9 +130,9 @@ def load_gold(path=GOLD_RFM, use_bigquery=None):
 
     if use_bigquery:
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        logging.info("Gold Layer [Cloud]: Loading customer features from BigQuery view: %s.retail_data.rfm_features", project_id)
+        logging.info("Gold Layer [Cloud]: Loading customer features from BigQuery view: %s.retail_data.customer_features", project_id)
         import pandas_gbq
-        query = f"SELECT * FROM `{project_id}.retail_data.rfm_features`"
+        query = f"SELECT * FROM `{project_id}.retail_data.customer_features`"
         df = pandas_gbq.read_gbq(query, project_id=project_id)
         if "customer_id" in df.columns:
             df["customer_id"] = df["customer_id"].astype(str)

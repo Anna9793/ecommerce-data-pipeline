@@ -1,5 +1,5 @@
 """
-Deploys BigQuery Medallion Views (Silver clean_transactions & Gold rfm_features).
+Deploys BigQuery Medallion Views (Silver clean_transactions & Gold customer_features).
 Reads sql/bigquery_medallion.sql and executes DDL statements on GCP.
 """
 import os
@@ -39,7 +39,7 @@ def deploy_medallion_views(project_id: str = None) -> None:
 
     logging.info("✅ Successfully deployed BigQuery Medallion views:")
     logging.info("   - Silver: %s.retail_data.clean_transactions", project_id)
-    logging.info("   - Gold:   %s.retail_data.rfm_features", project_id)
+    logging.info("   - Gold:   %s.retail_data.customer_features", project_id)
 
 
 if __name__ == "__main__":

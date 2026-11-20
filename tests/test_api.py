@@ -72,7 +72,7 @@ def test_predict_missing_features_rejects_with_422():
 @patch("app.main.insert_clustering_prediction")
 @patch("app.main.predict_clustering_service")
 @patch("app.db_postgres.get_online_features")
-def test_predict_by_customer_id_via_feature_store_rfm(mock_get_features, mock_predict, mock_insert):
+def test_predict_by_customer_id_via_feature_store_clustering(mock_get_features, mock_predict, mock_insert):
     mock_get_features.return_value = {
         "customer_id": "C_101",
         "recency": 15.0,
@@ -95,7 +95,7 @@ def test_predict_by_customer_id_via_feature_store_rfm(mock_get_features, mock_pr
 
 
 @patch("app.db_postgres.get_online_features")
-def test_predict_by_customer_id_incomplete_rfm_features(mock_get_features):
+def test_predict_by_customer_id_incomplete_cluster_features(mock_get_features):
     mock_get_features.return_value = {
         "customer_id": "C_102",
         "recency": 15.0

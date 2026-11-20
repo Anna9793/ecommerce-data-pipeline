@@ -43,7 +43,7 @@ WHERE CustomerID IS NOT NULL
 --   - SAFE_DIVIDE and COALESCE on all ratios and velocity metrics
 --   - frequency > 0 (filters customers with only cancellations)
 -- ------------------------------------------------------------------------------
-CREATE OR REPLACE VIEW `retail_data.rfm_features` AS
+CREATE OR REPLACE VIEW `retail_data.customer_features` AS
 WITH reference_date AS (
   SELECT MAX(invoice_date) AS max_date
   FROM `retail_data.clean_transactions`

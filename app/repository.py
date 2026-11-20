@@ -23,7 +23,7 @@ def query_bigquery_scalar(query_str):
 def get_total_clustering_predictions():
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        val = query_bigquery_scalar(f"SELECT COUNT(*) FROM `{project_id}.retail_data.predictions_log`")
+        val = query_bigquery_scalar(f"SELECT COUNT(*) FROM `{project_id}.retail_data.clustering_predictions_log`")
         return int(val) if val is not None else 0
 
     conn = get_connection()
@@ -42,7 +42,7 @@ def get_total_clustering_predictions():
 def get_average_response_time():
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        val = query_bigquery_scalar(f"SELECT AVG(response_time_ms) FROM `{project_id}.retail_data.predictions_log`")
+        val = query_bigquery_scalar(f"SELECT AVG(response_time_ms) FROM `{project_id}.retail_data.clustering_predictions_log`")
         return int(val) if val is not None else 0
 
     conn = get_connection()
@@ -65,7 +65,7 @@ def get_clustering_predictions_by_model_version():
         SELECT
             model_version,
             COUNT(*) as predictions
-        FROM `{project_id}.retail_data.predictions_log`
+        FROM `{project_id}.retail_data.clustering_predictions_log`
         GROUP BY model_version
         ORDER BY CAST(model_version AS INT64);
         """
@@ -91,7 +91,7 @@ def get_latest_clustering_predictions(limit=10):
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
         query = f"""
         SELECT *
-        FROM `{project_id}.retail_data.predictions_log`
+        FROM `{project_id}.retail_data.clustering_predictions_log`
         ORDER BY created_at DESC
         LIMIT {limit};
         """
@@ -117,7 +117,7 @@ def get_clustering_segment_distribution():
         SELECT
             label,
             COUNT(*) as count
-        FROM `{project_id}.retail_data.predictions_log`
+        FROM `{project_id}.retail_data.clustering_predictions_log`
         GROUP BY label
         ORDER BY count DESC;
         """
