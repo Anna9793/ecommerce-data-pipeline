@@ -1,9 +1,14 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import requests
 import time
 import pandas as pd
 import random
 
-URL = "http://127.0.0.1:8000/predict"
+URL = "http://127.0.0.1:8000/predict/clustering"
 
 test_inputs = [
     {"recency": 5, "frequency": 30, "avg_order_value": 400},
