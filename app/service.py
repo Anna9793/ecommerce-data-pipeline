@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 config = load_config(EXPERIMENT_CONFIG_PATH)
 
-RFM_FEATURE_VERSION = os.getenv("RFM_FEATURE_VERSION", config.clustering.feature_version)
+CLUSTERING_FEATURE_VERSION = os.getenv("CLUSTERING_FEATURE_VERSION", os.getenv("RFM_FEATURE_VERSION", config.clustering.feature_version))
+RFM_FEATURE_VERSION = CLUSTERING_FEATURE_VERSION
 CHURN_FEATURE_VERSION = os.getenv("CHURN_FEATURE_VERSION", config.churn.feature_version)
 CHURN_DECISION_THRESHOLD = float(os.getenv("CHURN_DECISION_THRESHOLD", config.churn.classification_threshold))
 

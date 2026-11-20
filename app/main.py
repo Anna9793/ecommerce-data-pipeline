@@ -12,6 +12,7 @@ from app.schemas import (
     ClusterPredictionResponse,
     PredictionRequest,
     PredictionResponse,
+    ClusterFeatures,
     RFMFeatures,
     ChurnFeatures,
     ChurnPredictionRequest,
@@ -26,6 +27,7 @@ from app.service import (
     MODEL_VERSION,
     predict_churn_service,
     CHURN_MODEL_VERSION,
+    CLUSTERING_FEATURE_VERSION,
     RFM_FEATURE_VERSION,
     CHURN_FEATURE_VERSION,
 )
@@ -139,7 +141,7 @@ def predict_clustering_endpoint(request: ClusterPredictionRequest):
 
     # 2. Strict Pydantic validation: ensures all 3 RFM features exist with correct types
     try:
-        features = RFMFeatures(**raw_data)
+        features = ClusterFeatures(**raw_data)
     except ValidationError as err:
         raise HTTPException(
             status_code=422,
@@ -159,7 +161,7 @@ def predict_clustering_endpoint(request: ClusterPredictionRequest):
         "cluster": cluster,
         "label": label,
         "model_version": str(CLUSTERING_MODEL_VERSION),
-        "feature_version": str(RFM_FEATURE_VERSION),
+        "feature_version": str(CLUSTERING_FEATURE_VERSION),
         "response_time_ms": round(duration_ms, 2)
     }
 
