@@ -1,7 +1,7 @@
 import os
 import logging
 import pandas as pd
-from app.db_postgres import get_connection, release_connection, insert_prediction
+from app.db_postgres import get_connection, release_connection, insert_clustering_prediction
 
 def query_bigquery(query_str):
     from google.cloud import bigquery
@@ -20,7 +20,7 @@ def query_bigquery_scalar(query_str):
         return row[0]
     return None
 
-def get_total_predictions():
+def get_total_clustering_predictions():
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
         val = query_bigquery_scalar(f"SELECT COUNT(*) FROM `{project_id}.retail_data.predictions_log`")
@@ -29,7 +29,7 @@ def get_total_predictions():
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT COUNT(*) FROM predictions;")
+        cursor.execute("SELECT COUNT(*) FROM clustering_predictions;")
         count = cursor.fetchone()[0]
         return int(count)
     finally:
@@ -48,7 +48,7 @@ def get_average_response_time():
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT AVG(response_time_ms) FROM predictions;")
+        cursor.execute("SELECT AVG(response_time_ms) FROM clustering_predictions;")
         avg_response = cursor.fetchone()[0]
         return int(avg_response) if avg_response is not None else 0
     finally:
@@ -58,7 +58,7 @@ def get_average_response_time():
             pass
         release_connection(conn)
 
-def get_predictions_by_model_version():
+def get_clustering_predictions_by_model_version():
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
         query = f"""
@@ -77,7 +77,7 @@ def get_predictions_by_model_version():
         SELECT
             model_version,
             COUNT (*) as predictions
-        FROM predictions
+        FROM clustering_predictions
         GROUP BY model_version
         ORDER BY CAST(model_version AS INTEGER);
         """
@@ -86,7 +86,7 @@ def get_predictions_by_model_version():
     finally:
         release_connection(conn)
 
-def get_latest_predictions(limit=10):
+def get_latest_clustering_predictions(limit=10):
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
         query = f"""
@@ -101,7 +101,7 @@ def get_latest_predictions(limit=10):
     try:
         latest_query = f"""
         SELECT *
-        FROM predictions
+        FROM clustering_predictions
         ORDER BY created_at DESC
         LIMIT {limit};
         """
@@ -110,7 +110,7 @@ def get_latest_predictions(limit=10):
     finally:
         release_connection(conn)
 
-def get_segment_distribution():
+def get_clustering_segment_distribution():
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
         project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
         query = f"""
@@ -129,7 +129,7 @@ def get_segment_distribution():
         SELECT
             label,
             COUNT(*) as count
-        FROM predictions
+        FROM clustering_predictions
         GROUP BY label
         ORDER BY count DESC;
         """
@@ -138,8 +138,8 @@ def get_segment_distribution():
     finally:
         release_connection(conn)
 
-def save_prediction(record):
-    insert_prediction(record)
+def save_clustering_prediction(record):
+    insert_clustering_prediction(record)
 
 def get_total_churn_predictions():
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":

@@ -4,7 +4,7 @@ from typing import List
 
 class ClusteringConfig(BaseModel):
     experiment_name: str = "customer_segmentation"
-    feature_version: str = "rfm_v1"
+    feature_version: str = "clustering_v1"
     features: List[str] = ["recency", "frequency", "avg_order_value"]
     cluster_range: List[int] = [4]
     random_state: int = 42

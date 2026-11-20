@@ -94,15 +94,15 @@ def get_db_cursor(commit: bool = False):
             pass
         release_connection(conn)
 
-def insert_prediction(record):
+def insert_clustering_prediction(record):
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
-        from app.db_bigquery import insert_prediction_bigquery
-        return insert_prediction_bigquery(record)
+        from app.db_bigquery import insert_clustering_prediction_bigquery
+        return insert_clustering_prediction_bigquery(record)
 
     try:
         with get_db_cursor(commit=True) as cursor:
             cursor.execute("""
-                INSERT INTO predictions (
+                INSERT INTO clustering_predictions (
                     request_id,
                     customer_id,
                     recency,
@@ -128,7 +128,7 @@ def insert_prediction(record):
                 record.get("response_time_ms", None),
             ))
     except Exception:
-        logger.exception("Error inserting prediction")
+        logger.exception("Error inserting clustering prediction")
         raise
 
 def insert_churn_prediction(record):

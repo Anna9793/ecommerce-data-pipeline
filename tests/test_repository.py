@@ -5,9 +5,9 @@ os.environ["USE_BIGQUERY"] = "false"
 from unittest.mock import patch, MagicMock
 import pandas as pd
 
-from app.repository import get_total_predictions
-from app.repository import get_latest_predictions
-from app.repository import get_segment_distribution
+from app.repository import get_total_clustering_predictions
+from app.repository import get_latest_clustering_predictions
+from app.repository import get_clustering_segment_distribution
 
 @patch("app.repository.get_connection")
 def test_get_total_predictions_returns_integer(mock_conn):
@@ -16,7 +16,7 @@ def test_get_total_predictions_returns_integer(mock_conn):
     mock_cursor.fetchone.return_value = (10,)
     mock_conn.return_value.cursor.return_value = mock_cursor
 
-    count = get_total_predictions()
+    count = get_total_clustering_predictions()
 
     assert isinstance(count, int)
     assert count == 10
@@ -29,7 +29,7 @@ def test_get_latest_predictions_returns_dataframe(mock_conn):
             {"cluster": 1, "label": "Test Segment"}
         ])
 
-        df = get_latest_predictions()
+        df = get_latest_clustering_predictions()
 
         assert isinstance(df, pd.DataFrame)
         assert "cluster" in df.columns
@@ -43,7 +43,7 @@ def test_get_segment_distribution_returns_dataframe(mock_conn):
             {"label": "Test Segment", "count": 5}
         ])
 
-        df = get_segment_distribution()
+        df = get_clustering_segment_distribution()
 
         assert isinstance(df, pd.DataFrame)
         assert "label" in df.columns

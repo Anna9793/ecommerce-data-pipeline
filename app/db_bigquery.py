@@ -17,9 +17,9 @@ def get_bigquery_client():
     return _bigquery_client
 
 
-def insert_prediction_bigquery(record: dict) -> None:
-    """Logs segmentation prediction to BigQuery predictions_log table."""
-    logger.info("Logging segmentation prediction to BigQuery predictions_log table")
+def insert_clustering_prediction_bigquery(record: dict) -> None:
+    """Logs clustering prediction to BigQuery predictions_log table."""
+    logger.info("Logging clustering prediction to BigQuery predictions_log table")
     record = record.copy()
     record["created_at"] = datetime.now(timezone.utc).isoformat()
     

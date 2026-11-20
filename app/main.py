@@ -26,7 +26,7 @@ from app.service import (
     CHURN_FEATURE_VERSION,
 )
 import sys
-from app.db_postgres import get_pool, insert_prediction, insert_churn_prediction, close_pool
+from app.db_postgres import get_pool, insert_clustering_prediction, insert_churn_prediction, close_pool
 
 # Configure application-wide logging
 logging.basicConfig(
@@ -158,7 +158,7 @@ def predict_clustering_endpoint(request: ClusterPredictionRequest):
         "response_time_ms": round(duration_ms, 2)
     }
 
-    insert_prediction(record)
+    insert_clustering_prediction(record)
 
     return ClusterPredictionResponse(
         customer_id=customer_id or "unknown",

@@ -8,11 +8,11 @@ API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 from app.service import CLUSTERING_MODEL_VERSION, CHURN_MODEL_VERSION
 from app.repository import (
-    get_total_predictions,
+    get_total_clustering_predictions,
     get_average_response_time,
-    get_latest_predictions,
-    get_segment_distribution,
-    get_predictions_by_model_version,
+    get_latest_clustering_predictions,
+    get_clustering_segment_distribution,
+    get_clustering_predictions_by_model_version,
     get_total_churn_predictions,
     get_average_churn_probability,
     get_latest_churn_predictions
@@ -79,21 +79,21 @@ tab1, tab2, tab3, tab4 = st.tabs([
 
 # TAB 1: CUSTOMER SEGMENTATION
 with tab1:
-    count = get_total_predictions()
+    count = get_total_clustering_predictions()
     avg_response = get_average_response_time()
     
     @st.cache_data
     def load_latest_predictions():
-        return get_latest_predictions()
+        return get_latest_clustering_predictions()
 
     latest_df = load_latest_predictions()
 
     @st.cache_data
     def load_segment_distribution():
-        return get_segment_distribution()
+        return get_clustering_segment_distribution()
 
     segment_df = load_segment_distribution()
-    version_df = get_predictions_by_model_version()
+    version_df = get_clustering_predictions_by_model_version()
 
     st.subheader("System Overview")
     col1, col2, col3 = st.columns(3)

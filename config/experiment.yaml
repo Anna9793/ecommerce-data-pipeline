@@ -1,7 +1,7 @@
 clustering:
   # k=4 locked for production stability (derived from silhouette analysis & business segments)
   experiment_name: "customer_segmentation"
-  feature_version: "rfm_v1"
+  feature_version: "clustering_v1"
   features: ["recency", "frequency", "avg_order_value"]
   cluster_range: [4]
   random_state: 42

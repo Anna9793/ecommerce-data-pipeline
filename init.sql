@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS predictions (
+CREATE TABLE IF NOT EXISTS clustering_predictions (
     request_id VARCHAR(50) PRIMARY KEY,
     customer_id VARCHAR(50),
     recency DOUBLE PRECISION,

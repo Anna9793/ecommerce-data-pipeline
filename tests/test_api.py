@@ -16,7 +16,7 @@ def test_health_check():
         "status":"healthy"
     }
 
-@patch("app.main.insert_prediction")
+@patch("app.main.insert_clustering_prediction")
 @patch("app.main.predict_clustering_service")
 def test_predict_endpoint_returns_prediction(
     mock_predict,
@@ -69,7 +69,7 @@ def test_predict_missing_features_rejects_with_422():
     assert "Incomplete Cluster feature set" in response.json()["detail"]
 
 
-@patch("app.main.insert_prediction")
+@patch("app.main.insert_clustering_prediction")
 @patch("app.main.predict_clustering_service")
 @patch("app.db_postgres.get_online_features")
 def test_predict_by_customer_id_via_feature_store_rfm(mock_get_features, mock_predict, mock_insert):
