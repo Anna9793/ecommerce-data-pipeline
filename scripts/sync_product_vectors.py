@@ -41,14 +41,18 @@ def sync_product_vectors():
         df = pd.read_csv(csv_path)
         
     # Silver layer guarantees clean schema and standardized columns
-    catalog = df.groupby("description").agg({
-        "stock_code": "first",
-        "unit_price": "median",
-        "invoice_no": "count"
-    }).reset_index()
-    
-    catalog.rename(columns={"invoice_no": "sales_count"}, inplace=True)
-    catalog = catalog.sort_values(by="sales_count", ascending=False).head(500)
+    catalog = (
+        df.groupby("description")
+        .agg({
+            "stock_code": "first",
+            "unit_price": "median",
+            "invoice_no": "count"
+        })
+        .reset_index()
+        .rename(columns={"invoice_no": "sales_count"})
+        .sort_values(by="sales_count", ascending=False)
+        .head(500)
+    )
     logging.info("Selected top %d unique products from Silver catalog.", len(catalog))
     
     # 2. BigQuery ML Automated Taxonomy Enrichment (Gemini 1.5 Flash)
