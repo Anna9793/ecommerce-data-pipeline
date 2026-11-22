@@ -45,7 +45,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS product_catalog_vectors (
     stock_code VARCHAR(50) PRIMARY KEY,
     description TEXT NOT NULL,
-    category VARCHAR(100),
+    category VARCHAR(100) NOT NULL,
     unit_price DOUBLE PRECISION NOT NULL,
     document_text TEXT NOT NULL,
     embedding vector(768),

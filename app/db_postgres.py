@@ -213,7 +213,7 @@ def init_pgvector_table():
                 CREATE TABLE IF NOT EXISTS product_catalog_vectors (
                     stock_code VARCHAR(50) PRIMARY KEY,
                     description TEXT NOT NULL,
-                    category VARCHAR(100),
+                    category VARCHAR(100) NOT NULL,
                     unit_price DOUBLE PRECISION NOT NULL,
                     document_text TEXT NOT NULL,
                     embedding vector(768),
@@ -263,7 +263,7 @@ def search_product_catalog_pgvector(query_vector: list, budget_max: float = None
                 results.append({
                     "stock_code": r[0],
                     "description": r[1],
-                    "category": r[2] if r[2] else "General Merchandise",
+                    "category": r[2],
                     "unit_price": float(r[3]),
                     "document_text": r[4],
                     "similarity": round(float(r[5]), 4)

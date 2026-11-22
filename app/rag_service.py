@@ -160,7 +160,7 @@ class ProductAdvisorService:
                 recs.append({
                     "stock_code": item.get("stock_code", ""),
                     "description": item.get("description", ""),
-                    "category": item.get("category", "General"),
+                    "category": item.get("category", "Gifts & Living"),
                     "unit_price": float(item.get("unit_price", 0.0)),
                     "similarity": float(item.get("similarity", 0.85)),
                     "why_recommended": item.get("why_recommended", "Matches your search criteria.")
@@ -181,7 +181,7 @@ class ProductAdvisorService:
                 recs.append({
                     "stock_code": p["stock_code"],
                     "description": p["description"],
-                    "category": p.get("category", "General"),
+                    "category": p.get("category", "Gifts & Living"),
                     "unit_price": p["unit_price"],
                     "similarity": p.get("similarity", 0.85),
                     "why_recommended": f"A top-tier {p.get('category', 'selection')} from {STORE_NAME} that fits your query '{query_text}'."

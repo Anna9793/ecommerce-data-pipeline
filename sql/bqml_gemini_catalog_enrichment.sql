@@ -63,12 +63,12 @@ SELECT
   stock_code,
   tenant_id,
   description,
-  COALESCE(JSON_EXTRACT_SCALAR(ml_generate_text_result, '$.category'), 'General Merchandise') AS category,
+  COALESCE(JSON_EXTRACT_SCALAR(ml_generate_text_result, '$.category'), 'Gifts & Living') AS category,
   COALESCE(JSON_EXTRACT_STRING_ARRAY(ml_generate_text_result, '$.tags'), ARRAY<STRING>['lifestyle', 'general']) AS tags,
   unit_price,
   CONCAT(
     'Product: ', description, 
-    ' | Category: ', COALESCE(JSON_EXTRACT_SCALAR(ml_generate_text_result, '$.category'), 'General Merchandise'), 
+    ' | Category: ', COALESCE(JSON_EXTRACT_SCALAR(ml_generate_text_result, '$.category'), 'Gifts & Living'), 
     ' | Price: $', CAST(ROUND(unit_price, 2) AS STRING),
     ' | Tags: ', ARRAY_TO_STRING(COALESCE(JSON_EXTRACT_STRING_ARRAY(ml_generate_text_result, '$.tags'), ARRAY<STRING>['gift', 'lifestyle']), ', ')
   ) AS document_text,
