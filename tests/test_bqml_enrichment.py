@@ -13,6 +13,8 @@ def test_bqml_sql_query_generation():
     assert "test-project.test_dataset.gemini_flash_remote" in text_sql
     assert "application/json" in text_sql
     assert "dim_products_enriched" in text_sql
+    for cat in STANDARD_CATEGORIES:
+        assert cat in text_sql
     
     # 2. Vector Embedding SQL
     vector_sql = service.build_bqml_vector_embedding_query()

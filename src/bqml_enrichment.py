@@ -36,6 +36,7 @@ class BigQueryMLEnrichmentService:
         """
         Builds the BigQuery ML SQL query executing ML.GENERATE_TEXT with Gemini 1.5 Flash.
         """
+        categories_str = ", ".join(STANDARD_CATEGORIES)
         return f"""
         CREATE OR REPLACE TABLE `{self.project_id}.{self.dataset_id}.{target_table}` AS
         WITH raw_prompts AS (
@@ -47,7 +48,7 @@ class BigQueryMLEnrichmentService:
             CONCAT(
               'You are an expert e-commerce catalog taxonomist. Analyze this product description: "', 
               description, 
-              '". Return a JSON object with "category" (e.g. Kitchen & Dining, Home Decor & Lighting, Holiday & Seasonal, Smart Audio & Acoustics, Performance Activewear, Storage & Accessories) and "tags" (array of 3-5 search keywords). JSON only.'
+              '". Return a JSON object with "category" (choose one of: {categories_str}) and "tags" (array of 3-5 search keywords). JSON only.'
             ) AS prompt
           FROM `{self.project_id}.{self.dataset_id}.{source_table}`
           WHERE description IS NOT NULL AND TRIM(description) != ''

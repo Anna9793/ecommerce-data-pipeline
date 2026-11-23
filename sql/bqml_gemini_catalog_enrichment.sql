@@ -34,7 +34,7 @@ WITH raw_prompts AS (
       'You are an expert e-commerce catalog taxonomist. Analyze this product description: "', 
       description, 
       '". Return a JSON object with: ',
-      '1. "category": a standard taxonomy category (e.g., Kitchen & Dining, Home Decor & Lighting, Holiday & Seasonal, Smart Audio & Acoustics, Performance Activewear, Ergonomic Workspace, Storage & Accessories, Kids & Toys). ',
+      '1. "category": a standard taxonomy category (e.g., Kitchen & Dining, Home Decor & Lighting, Holiday & Seasonal, Smart Audio & Acoustics, Performance Activewear, Ergonomic Workspace, Storage & Accessories, Party & Celebration, Kids & Toys, Gifts & Living). ',
       '2. "tags": an array of 3-5 descriptive lifestyle, styling, or functional search keywords. ',
       'JSON Output only.'
     ) AS prompt
