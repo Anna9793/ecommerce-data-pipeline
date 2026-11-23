@@ -129,3 +129,60 @@ def test_bqml_cloud_vector_embedding_fail_fast(mock_model_class, mock_vertex_ini
 
     with pytest.raises(RuntimeError, match="Vertex AI embedding generation failed"):
         service.generate_embeddings_batch(df_input)
+
+
+@patch("google.cloud.bigquery.Client")
+def test_bqml_execute_jobs_in_database(mock_bq_client_class):
+    mock_client = mock_bq_client_class.return_value
+    mock_query_job = MagicMock()
+    mock_client.query.return_value = mock_query_job
+
+    service = BigQueryMLEnrichmentService(project_id="test-project")
+    service.use_bigquery = True
+
+    # 1. Text Enrichment Job
+    service.execute_text_enrichment_job()
+    assert mock_client.query.called
+    assert mock_query_job.result.called
+
+    # 2. Vector Embedding Job
+    service.execute_vector_embedding_job()
+    assert mock_client.query.call_count >= 2
+
+    # 3. Fetch vectors
+    mock_df = pd.DataFrame([{"stock_code": "A1", "embedding": [0.1] * 768}])
+    mock_query_job.to_dataframe.return_value = mock_df
+    fetched = service.fetch_catalog_vectors()
+    assert len(fetched) == 1
+
+
+@patch("scripts.sync_product_vectors.execute_batch")
+@patch("scripts.sync_product_vectors.BigQueryMLEnrichmentService")
+@patch("scripts.sync_product_vectors.get_connection")
+@patch("scripts.sync_product_vectors.init_pgvector_table")
+def test_sync_product_vectors_success(mock_init_pg, mock_get_conn, mock_service_class, mock_execute_batch, monkeypatch):
+    monkeypatch.setenv("USE_BIGQUERY", "true")
+    mock_service = mock_service_class.return_value
+    mock_service.fetch_catalog_vectors.return_value = pd.DataFrame([
+        {
+            "stock_code": "85123A",
+            "description": "WHITE HANGING HEART T-LIGHT HOLDER",
+            "category": "Home Decor & Lighting",
+            "unit_price": 2.55,
+            "document_text": "Product: WHITE HANGING HEART T-LIGHT HOLDER...",
+            "embedding": [0.05] * 768
+        }
+    ])
+    
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_get_conn.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+
+    from scripts.sync_product_vectors import sync_product_vectors
+    sync_product_vectors()
+
+    assert mock_service.fetch_catalog_vectors.called
+    assert mock_execute_batch.called
+    assert mock_cursor.close.called
+    assert mock_conn.commit.called

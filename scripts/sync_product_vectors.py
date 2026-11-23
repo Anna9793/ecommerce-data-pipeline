@@ -15,61 +15,44 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 def sync_product_vectors():
     """
-    Extracts product catalog items from Silver layer, enriches taxonomy using
-    BigQuery ML (Gemini 1.5 Flash), generates 768d vector embeddings, and
-    upserts into PostgreSQL pgvector table.
+    Synchronizes precomputed 768d vector embeddings from BigQuery ML table
+    'retail_data.product_catalog_vectors' directly into PostgreSQL pgvector table.
+    
+    100% In-Database: BigQuery executes Gemini & Text-Embedding-004 transformations;
+    this sync worker only replicates pre-materialized vectors to local/online OLTP storage.
     """
-    logging.info("Starting Product Catalog Vector Sync via BigQuery ML (Silver Layer)...")
+    logging.info("Starting Product Catalog Vector Sync (BigQuery ML -> PostgreSQL pgvector)...")
     
     use_bigquery = os.getenv("USE_BIGQUERY", "false").lower() == "true"
     if not use_bigquery:
         raise RuntimeError(
-            "sync_product_vectors requires cloud mode (USE_BIGQUERY=true) to execute "
-            "BigQuery ML text categorization (Gemini) and vector embeddings (text-embedding-004)."
+            "sync_product_vectors requires cloud mode (USE_BIGQUERY=true). "
+            "BigQuery ML table 'retail_data.product_catalog_vectors' is required as source."
         )
 
-    logging.info("Querying Silver clean transactions from BigQuery view 'clean_transactions'...")
-    from google.cloud import bigquery
-    project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-    client = bigquery.Client(project=project_id)
-    query = f"""
-        SELECT stock_code, description, unit_price, invoice_no
-        FROM `{project_id}.retail_data.clean_transactions`
-    """
-    df = client.query(query).to_dataframe()
-        
-    # Silver layer guarantees clean schema and standardized columns
-    catalog = (
-        df.groupby("description")
-        .agg({
-            "stock_code": "first",
-            "unit_price": "median",
-            "invoice_no": "count"
-        })
-        .reset_index()
-        .rename(columns={"invoice_no": "sales_count"})
-        .sort_values(by="sales_count", ascending=False)
-        .head(500)
-    )
-    logging.info("Selected top %d unique products from Silver catalog.", len(catalog))
-    
-    # 2. BigQuery ML Automated Taxonomy Enrichment (Gemini 1.5 Flash)
+    # 1. Fetch precomputed vectors from BigQuery
     bqml_service = BigQueryMLEnrichmentService()
-    logging.info("Enriching %d products via BigQuery ML service...", len(catalog))
-    enriched_catalog = bqml_service.enrich_products_batch(catalog)
+    logging.info("Fetching precomputed product vectors from BigQuery table 'product_catalog_vectors'...")
+    vectorized_catalog = bqml_service.fetch_catalog_vectors()
+    logging.info("Retrieved %d vectorized products from BigQuery.", len(vectorized_catalog))
     
-    # 3. Generate 768d Dense Vector Embeddings (text-embedding-004)
-    logging.info("Generating 768-dimensional embeddings for product catalog...")
-    vectorized_catalog = bqml_service.generate_embeddings_batch(enriched_catalog)
-    
-    # 4. Upsert into PostgreSQL pgvector table
+    if vectorized_catalog.empty:
+        logging.warning("No product vectors found in BigQuery 'product_catalog_vectors'. Nothing to sync.")
+        return
+
+    # Validate schema contract
+    required_cols = ["stock_code", "description", "category", "unit_price", "document_text", "embedding"]
+    missing = set(required_cols) - set(vectorized_catalog.columns)
+    if missing:
+        raise ValueError(f"BigQuery product_catalog_vectors schema violation! Missing columns: {missing}")
+
+    # 2. Upsert into PostgreSQL pgvector table
     logging.info("Connecting to PostgreSQL to populate pgvector table 'product_catalog_vectors'...")
     init_pgvector_table()
     
     conn = get_connection()
     if not conn:
-        logging.error("Could not obtain PostgreSQL connection for vector sync.")
-        return
+        raise RuntimeError("Could not obtain PostgreSQL connection for vector sync.")
         
     try:
         cursor = conn.cursor()
@@ -77,7 +60,8 @@ def sync_product_vectors():
         # Prepare records
         records = []
         for _, row in vectorized_catalog.iterrows():
-            vec_str = "[" + ",".join(map(str, row["embedding"])) + "]"
+            vec_list = list(row["embedding"])
+            vec_str = "[" + ",".join(map(str, vec_list)) + "]"
             records.append((
                 str(row["stock_code"]),
                 str(row["description"]),

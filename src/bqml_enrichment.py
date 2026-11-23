@@ -183,3 +183,66 @@ class BigQueryMLEnrichmentService:
         except Exception as e:
             logging.error("Vertex AI embedding generation failed: %s", e)
             raise RuntimeError(f"Vertex AI embedding generation failed: {e}") from e
+
+    def execute_text_enrichment_job(self, source_table: str = "raw_products", target_table: str = "dim_products_enriched") -> None:
+        """
+        Executes BigQuery ML Gemini 1.5 Flash text enrichment query in-database.
+        """
+        if not self.use_bigquery:
+            raise RuntimeError("BigQueryMLEnrichmentService requires cloud mode (USE_BIGQUERY=true).")
+        try:
+            from google.cloud import bigquery
+            client = bigquery.Client(project=self.project_id)
+            query = self.build_bqml_text_enrichment_query(source_table=source_table, target_table=target_table)
+            logging.info("Executing BigQuery ML Gemini text enrichment job in project %s...", self.project_id)
+            query_job = client.query(query)
+            query_job.result()
+            logging.info("Successfully materialized %s.%s.%s in BigQuery.", self.project_id, self.dataset_id, target_table)
+        except Exception as e:
+            logging.error("BigQuery ML text enrichment job failed: %s", e)
+            raise RuntimeError(f"BigQuery ML text enrichment job failed: {e}") from e
+
+    def execute_vector_embedding_job(self, source_table: str = "dim_products_enriched", target_table: str = "product_catalog_vectors") -> None:
+        """
+        Executes BigQuery ML text-embedding-004 vector embedding query in-database.
+        """
+        if not self.use_bigquery:
+            raise RuntimeError("BigQueryMLEnrichmentService requires cloud mode (USE_BIGQUERY=true).")
+        try:
+            from google.cloud import bigquery
+            client = bigquery.Client(project=self.project_id)
+            query = self.build_bqml_vector_embedding_query(source_table=source_table, target_table=target_table)
+            logging.info("Executing BigQuery ML vector embedding job in project %s...", self.project_id)
+            query_job = client.query(query)
+            query_job.result()
+            logging.info("Successfully materialized %s.%s.%s in BigQuery.", self.project_id, self.dataset_id, target_table)
+        except Exception as e:
+            logging.error("BigQuery ML vector embedding job failed: %s", e)
+            raise RuntimeError(f"BigQuery ML vector embedding job failed: {e}") from e
+
+    def execute_catalog_vectorization_pipeline(self) -> None:
+        """
+        Executes the complete in-database BQML pipeline:
+        1. raw_products -> dim_products_enriched (Gemini)
+        2. dim_products_enriched -> product_catalog_vectors (Embeddings)
+        """
+        self.execute_text_enrichment_job()
+        self.execute_vector_embedding_job()
+
+    def fetch_catalog_vectors(self) -> pd.DataFrame:
+        """
+        Fetches the precomputed product vectors from BigQuery table product_catalog_vectors.
+        """
+        if not self.use_bigquery:
+            raise RuntimeError("BigQueryMLEnrichmentService requires cloud mode (USE_BIGQUERY=true).")
+        try:
+            from google.cloud import bigquery
+            client = bigquery.Client(project=self.project_id)
+            query = f"""
+                SELECT stock_code, description, category, unit_price, document_text, embedding
+                FROM `{self.project_id}.{self.dataset_id}.product_catalog_vectors`
+            """
+            return client.query(query).to_dataframe()
+        except Exception as e:
+            logging.error("Failed to fetch product catalog vectors from BigQuery: %s", e)
+            raise RuntimeError(f"Failed to fetch product catalog vectors from BigQuery: {e}") from e
