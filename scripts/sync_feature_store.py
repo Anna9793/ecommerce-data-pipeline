@@ -130,7 +130,7 @@ def sync_feature_store():
         df = load_gold(use_bigquery=use_bigquery)
     except Exception as e:
         logging.error("Failed to load RFM features for syncing: %s. Reading local fallback.", e)
-        df = pd.read_csv(GOLD_RFM)
+        df = pd.read_csv(GOLD_RFM, dtype={"customer_id": str})
         
     # Validate Feature Store data contract (fail-fast on schema violation)
     required_cols = [
@@ -141,23 +141,7 @@ def sync_feature_store():
     if missing:
         raise ValueError(f"Gold layer schema violation! Missing required feature columns: {missing}")
                 
-    # Clean customer_id formatting (safely handles numeric floats like 12345.0 and ints)
-    def clean_cust_id(val):
-        if pd.isna(val):
-            return ""
-        s = str(val).strip()
-        if s.lower() in ("nan", "none", ""):
-            return ""
-        try:
-            f = float(s)
-            if f.is_integer():
-                return str(int(f))
-            return s
-        except (ValueError, TypeError):
-            return s
-
-    df["customer_id"] = df["customer_id"].apply(clean_cust_id)
-    df = df[df["customer_id"] != ""]
+    df["customer_id"] = df["customer_id"].astype(str)
     
     # 2. Sync to appropriate Online Feature Store
     if use_bigquery:
