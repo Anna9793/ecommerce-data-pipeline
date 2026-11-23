@@ -29,7 +29,6 @@ WITH raw_prompts AS (
     stock_code,
     description,
     unit_price,
-    tenant_id,
     CONCAT(
       'You are an expert e-commerce catalog taxonomist. Analyze this product description: "', 
       description, 
@@ -46,7 +45,6 @@ llm_responses AS (
     stock_code,
     description,
     unit_price,
-    tenant_id,
     ml_generate_text_result
   FROM ML.GENERATE_TEXT(
     MODEL `retail_data.gemini_flash_remote`,
@@ -61,7 +59,6 @@ llm_responses AS (
 )
 SELECT
   stock_code,
-  tenant_id,
   description,
   COALESCE(JSON_EXTRACT_SCALAR(ml_generate_text_result, '$.category'), 'Gifts & Living') AS category,
   COALESCE(JSON_EXTRACT_STRING_ARRAY(ml_generate_text_result, '$.tags'), ARRAY<STRING>['lifestyle', 'general']) AS tags,
@@ -79,7 +76,6 @@ FROM llm_responses;
 CREATE OR REPLACE TABLE `retail_data.product_catalog_vectors` AS
 SELECT
   stock_code,
-  tenant_id,
   description,
   category,
   unit_price,
@@ -91,7 +87,6 @@ FROM ML.GENERATE_EMBEDDING(
   (
     SELECT 
       stock_code,
-      tenant_id,
       description,
       category,
       unit_price,

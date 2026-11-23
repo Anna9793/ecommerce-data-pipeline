@@ -33,13 +33,11 @@ def test_bqml_enrich_products_batch_local():
             "stock_code": "85123A",
             "description": "WHITE HANGING HEART T-LIGHT HOLDER",
             "unit_price": 2.55,
-            "tenant_id": "giftshop_uk"
         },
         {
             "stock_code": "SKU-TECH-001",
             "description": "Nordic Pro ANC Wireless Headphones",
             "unit_price": 149.00,
-            "tenant_id": "nordic_tech"
         }
     ])
 
@@ -68,7 +66,6 @@ def test_bqml_generate_embeddings_batch_local():
             "stock_code": "85123A",
             "description": "WHITE HANGING HEART T-LIGHT HOLDER",
             "unit_price": 2.55,
-            "tenant_id": "giftshop_uk"
         }
     ])
 
@@ -90,7 +87,6 @@ def test_bqml_cloud_mode_execution(mock_bq_client_class):
     mock_df_result = pd.DataFrame([
         {
             "stock_code": "85123A",
-            "tenant_id": "giftshop_uk",
             "description": "WHITE HANGING HEART T-LIGHT HOLDER",
             "category": "Home Decor & Lighting",
             "tags": ["lighting", "heart"],
@@ -103,7 +99,7 @@ def test_bqml_cloud_mode_execution(mock_bq_client_class):
     service = BigQueryMLEnrichmentService(project_id="test-project")
     service.use_bigquery = True
 
-    df_input = pd.DataFrame([{"stock_code": "85123A", "description": "WHITE HANGING HEART T-LIGHT HOLDER", "unit_price": 2.55, "tenant_id": "giftshop_uk"}])
+    df_input = pd.DataFrame([{"stock_code": "85123A", "description": "WHITE HANGING HEART T-LIGHT HOLDER", "unit_price": 2.55}])
     result = service.enrich_products_batch(df_input)
 
     assert len(result) == 1

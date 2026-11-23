@@ -48,7 +48,6 @@ SELECT
   stock_code,
   description,
   ROUND(AVG(unit_price), 2) AS unit_price,
-  'giftshop_uk' AS tenant_id,
   COUNT(*) AS sales_volume
 FROM `retail_data.clean_transactions`
 WHERE description IS NOT NULL AND TRIM(description) != ''

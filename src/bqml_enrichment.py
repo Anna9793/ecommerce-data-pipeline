@@ -44,7 +44,6 @@ class BigQueryMLEnrichmentService:
             stock_code,
             description,
             unit_price,
-            tenant_id,
             CONCAT(
               'You are an expert e-commerce catalog taxonomist. Analyze this product description: "', 
               description, 
@@ -58,7 +57,6 @@ class BigQueryMLEnrichmentService:
             stock_code,
             description,
             unit_price,
-            tenant_id,
             ml_generate_text_result
           FROM ML.GENERATE_TEXT(
             MODEL `{self.project_id}.{self.dataset_id}.gemini_flash_remote`,
@@ -73,7 +71,6 @@ class BigQueryMLEnrichmentService:
         )
         SELECT
           stock_code,
-          tenant_id,
           description,
           COALESCE(JSON_EXTRACT_SCALAR(ml_generate_text_result, '$.category'), 'Gifts & Living') AS category,
           COALESCE(JSON_EXTRACT_STRING_ARRAY(ml_generate_text_result, '$.tags'), ARRAY<STRING>['lifestyle', 'general']) AS tags,
@@ -96,7 +93,6 @@ class BigQueryMLEnrichmentService:
         CREATE OR REPLACE TABLE `{self.project_id}.{self.dataset_id}.{target_table}` AS
         SELECT
           stock_code,
-          tenant_id,
           description,
           category,
           unit_price,
@@ -108,7 +104,6 @@ class BigQueryMLEnrichmentService:
           (
             SELECT 
               stock_code,
-              tenant_id,
               description,
               category,
               unit_price,
@@ -158,10 +153,9 @@ class BigQueryMLEnrichmentService:
         for _, row in df.iterrows():
             desc = str(row.get("description", "")).strip()
             price = float(row.get("unit_price", 0.0))
-            tenant = str(row.get("tenant_id", "giftshop_uk"))
             
-            cat, tags = self._classify_product_zero_shot(desc, tenant)
-            doc_text = f"Product: {desc} | Category: {cat} | Price: ${price:.2f} | Store: {tenant} | Tags: {tags}"
+            cat, tags = self._classify_product_zero_shot(desc)
+            doc_text = f"Product: {desc} | Category: {cat} | Price: ${price:.2f} | Tags: {tags}"
             
             categories.append(cat)
             tags_list.append(tags.split(", "))
@@ -214,22 +208,20 @@ class BigQueryMLEnrichmentService:
         df["embedding"] = embeddings
         return df
 
-    def _classify_product_zero_shot(self, desc: str, tenant_id: str) -> Tuple[str, str]:
+    def _classify_product_zero_shot(self, desc: str) -> Tuple[str, str]:
         """
         Semantic rule engine emulating Gemini 1.5 Flash taxonomy resolution for local execution.
         """
         d = desc.upper()
-        if tenant_id in ("nordic_tech", "shopify"):
-            if any(k in d for k in ["HEADPHONE", "EARBUD", "AUDIO", "SPEAKER", "SOUND", "ANC"]):
-                return "Smart Audio & Acoustics", "wireless audio, ANC acoustic, studio sound, bluetooth"
-            elif any(k in d for k in ["KEYBOARD", "MOUSE", "STAND", "RGB", "DESK", "GAMING", "ERGONOMIC"]):
-                return "Ergonomic Workspace", "mechanical keyboard, ergonomic setup, workspace gear, desk accessories"
-            elif any(k in d for k in ["HOODIE", "PARKA", "SOCK", "THERMAL", "RUNNING", "MERINO", "GORE-TEX"]):
-                return "Performance Activewear", "scandinavian activewear, thermal performance, outdoor outerwear"
-            elif any(k in d for k in ["WATCH", "BOTTLE", "GADGET", "TITANIUM"]):
-                return "Smart Wearables", "titanium smartwatch, smart lifestyle gadgets, fitness gear"
+        # Tech & Workspace Taxonomy
+        if any(k in d for k in ["HEADPHONE", "EARBUD", "AUDIO", "SPEAKER", "SOUND", "ANC"]):
+            return "Smart Audio & Acoustics", "wireless audio, ANC acoustic, studio sound, bluetooth"
+        elif any(k in d for k in ["KEYBOARD", "MOUSE", "STAND", "RGB", "DESK", "GAMING", "ERGONOMIC"]):
+            return "Ergonomic Workspace", "mechanical keyboard, ergonomic setup, workspace gear, desk accessories"
+        elif any(k in d for k in ["HOODIE", "PARKA", "SOCK", "THERMAL", "RUNNING", "MERINO", "GORE-TEX"]):
+            return "Performance Activewear", "scandinavian activewear, thermal performance, outdoor outerwear"
 
-        # General / GiftShop UK Taxonomy
+        # General E-Commerce Taxonomy
         if any(k in d for k in ["TEA", "MUG", "CUP", "PLATE", "BOWL", "CAKE", "BAKING", "CUTLERY", "JAR", "BOTTLE", "DISH", "FORK", "SPOON"]):
             return "Kitchen & Dining", "kitchenware, cookware, cozy tea time, dining, tableware, host gifts"
         elif any(k in d for k in ["HEART", "LIGHT", "CANDLE", "CLOCK", "FRAME", "MIRROR", "CUSHION", "HANGING", "SIGN", "LANTERN", "VASE"]):
