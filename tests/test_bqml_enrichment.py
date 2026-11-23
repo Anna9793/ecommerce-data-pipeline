@@ -24,40 +24,7 @@ def test_bqml_sql_query_generation():
     assert "product_catalog_vectors" in vector_sql
 
 
-def test_bqml_enrich_products_batch_local():
-    service = BigQueryMLEnrichmentService(project_id="test-project")
-    service.use_bigquery = False
-
-    df_raw = pd.DataFrame([
-        {
-            "stock_code": "85123A",
-            "description": "WHITE HANGING HEART T-LIGHT HOLDER",
-            "unit_price": 2.55,
-        },
-        {
-            "stock_code": "SKU-TECH-001",
-            "description": "Nordic Pro ANC Wireless Headphones",
-            "unit_price": 149.00,
-        }
-    ])
-
-    enriched_df = service.enrich_products_batch(df_raw)
-    
-    assert len(enriched_df) == 2
-    assert "category" in enriched_df.columns
-    assert "tags" in enriched_df.columns
-    assert "document_text" in enriched_df.columns
-    
-    # Check UK GiftShop category classification
-    assert enriched_df.iloc[0]["category"] == "Home Decor & Lighting"
-    assert "Product: WHITE HANGING HEART T-LIGHT HOLDER" in enriched_df.iloc[0]["document_text"]
-    
-    # Check Nordic Tech category classification
-    assert enriched_df.iloc[1]["category"] == "Smart Audio & Acoustics"
-    assert "Nordic Pro ANC Wireless Headphones" in enriched_df.iloc[1]["document_text"]
-
-
-def test_bqml_generate_embeddings_batch_local():
+def test_bqml_fail_fast_when_not_in_cloud_mode():
     service = BigQueryMLEnrichmentService(project_id="test-project")
     service.use_bigquery = False
 
@@ -69,16 +36,15 @@ def test_bqml_generate_embeddings_batch_local():
         }
     ])
 
-    enriched_df = service.enrich_products_batch(df_raw)
-    vectorized_df = service.generate_embeddings_batch(enriched_df)
-    
-    assert "embedding" in vectorized_df.columns
-    assert len(vectorized_df["embedding"].iloc[0]) == 768
-    assert isinstance(vectorized_df["embedding"].iloc[0][0], float)
+    with pytest.raises(RuntimeError, match="requires cloud mode"):
+        service.enrich_products_batch(df_raw)
+
+    with pytest.raises(RuntimeError, match="requires cloud mode"):
+        service.generate_embeddings_batch(df_raw)
 
 
 @patch("google.cloud.bigquery.Client")
-def test_bqml_cloud_mode_execution(mock_bq_client_class):
+def test_bqml_cloud_enrichment_execution(mock_bq_client_class):
     mock_client = mock_bq_client_class.return_value
     mock_query_job = MagicMock()
     mock_client.query.return_value = mock_query_job
@@ -105,3 +71,61 @@ def test_bqml_cloud_mode_execution(mock_bq_client_class):
     assert len(result) == 1
     assert result.iloc[0]["category"] == "Home Decor & Lighting"
     assert mock_client.query.called
+
+
+@patch("google.cloud.bigquery.Client")
+def test_bqml_cloud_enrichment_fail_fast(mock_bq_client_class):
+    mock_client = mock_bq_client_class.return_value
+    mock_client.query.side_effect = Exception("BigQuery connection timeout / quota exceeded")
+
+    service = BigQueryMLEnrichmentService(project_id="test-project")
+    service.use_bigquery = True
+
+    df_input = pd.DataFrame([{"stock_code": "85123A", "description": "WHITE HANGING HEART T-LIGHT HOLDER", "unit_price": 2.55}])
+    
+    with pytest.raises(RuntimeError, match="BigQuery ML text enrichment failed"):
+        service.enrich_products_batch(df_input)
+
+
+@patch("vertexai.init")
+@patch("vertexai.language_models.TextEmbeddingModel.from_pretrained")
+def test_bqml_cloud_vector_embedding_execution(mock_model_class, mock_vertex_init):
+    mock_model = mock_model_class.return_value
+    mock_emb = MagicMock()
+    mock_emb.values = [0.05] * 768
+    mock_model.get_embeddings.return_value = [mock_emb]
+
+    service = BigQueryMLEnrichmentService(project_id="test-project")
+    service.use_bigquery = True
+
+    df_input = pd.DataFrame([
+        {
+            "stock_code": "85123A",
+            "document_text": "Product: WHITE HANGING HEART T-LIGHT HOLDER"
+        }
+    ])
+    result = service.generate_embeddings_batch(df_input)
+
+    assert "embedding" in result.columns
+    assert len(result["embedding"].iloc[0]) == 768
+    assert result["embedding"].iloc[0][0] == 0.05
+
+
+@patch("vertexai.init")
+@patch("vertexai.language_models.TextEmbeddingModel.from_pretrained")
+def test_bqml_cloud_vector_embedding_fail_fast(mock_model_class, mock_vertex_init):
+    mock_model = mock_model_class.return_value
+    mock_model.get_embeddings.side_effect = Exception("Vertex AI quota exceeded")
+
+    service = BigQueryMLEnrichmentService(project_id="test-project")
+    service.use_bigquery = True
+
+    df_input = pd.DataFrame([
+        {
+            "stock_code": "85123A",
+            "document_text": "Product: WHITE HANGING HEART T-LIGHT HOLDER"
+        }
+    ])
+
+    with pytest.raises(RuntimeError, match="Vertex AI embedding generation failed"):
+        service.generate_embeddings_batch(df_input)

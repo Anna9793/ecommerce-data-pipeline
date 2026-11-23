@@ -5,7 +5,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import logging
 import pandas as pd
-import numpy as np
 import psycopg2
 from psycopg2.extras import execute_batch
 from app.db_postgres import get_connection, release_connection, init_pgvector_table
@@ -22,23 +21,22 @@ def sync_product_vectors():
     """
     logging.info("Starting Product Catalog Vector Sync via BigQuery ML (Silver Layer)...")
     
-    # 1. Load unique products from Silver Layer (BigQuery in production vs CSV in local/CI)
-    if os.getenv("USE_BIGQUERY", "false").lower() == "true":
-        logging.info("Querying Silver clean transactions from BigQuery view 'clean_transactions'...")
-        from google.cloud import bigquery
-        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        client = bigquery.Client(project=project_id)
-        query = f"""
-            SELECT stock_code, description, unit_price, invoice_no
-            FROM `{project_id}.retail_data.clean_transactions`
-        """
-        df = client.query(query).to_dataframe()
-    else:
-        logging.info("Loading Silver product transactions from local CSV fallback...")
-        csv_path = "data/processed/silver_retail.csv"
-        if not os.path.exists(csv_path):
-            csv_path = "data/processed/clean_retail.csv"
-        df = pd.read_csv(csv_path)
+    use_bigquery = os.getenv("USE_BIGQUERY", "false").lower() == "true"
+    if not use_bigquery:
+        raise RuntimeError(
+            "sync_product_vectors requires cloud mode (USE_BIGQUERY=true) to execute "
+            "BigQuery ML text categorization (Gemini) and vector embeddings (text-embedding-004)."
+        )
+
+    logging.info("Querying Silver clean transactions from BigQuery view 'clean_transactions'...")
+    from google.cloud import bigquery
+    project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+    client = bigquery.Client(project=project_id)
+    query = f"""
+        SELECT stock_code, description, unit_price, invoice_no
+        FROM `{project_id}.retail_data.clean_transactions`
+    """
+    df = client.query(query).to_dataframe()
         
     # Silver layer guarantees clean schema and standardized columns
     catalog = (
@@ -106,6 +104,7 @@ def sync_product_vectors():
         logging.info("✅ Successfully upserted %d product vector records into PostgreSQL pgvector table!", len(records))
     except Exception as e:
         logging.error("Failed to sync pgvector catalog to PostgreSQL: %s", e)
+        raise RuntimeError(f"Failed to sync pgvector catalog to PostgreSQL: {e}") from e
     finally:
         release_connection(conn)
 

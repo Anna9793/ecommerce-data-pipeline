@@ -5,7 +5,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import logging
 import pandas as pd
-import numpy as np
 from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -125,12 +124,16 @@ def sync_feature_store():
     
     # 1. Load latest aggregated features
     from src.gold import load_gold
-    from config.paths import GOLD_RFM
-    try:
-        df = load_gold(use_bigquery=use_bigquery)
-    except Exception as e:
-        logging.error("Failed to load RFM features for syncing: %s. Reading local fallback.", e)
-        df = pd.read_csv(GOLD_RFM, dtype={"customer_id": str})
+    if use_bigquery:
+        logging.info("Cloud mode active: Loading RFM features from BigQuery...")
+        try:
+            df = load_gold(use_bigquery=True)
+        except Exception as e:
+            logging.error("Failed to load RFM features from BigQuery in cloud mode: %s", e)
+            raise RuntimeError(f"BigQuery Gold RFM load failed: {e}") from e
+    else:
+        logging.info("Local mode active: Loading RFM features from local Gold layer...")
+        df = load_gold(use_bigquery=False)
         
     # Validate Feature Store data contract (fail-fast on schema violation)
     required_cols = [
@@ -151,6 +154,7 @@ def sync_feature_store():
         
     if not success:
         logging.error("Feature store synchronization failed.")
+        raise RuntimeError("Feature store synchronization failed.")
         
 if __name__ == "__main__":
     sync_feature_store()

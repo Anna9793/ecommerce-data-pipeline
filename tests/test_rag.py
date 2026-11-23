@@ -106,3 +106,18 @@ def test_product_advisor_fallback_search(mock_gen_model, mock_embed_model, mock_
     
     assert len(results) > 0
     assert all(p["unit_price"] <= 10.0 for p in results)
+
+
+@patch("app.rag_service.vertexai.init")
+@patch("app.rag_service.TextEmbeddingModel.from_pretrained")
+@patch("app.rag_service.GenerativeModel")
+def test_product_advisor_embedding_fail_fast(mock_gen_model, mock_embed_model, mock_vertex, monkeypatch):
+    monkeypatch.setenv("USE_BIGQUERY", "true")
+    mock_instance = mock_embed_model.return_value
+    mock_instance.get_embeddings.side_effect = Exception("Vertex AI quota exceeded")
+
+    from app.rag_service import ProductAdvisorService
+    service = ProductAdvisorService()
+    
+    with pytest.raises(RuntimeError, match="Vertex AI query embedding failed"):
+        service.get_query_embedding("any search query")

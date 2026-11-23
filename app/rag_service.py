@@ -1,7 +1,6 @@
 import os
 import json
 import logging
-import numpy as np
 from typing import Optional, List
 from pydantic import BaseModel, Field
 import vertexai
@@ -69,29 +68,31 @@ class ProductAdvisorService:
             self.embedding_model = None
             self.gemini_model = None
 
-    def get_query_embedding(self, query_text: str) -> list:
-        """Generates a 768-dimensional embedding for user query."""
+    def get_query_embedding(self, query_text: str) -> Optional[List[float]]:
+        """
+        Generates a 768-dimensional embedding for user query using Vertex AI text-embedding-004.
+        Fails fast if Vertex AI fails in cloud mode.
+        """
         if self.embedding_model:
             try:
                 inputs = [TextEmbeddingInput(query_text, "RETRIEVAL_QUERY")]
                 embeddings = self.embedding_model.get_embeddings(inputs)
                 return embeddings[0].values
             except Exception as e:
-                logger.warning("Vertex query embedding failed: %s. Using deterministic fallback.", e)
+                logger.error("Vertex query embedding failed: %s", e)
+                raise RuntimeError(f"Vertex AI query embedding failed: {e}") from e
                 
-        # Deterministic fallback embedding
-        seed = sum(ord(c) for c in query_text) % 10000
-        rng = np.random.RandomState(seed)
-        v = rng.randn(768).astype(np.float32)
-        v /= np.linalg.norm(v)
-        return v.tolist()
+        return None
 
     def search_products(self, query_text: str, budget_max: Optional[float] = None, top_k: int = 4) -> list:
         """Retrieves top products from pgvector filtered by catalog and optional budget."""
-        query_vector = self.get_query_embedding(query_text)
-        results = search_product_catalog_pgvector(query_vector, budget_max=budget_max, top_k=top_k)
+        results = None
+        if self.embedding_model:
+            query_vector = self.get_query_embedding(query_text)
+            if query_vector:
+                results = search_product_catalog_pgvector(query_vector, budget_max=budget_max, top_k=top_k)
         
-        # If pgvector is offline or empty, use deterministic in-memory fallback
+        # If running in local mode (no embedding model) or pgvector is offline/empty, use deterministic catalog fallback
         if not results:
             catalog = FALLBACK_CATALOG
             if budget_max:
