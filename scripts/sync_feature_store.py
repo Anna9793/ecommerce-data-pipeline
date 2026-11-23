@@ -132,19 +132,14 @@ def sync_feature_store():
         logging.error("Failed to load RFM features for syncing: %s. Reading local fallback.", e)
         df = pd.read_csv(GOLD_RFM)
         
-    # Ensure columns exist
-    required_cols = ["customer_id", "recency", "frequency", "avg_order_value", "spending_velocity", "cancellation_rate", "preferred_shopping_hour"]
-    for col in required_cols:
-        if col not in df.columns:
-            # Inject defaults if missing
-            if col == "spending_velocity":
-                df[col] = 1.0
-            elif col == "cancellation_rate":
-                df[col] = 0.0
-            elif col == "preferred_shopping_hour":
-                df[col] = 12
-            else:
-                df[col] = 0.0
+    # Validate Feature Store data contract (fail-fast on schema violation)
+    required_cols = [
+        "customer_id", "recency", "frequency", "avg_order_value",
+        "spending_velocity", "cancellation_rate", "preferred_shopping_hour"
+    ]
+    missing = set(required_cols) - set(df.columns)
+    if missing:
+        raise ValueError(f"Gold layer schema violation! Missing required feature columns: {missing}")
                 
     # Clean customer_id formatting (safely handles numeric floats like 12345.0 and ints)
     def clean_cust_id(val):
