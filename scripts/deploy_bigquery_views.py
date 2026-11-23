@@ -39,6 +39,7 @@ def deploy_medallion_views(project_id: str = None) -> None:
 
     logging.info("✅ Successfully deployed BigQuery Medallion views:")
     logging.info("   - Silver: %s.retail_data.clean_transactions", project_id)
+    logging.info("   - Silver: %s.retail_data.raw_products", project_id)
     logging.info("   - Gold:   %s.retail_data.customer_features", project_id)
 
 

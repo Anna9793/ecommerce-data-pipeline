@@ -187,5 +187,6 @@ def test_deploy_medallion_views(mock_bq_client):
     assert mock_client_instance.query.called
     executed_sql = mock_client_instance.query.call_args[0][0]
     assert "clean_transactions" in executed_sql
+    assert "raw_products" in executed_sql
     assert "customer_features" in executed_sql
     assert mock_query_job.result.called

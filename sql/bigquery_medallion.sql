@@ -36,6 +36,26 @@ WHERE CustomerID IS NOT NULL
 
 
 -- ------------------------------------------------------------------------------
+-- 1.1 SILVER LAYER: Deduplicated Product Catalog (raw_products)
+-- Source: retail_data.clean_transactions (Silver)
+-- Guarantees:
+--   - Deduplicated unique product descriptions
+--   - Representative stock_code and average unit_price
+--   - Standard input source for BigQuery ML Gemini enrichment
+-- ------------------------------------------------------------------------------
+CREATE OR REPLACE VIEW `retail_data.raw_products` AS
+SELECT
+  stock_code,
+  description,
+  ROUND(AVG(unit_price), 2) AS unit_price,
+  'giftshop_uk' AS tenant_id,
+  COUNT(*) AS sales_volume
+FROM `retail_data.clean_transactions`
+WHERE description IS NOT NULL AND TRIM(description) != ''
+GROUP BY stock_code, description;
+
+
+-- ------------------------------------------------------------------------------
 -- 2. GOLD LAYER: Analytical Feature Store for ML & Segmentation
 -- Source: retail_data.clean_transactions (Silver)
 -- Guarantees:
