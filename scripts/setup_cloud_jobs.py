@@ -286,15 +286,12 @@ def setup_all(context: Dict[str, str], dry_run: bool = False) -> None:
     """Orchestrates provisioning of all Pub/Sub topics, Cloud Run Jobs, Subscriptions, and Schedulers."""
     logging.info("Starting GCP batch & event-driven infrastructure setup for project %s (%s)...", context["project_id"], context["location"])
 
-    # 1. Enable Required APIs
-    enable_required_apis(context, dry_run=dry_run)
-
-    # 2. Pub/Sub Topics
+    # 1. Pub/Sub Topics
     topics = ["catalog-updates", "features-updates"]
     for t in topics:
         provision_pubsub_topic(t, context, dry_run=dry_run)
 
-    # 3. Cloud Run Jobs
+    # 2. Cloud Run Jobs
     jobs = [
         ("sync-features-job", "scripts/sync_feature_store.py"),
         ("sync-vectors-job", "scripts/sync_product_vectors.py"),
@@ -303,7 +300,7 @@ def setup_all(context: Dict[str, str], dry_run: bool = False) -> None:
     for job_name, script in jobs:
         provision_cloud_run_job(job_name, script, context, dry_run=dry_run)
 
-    # 4. Pub/Sub Push Subscriptions (Event-Driven Trigger to Cloud Run Jobs)
+    # 3. Pub/Sub Push Subscriptions (Event-Driven Trigger to Cloud Run Jobs)
     subscriptions = [
         ("sub-catalog-updates", "catalog-updates", "sync-vectors-job"),
         ("sub-features-updates", "features-updates", "sync-features-job"),
@@ -311,7 +308,7 @@ def setup_all(context: Dict[str, str], dry_run: bool = False) -> None:
     for sub_name, topic, target_job in subscriptions:
         provision_pubsub_push_subscription(sub_name, topic, target_job, context, dry_run=dry_run)
 
-    # 5. Cloud Scheduler (Failsafe & Periodic Monitoring via REST API)
+    # 4. Cloud Scheduler (Failsafe & Periodic Monitoring via REST API)
     provision_scheduler_job("trigger-drift-monitor", "drift-monitor-job", "0 0 * * 0", context, dry_run=dry_run)
 
     logging.info("✅ All batch jobs, Pub/Sub topics, Push Subscriptions, and Schedulers configured successfully.")
@@ -320,14 +317,20 @@ def setup_all(context: Dict[str, str], dry_run: bool = False) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Setup Cloud Run Jobs, Pub/Sub topics, and event-driven triggers.")
     parser.add_argument("--dry-run", action="store_true", help="Log commands without executing them.")
+    parser.add_argument("--enable-apis", action="store_true", help="One-time project setup: Enable required GCP APIs.")
     parser.add_argument("--jobs-only", action="store_true", help="Only provision Cloud Run Jobs.")
     parser.add_argument("--schedulers-only", action="store_true", help="Only provision Cloud Scheduler jobs.")
     parser.add_argument("--run-job", choices=["features", "vectors", "drift"], help="Directly execute a Cloud Run Job on GCP.")
+
     parser.add_argument("--publish", choices=["catalog", "features"], help="Publish a test event to trigger the respective job.")
     parser.add_argument("--message", default='{"event": "manual_trigger", "source": "setup_script"}', help="JSON message payload for --publish.")
     args = parser.parse_args()
 
     context = get_gcp_context()
+
+    if args.enable_apis:
+        enable_required_apis(context, dry_run=args.dry_run)
+        return
 
     if args.run_job:
         job_map = {
@@ -353,11 +356,12 @@ def main():
             provision_cloud_run_job(job_name, script, context, dry_run=args.dry_run)
         return
 
-    if args.schedulers-only if hasattr(args, "schedulers_only") else False:
+    if args.schedulers_only:
         provision_scheduler_job("trigger-drift-monitor", "drift-monitor-job", "0 0 * * 0", context, dry_run=args.dry_run)
         return
 
     setup_all(context, dry_run=args.dry_run)
+
 
 
 if __name__ == "__main__":

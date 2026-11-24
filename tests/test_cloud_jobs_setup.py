@@ -173,12 +173,11 @@ def test_publish_event(mock_run_cmd):
     assert "catalog-updates" in pub_args
 
 
-@patch("scripts.setup_cloud_jobs.enable_required_apis")
 @patch("scripts.setup_cloud_jobs.provision_pubsub_topic")
 @patch("scripts.setup_cloud_jobs.provision_cloud_run_job")
 @patch("scripts.setup_cloud_jobs.provision_pubsub_push_subscription")
 @patch("scripts.setup_cloud_jobs.provision_scheduler_job")
-def test_setup_all(mock_sched, mock_sub, mock_job, mock_topic, mock_apis):
+def test_setup_all(mock_sched, mock_sub, mock_job, mock_topic):
     ctx = {
         "project_id": "test-project",
         "location": "us-central1",
@@ -186,8 +185,8 @@ def test_setup_all(mock_sched, mock_sub, mock_job, mock_topic, mock_apis):
         "service_account": "test-sa",
     }
     setup_all(ctx, dry_run=True)
-    assert mock_apis.called
     assert mock_topic.call_count == 2
     assert mock_job.call_count == 3
     assert mock_sub.call_count == 2
     assert mock_sched.call_count == 1
+

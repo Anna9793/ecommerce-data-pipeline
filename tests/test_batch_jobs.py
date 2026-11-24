@@ -10,8 +10,8 @@ from scripts.run_drift_monitor import evaluate_drift_and_retrain
 
 @patch("scripts.sync_all.sync_feature_store")
 @patch("scripts.sync_all.sync_product_vectors")
-def test_sync_all_both_success(mock_sync_vectors, mock_sync_features):
-    results = sync_all(features=True, vectors=True)
+def test_sync_all_success(mock_sync_vectors, mock_sync_features):
+    results = sync_all()
     assert mock_sync_features.called
     assert mock_sync_vectors.called
     assert results["features"]["status"] == "success"
@@ -20,30 +20,10 @@ def test_sync_all_both_success(mock_sync_vectors, mock_sync_features):
 
 
 @patch("scripts.sync_all.sync_feature_store")
-@patch("scripts.sync_all.sync_product_vectors")
-def test_sync_all_features_only(mock_sync_vectors, mock_sync_features):
-    results = sync_all(features=True, vectors=False)
-    assert mock_sync_features.called
-    assert not mock_sync_vectors.called
-    assert "features" in results
-    assert "vectors" not in results
-
-
-@patch("scripts.sync_all.sync_feature_store")
-@patch("scripts.sync_all.sync_product_vectors")
-def test_sync_all_vectors_only(mock_sync_vectors, mock_sync_features):
-    results = sync_all(features=False, vectors=True)
-    assert not mock_sync_features.called
-    assert mock_sync_vectors.called
-    assert "features" not in results
-    assert "vectors" in results
-
-
-@patch("scripts.sync_all.sync_feature_store")
 def test_sync_all_feature_failure_fail_fast(mock_sync_features):
     mock_sync_features.side_effect = RuntimeError("Firestore down")
     with pytest.raises(RuntimeError, match="Feature store synchronization failed"):
-        sync_all(features=True, vectors=True)
+        sync_all()
 
 
 @patch("scripts.sync_all.sync_feature_store")
@@ -51,7 +31,8 @@ def test_sync_all_feature_failure_fail_fast(mock_sync_features):
 def test_sync_all_vector_failure_fail_fast(mock_sync_vectors, mock_sync_features):
     mock_sync_vectors.side_effect = RuntimeError("PostgreSQL pgvector down")
     with pytest.raises(RuntimeError, match="Product vector synchronization failed"):
-        sync_all(features=True, vectors=True)
+        sync_all()
+
 
 
 # ==============================================================================
