@@ -34,13 +34,20 @@ def test_bronze_ingestion(tmp_path):
     assert loaded_df["InvoiceNo"].iloc[0] == 536365
 
 
-def test_run_bronze():
+def test_run_bronze(tmp_path):
     """
     Verifies that run_bronze returns a valid non-empty DataFrame.
     """
-    df = run_bronze()
-    assert isinstance(df, pd.DataFrame)
-    assert not df.empty
+    fake_bronze = tmp_path / "online_retail.csv"
+    fake_bronze.write_text(
+        "InvoiceNo,StockCode,Description,Quantity,InvoiceDate,UnitPrice,CustomerID,Country\n"
+        "536365,85123A,HEART,6,2010-12-01,2.55,17850,United Kingdom\n"
+    )
+    with patch("src.bronze.BRONZE_RETAIL", fake_bronze):
+        df = run_bronze()
+        assert isinstance(df, pd.DataFrame)
+        assert not df.empty
+        assert len(df) == 1
 
 
 @pytest.fixture
