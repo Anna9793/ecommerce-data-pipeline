@@ -67,20 +67,6 @@ def get_gcp_context() -> Dict[str, str]:
     }
 
 
-def enable_required_apis(context: Dict[str, str]) -> bool:
-    """Enables required GCP APIs for batch jobs, Pub/Sub, and Cloud Scheduler."""
-    project_id = context["project_id"]
-    apis = [
-        "run.googleapis.com",
-        "pubsub.googleapis.com",
-        "cloudscheduler.googleapis.com",
-        "eventarc.googleapis.com",
-    ]
-    logging.info("Ensuring required GCP APIs are enabled: %s...", ", ".join(apis))
-    cmd = ["gcloud", "services", "enable"] + apis + ["--project", project_id]
-    result = run_cmd(cmd)
-    return result is not None
-
 
 def provision_pubsub_topic(topic_name: str, context: Dict[str, str]) -> bool:
     """Ensures a Pub/Sub topic exists."""
@@ -288,7 +274,6 @@ def setup_all(context: Dict[str, str]) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Setup Cloud Run Jobs, Pub/Sub topics, and event-driven triggers.")
-    parser.add_argument("--enable-apis", action="store_true", help="One-time project setup: Enable required GCP APIs.")
     parser.add_argument("--jobs-only", action="store_true", help="Only provision Cloud Run Jobs.")
     parser.add_argument("--schedulers-only", action="store_true", help="Only provision Cloud Scheduler jobs.")
     parser.add_argument("--run-job", choices=["features", "vectors", "drift"], help="Directly execute a Cloud Run Job on GCP.")
@@ -297,10 +282,6 @@ def main():
     args = parser.parse_args()
 
     context = get_gcp_context()
-
-    if args.enable_apis:
-        enable_required_apis(context)
-        return
 
     if args.run_job:
         job_map = {

@@ -3,7 +3,6 @@ from unittest.mock import patch, MagicMock
 from scripts.setup_cloud_jobs import (
     run_cmd,
     get_gcp_context,
-    enable_required_apis,
     provision_pubsub_topic,
     provision_cloud_run_job,
     provision_pubsub_push_subscription,
@@ -48,14 +47,6 @@ def test_get_gcp_context(mock_run_cmd):
     assert "test-project" in ctx["image_tag"]
     assert "557448715890-compute@developer.gserviceaccount.com" in ctx["service_account"]
 
-
-@patch("scripts.setup_cloud_jobs.run_cmd")
-def test_enable_required_apis(mock_run_cmd):
-    mock_run_cmd.return_value = "success"
-    ctx = {"project_id": "test-project"}
-    success = enable_required_apis(ctx)
-    assert success is True
-    assert "enable" in mock_run_cmd.call_args[0][0]
 
 
 @patch("scripts.setup_cloud_jobs.run_cmd")
