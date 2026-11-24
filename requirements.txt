@@ -9,7 +9,7 @@ plotly>=5.18.0
 # Data Science, ML & Tracking
 pandas>=2.1.0
 numpy>=1.24.0
-scikit-learn==1.5.2
+scikit-learn==1.6.1
 scipy>=1.11.0
 matplotlib>=3.8.0
 openpyxl>=3.1.0

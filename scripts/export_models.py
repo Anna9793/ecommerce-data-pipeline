@@ -1,6 +1,4 @@
-"""
-Uploads trained model artifacts from models/ to Google Cloud Storage (GCS).
-"""
+"""Uploads trained model artifacts from models/ to Google Cloud Storage (GCS)."""
 import os
 import sys
 import logging
