@@ -4,11 +4,17 @@
 -- ==============================================================================
 
 -- 1. Create Cloud Resource Connection to Vertex AI
--- (Executed once per GCP Project / Region)
--- In Cloud Shell / Terraform:
+-- (Executed once per GCP Project / Region):
 -- bq mk --connection --location=us-central1 --project_id=anna-ml-pipeline --connection_type=CLOUD_RESOURCE vertex_ai_connection
+--
+-- Grant the Vertex AI User role to the automatically created BigQuery service account:
+-- gcloud projects add-iam-policy-binding anna-ml-pipeline \
+--   --member="serviceAccount:<CONNECTION_SERVICE_ACCOUNT>@gcp-sa-bigquery-condel.iam.gserviceaccount.com" \
+--   --role="roles/aiplatform.user"
 
 -- 2. Define Remote Gemini 1.5 Flash Model for Automated Taxonomy & Tags
+-- Note: BigQuery ML remote text models resolve to multi-region 'US' or regional 'us-central1'
+-- depending on dataset location. Ensure connection and dataset regions match.
 CREATE OR REPLACE MODEL `retail_data.gemini_flash_remote`
 REMOTE WITH CONNECTION `us-central1.vertex_ai_connection`
 OPTIONS(
@@ -16,6 +22,7 @@ OPTIONS(
 );
 
 -- 3. Define Remote Text Embedding Model (768-dimensional)
+-- Uses Vertex AI text-embedding-004 to produce high-density semantic representations
 CREATE OR REPLACE MODEL `retail_data.text_embedding_remote`
 REMOTE WITH CONNECTION `us-central1.vertex_ai_connection`
 OPTIONS(
