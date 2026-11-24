@@ -1,6 +1,6 @@
 import os
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from app.main import app
 
@@ -202,3 +202,29 @@ def test_lifespan_graceful_shutdown(mock_close_pool):
         resp = c.get("/")
         assert resp.status_code == 200
     assert mock_close_pool.called
+
+
+def test_trigger_job_endpoint_invalid_job():
+    resp = client.post("/events/trigger-job?job_name=invalid-job-name")
+    assert resp.status_code == 400
+    assert "Invalid job name" in resp.json()["detail"]
+
+
+@patch.dict("os.environ", {"USE_BIGQUERY": "false"})
+def test_trigger_job_endpoint_local_mode():
+    resp = client.post("/events/trigger-job?job_name=sync-vectors-job")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "success"
+    assert "Local simulation mode" in resp.json()["message"]
+
+
+
+@patch.dict("os.environ", {"USE_BIGQUERY": "true", "GCP_PROJECT": "anna-ml-pipeline", "GCP_LOCATION": "us-central1"})
+@patch("subprocess.run")
+def test_trigger_job_endpoint_cloud_mode(mock_subproc):
+    mock_subproc.return_value = MagicMock(stdout="Execution started\n")
+    resp = client.post("/events/trigger-job?job_name=sync-features-job")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "success"
+    assert "dispatched successfully" in resp.json()["message"]
+    assert mock_subproc.called

@@ -302,3 +302,43 @@ def check_and_retrain(background_tasks: BackgroundTasks, async_mode: bool = Fals
         }
         
     return evaluate_drift_and_retrain()
+
+
+@app.post("/events/trigger-job")
+def trigger_cloud_run_job_endpoint(job_name: str):
+    """
+    Triggers execution of a Google Cloud Run Job asynchronously.
+    Can be invoked manually, via Webhook, or by a Pub/Sub Push Subscription.
+    """
+    valid_jobs = ["sync-features-job", "sync-vectors-job", "drift-monitor-job"]
+    if job_name not in valid_jobs:
+        raise HTTPException(status_code=400, detail=f"Invalid job name '{job_name}'. Must be one of {valid_jobs}")
+
+    project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+    location = os.getenv("GCP_LOCATION", "us-central1")
+
+    if os.getenv("USE_BIGQUERY", "false").lower() == "true":
+        import subprocess
+        cmd = [
+            "gcloud", "run", "jobs", "execute", job_name,
+            "--region", location,
+            "--project", project_id,
+            "--async",
+            "--quiet",
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return {
+                "status": "success",
+                "message": f"Cloud Run Job '{job_name}' dispatched successfully.",
+                "output": result.stdout.strip(),
+            }
+        except subprocess.CalledProcessError as e:
+            logging.error("Failed to trigger Cloud Run Job %s: %s", job_name, e.stderr)
+            raise HTTPException(status_code=500, detail=f"Failed to trigger Cloud Run Job: {e.stderr}")
+    else:
+        return {
+            "status": "success",
+            "message": f"Local simulation mode: successfully triggered mock execution for '{job_name}'.",
+        }
+
