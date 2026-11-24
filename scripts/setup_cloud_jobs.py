@@ -1,20 +1,5 @@
-"""
-Automated provisioning of Cloud Run Jobs, Pub/Sub Topics, Push Subscriptions, and Cloud Scheduler.
+"""Provisions Cloud Run Jobs, Pub/Sub topics, Push Subscriptions, and Cloud Scheduler on GCP."""
 
-This script provisions:
-1. Pub/Sub Topics:
-   - catalog-updates: Triggers vector re-embedding & catalog sync to PostgreSQL pgvector.
-   - features-updates: Triggers feature store refresh to Firestore online store.
-2. Cloud Run Jobs:
-   - sync-features-job: Executes scripts/sync_feature_store.py
-   - sync-vectors-job: Executes scripts/sync_product_vectors.py
-   - drift-monitor-job: Executes scripts/run_drift_monitor.py
-3. Pub/Sub Push Subscriptions (Event-Driven Triggering via API Service):
-   - sub-catalog-updates -> pushes to https://api-service.../events/trigger-job?job_name=sync-vectors-job
-   - sub-features-updates -> pushes to https://api-service.../events/trigger-job?job_name=sync-features-job
-4. Cloud Scheduler (Failsafe & Monitoring via native Cloud Run Jobs REST API):
-   - trigger-drift-monitor: Weekly schedule (0 0 * * 0) -> drift-monitor-job:run
-"""
 
 import os
 import sys

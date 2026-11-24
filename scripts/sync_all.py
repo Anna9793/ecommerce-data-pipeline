@@ -1,9 +1,5 @@
-"""
-Unified Online Store Synchronization Worker (Reverse ETL).
-Orchestrates the sequential replication of BigQuery analytical layers to operational stores:
-1. Online Customer Feature Store (Gold RFM -> Firestore / PostgreSQL)
-2. Vector Product Catalog (BigQuery ML embeddings -> PostgreSQL pgvector)
-"""
+"""Unified Online Store Synchronization Worker (Reverse ETL) for features and vectors."""
+
 
 import os
 import sys
