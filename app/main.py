@@ -3,7 +3,7 @@ import uuid
 import time
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from pydantic import ValidationError
@@ -286,21 +286,12 @@ def get_drift_report():
 
 
 @app.post("/monitoring/check-and-retrain")
-def check_and_retrain(background_tasks: BackgroundTasks, async_mode: bool = False):
+def check_and_retrain():
     """
     Evaluates feature drift and triggers Vertex AI retraining if drift is detected.
-    Supports async_mode=true (returns 202 Accepted immediately and runs in background)
-    to prevent blocking HTTP workers during heavy statistical queries.
+    Returns synchronous evaluation status and Vertex AI console URL for ad-hoc inspection.
     """
     from scripts.run_drift_monitor import evaluate_drift_and_retrain
-    
-    if async_mode:
-        background_tasks.add_task(evaluate_drift_and_retrain)
-        return {
-            "status": "queued",
-            "message": "Feature drift evaluation and retraining check queued as background task."
-        }
-        
     return evaluate_drift_and_retrain()
 
 
