@@ -1,8 +1,4 @@
-"""
-Standalone Drift Monitoring and Automated Retraining Worker (Batch Job).
-Evaluates Kolmogorov-Smirnov / PSI feature drift between baseline and production distributions.
-If significant drift is detected, triggers a Vertex AI retraining pipeline.
-"""
+"""Drift monitoring and automated retraining worker for Cloud Run Jobs batch execution."""
 
 import os
 import sys
