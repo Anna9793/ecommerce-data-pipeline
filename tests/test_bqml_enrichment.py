@@ -186,3 +186,28 @@ def test_sync_product_vectors_success(mock_init_pg, mock_get_conn, mock_service_
     assert mock_execute_batch.called
     assert mock_cursor.close.called
     assert mock_conn.commit.called
+
+
+@patch("scripts.sync_product_vectors.BigQueryMLEnrichmentService")
+@patch("scripts.sync_product_vectors.get_connection")
+@patch("scripts.sync_product_vectors.init_pgvector_table")
+def test_sync_product_vectors_postgres_fallback(mock_init_pg, mock_get_conn, mock_service_class, monkeypatch):
+    monkeypatch.setenv("USE_BIGQUERY", "true")
+    mock_service = mock_service_class.return_value
+    mock_service.fetch_catalog_vectors.return_value = pd.DataFrame([
+        {
+            "stock_code": "85123A",
+            "description": "WHITE HANGING HEART T-LIGHT HOLDER",
+            "category": "Home Decor & Lighting",
+            "unit_price": 2.55,
+            "document_text": "Product: WHITE HANGING HEART T-LIGHT HOLDER...",
+            "embedding": [0.05] * 768
+        }
+    ])
+    mock_get_conn.side_effect = Exception("Connection refused to PostgreSQL")
+
+    from scripts.sync_product_vectors import sync_product_vectors
+    # Should not raise exception, gracefully fall back
+    sync_product_vectors()
+    assert mock_service.fetch_catalog_vectors.called
+

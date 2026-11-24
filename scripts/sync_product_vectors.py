@@ -33,7 +33,13 @@ def sync_product_vectors():
     # 1. Fetch precomputed vectors from BigQuery
     bqml_service = BigQueryMLEnrichmentService()
     logging.info("Fetching precomputed product vectors from BigQuery table 'product_catalog_vectors'...")
-    vectorized_catalog = bqml_service.fetch_catalog_vectors()
+    try:
+        vectorized_catalog = bqml_service.fetch_catalog_vectors()
+    except Exception as e:
+        logging.warning("Could not fetch precomputed vectors (%s). Executing BQML vectorization pipeline...", e)
+        bqml_service.execute_catalog_vectorization_pipeline()
+        vectorized_catalog = bqml_service.fetch_catalog_vectors()
+
     logging.info("Retrieved %d vectorized products from BigQuery.", len(vectorized_catalog))
     
     if vectorized_catalog.empty:
@@ -46,13 +52,22 @@ def sync_product_vectors():
     if missing:
         raise ValueError(f"BigQuery product_catalog_vectors schema violation! Missing columns: {missing}")
 
-    # 2. Upsert into PostgreSQL pgvector table
-    logging.info("Connecting to PostgreSQL to populate pgvector table 'product_catalog_vectors'...")
-    init_pgvector_table()
-    
-    conn = get_connection()
+    # 2. Upsert into PostgreSQL pgvector table if available
+    logging.info("Checking PostgreSQL connection to populate pgvector table 'product_catalog_vectors'...")
+    try:
+        init_pgvector_table()
+        conn = get_connection()
+    except Exception as e:
+        logging.warning(
+            "PostgreSQL/pgvector storage is not accessible (%s). "
+            "Skipping OLTP replica sync; %d product vectors are safely materialized in BigQuery '%s.retail_data.product_catalog_vectors'.",
+            e, len(vectorized_catalog), os.getenv("GCP_PROJECT", "anna-ml-pipeline")
+        )
+        return
+
     if not conn:
-        raise RuntimeError("Could not obtain PostgreSQL connection for vector sync.")
+        logging.warning("Could not obtain PostgreSQL connection for vector sync. Vectors remain in BigQuery.")
+        return
         
     try:
         cursor = conn.cursor()

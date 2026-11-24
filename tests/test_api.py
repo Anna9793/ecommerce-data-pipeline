@@ -220,11 +220,19 @@ def test_trigger_job_endpoint_local_mode():
 
 
 @patch.dict("os.environ", {"USE_BIGQUERY": "true", "GCP_PROJECT": "anna-ml-pipeline", "GCP_LOCATION": "us-central1"})
-@patch("subprocess.run")
-def test_trigger_job_endpoint_cloud_mode(mock_subproc):
-    mock_subproc.return_value = MagicMock(stdout="Execution started\n")
+@patch("google.auth.default")
+@patch("google.auth.transport.requests.AuthorizedSession.post")
+def test_trigger_job_endpoint_cloud_mode(mock_post, mock_auth_default):
+    mock_auth_default.return_value = (MagicMock(), "anna-ml-pipeline")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.text = '{"name": "execution-123"}'
+    mock_resp.json.return_value = {"name": "execution-123"}
+    mock_post.return_value = mock_resp
+
     resp = client.post("/events/trigger-job?job_name=sync-features-job")
     assert resp.status_code == 200
     assert resp.json()["status"] == "success"
     assert "dispatched successfully" in resp.json()["message"]
-    assert mock_subproc.called
+    assert mock_post.called
+    assert "sync-features-job:run" in mock_post.call_args[0][0]

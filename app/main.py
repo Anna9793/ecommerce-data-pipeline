@@ -318,24 +318,27 @@ def trigger_cloud_run_job_endpoint(job_name: str):
     location = os.getenv("GCP_LOCATION", "us-central1")
 
     if os.getenv("USE_BIGQUERY", "false").lower() == "true":
-        import subprocess
-        cmd = [
-            "gcloud", "run", "jobs", "execute", job_name,
-            "--region", location,
-            "--project", project_id,
-            "--async",
-            "--quiet",
-        ]
+        import google.auth
+        from google.auth.transport.requests import AuthorizedSession
+
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            credentials, _ = google.auth.default()
+            authed_session = AuthorizedSession(credentials)
+            url = f"https://{location}-run.googleapis.com/v2/projects/{project_id}/locations/{location}/jobs/{job_name}:run"
+            response = authed_session.post(url)
+            if response.status_code not in (200, 202):
+                logging.error("Failed to trigger Cloud Run Job %s: %s %s", job_name, response.status_code, response.text)
+                raise HTTPException(status_code=response.status_code, detail=f"Failed to trigger Cloud Run Job: {response.text}")
             return {
                 "status": "success",
-                "message": f"Cloud Run Job '{job_name}' dispatched successfully.",
-                "output": result.stdout.strip(),
+                "message": f"Cloud Run Job '{job_name}' dispatched successfully via Google Cloud REST API.",
+                "execution": response.json() if response.text else {},
             }
-        except subprocess.CalledProcessError as e:
-            logging.error("Failed to trigger Cloud Run Job %s: %s", job_name, e.stderr)
-            raise HTTPException(status_code=500, detail=f"Failed to trigger Cloud Run Job: {e.stderr}")
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                raise
+            logging.error("Exception triggering Cloud Run Job %s: %s", job_name, e)
+            raise HTTPException(status_code=500, detail=f"Failed to trigger Cloud Run Job: {e}")
     else:
         return {
             "status": "success",

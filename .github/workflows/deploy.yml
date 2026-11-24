@@ -66,9 +66,9 @@ jobs:
             --set-env-vars USE_BIGQUERY=true,GCP_PROJECT=anna-ml-pipeline,GOOGLE_CLOUD_PROJECT=anna-ml-pipeline,API_URL=$API_URL,GCS_BUCKET=anna-ml-pipeline-bucket \
             --region us-central1
 
-      - name: Deploy Batch Cloud Run Jobs
+      - name: Deploy Batch Cloud Run Jobs, Subscriptions & Schedulers
         run: |
-          python scripts/setup_cloud_jobs.py --jobs-only
+          python scripts/setup_cloud_jobs.py
 
 
 
