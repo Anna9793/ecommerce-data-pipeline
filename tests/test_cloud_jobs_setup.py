@@ -14,15 +14,10 @@ from scripts.setup_cloud_jobs import (
 )
 
 
-def test_run_cmd_dry_run():
-    res = run_cmd(["echo", "hello"], dry_run=True)
-    assert res == "DRY_RUN_SUCCESS"
-
-
 @patch("subprocess.run")
 def test_run_cmd_success(mock_subproc):
     mock_subproc.return_value = MagicMock(stdout="ok\n")
-    res = run_cmd(["echo", "hello"], dry_run=False)
+    res = run_cmd(["echo", "hello"])
     assert res == "ok"
     assert mock_subproc.called
 
@@ -31,7 +26,7 @@ def test_run_cmd_success(mock_subproc):
 def test_run_cmd_failure_not_check_exists(mock_subproc):
     import subprocess
     mock_subproc.side_effect = subprocess.CalledProcessError(1, ["cmd"], stderr="Error")
-    res = run_cmd(["cmd"], dry_run=False, check_exists=False)
+    res = run_cmd(["cmd"], check_exists=False)
     assert res is None
 
 
@@ -39,7 +34,7 @@ def test_run_cmd_failure_not_check_exists(mock_subproc):
 def test_run_cmd_failure_check_exists_silent(mock_subproc):
     import subprocess
     mock_subproc.side_effect = subprocess.CalledProcessError(1, ["cmd"], stderr="Not found")
-    res = run_cmd(["cmd"], dry_run=False, check_exists=True)
+    res = run_cmd(["cmd"], check_exists=True)
     assert res is None
 
 
@@ -184,9 +179,8 @@ def test_setup_all(mock_sched, mock_sub, mock_job, mock_topic):
         "image_tag": "test-img",
         "service_account": "test-sa",
     }
-    setup_all(ctx, dry_run=True)
+    setup_all(ctx)
     assert mock_topic.call_count == 2
     assert mock_job.call_count == 3
     assert mock_sub.call_count == 2
     assert mock_sched.call_count == 1
-
