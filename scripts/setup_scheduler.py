@@ -42,7 +42,7 @@ def setup_scheduler():
         sys.exit(1)
         
     logging.info("Resolved API Service URL: %s", api_url)
-    webhook_url = f"{api_url}/monitoring/check-and-retrain"
+    webhook_url = f"{api_url}/monitoring/check-and-retrain?async_mode=true"
     
     # Resolve GCP project number to construct default compute service account
     logging.info("Resolving project number for project: %s...", project_id)

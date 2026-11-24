@@ -3,7 +3,7 @@ import uuid
 import time
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 
 from pydantic import ValidationError
@@ -286,26 +286,19 @@ def get_drift_report():
 
 
 @app.post("/monitoring/check-and-retrain")
-def check_and_retrain():
-    from src.monitoring import calculate_feature_drift
-    report = calculate_feature_drift()
+def check_and_retrain(background_tasks: BackgroundTasks, async_mode: bool = False):
+    """
+    Evaluates feature drift and triggers Vertex AI retraining if drift is detected.
+    Supports async_mode=true (returns 202 Accepted immediately and runs in background)
+    to prevent blocking HTTP workers during heavy statistical queries.
+    """
+    from scripts.run_drift_monitor import evaluate_drift_and_retrain
     
-    if report.get("drift_detected", False):
-        logger.info("Data drift detected! Launching automated retraining pipeline...")
-        from scripts.train_on_vertex import submit_vertex_training_job
-        job_name = submit_vertex_training_job()
-        project_id = os.getenv("GCP_PROJECT", "anna-ml-pipeline")
-        location = os.getenv("GCP_LOCATION", "us-central1")
-        console_url = f"https://console.cloud.google.com/vertex-ai/pipelines/locations/{location}/runs/{job_name}?project={project_id}"
+    if async_mode:
+        background_tasks.add_task(evaluate_drift_and_retrain)
         return {
-            "status": "drift_detected",
-            "message": "Data drift detected! Retraining pipeline submitted successfully.",
-            "job_name": job_name,
-            "console_url": console_url
+            "status": "queued",
+            "message": "Feature drift evaluation and retraining check queued as background task."
         }
-    else:
-        logger.info("Features are healthy. No retraining triggered.")
-        return {
-            "status": "healthy",
-            "message": "Features are healthy. Retraining is not required."
-        }
+        
+    return evaluate_drift_and_retrain()
