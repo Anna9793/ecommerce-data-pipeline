@@ -9,7 +9,10 @@ data/processed/silver_retail.csv
 data/processed/rfm_train_clusters.csv
 data/predictions
 mlruns/
-models/
+models/*
+!models/customer_segmentation_model.pkl
+!models/customer_churn_model.pkl
+
 .ipynb_checkpoints/
 notebooks/
 .DS_Store
