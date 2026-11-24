@@ -19,6 +19,8 @@ RUN PYTHONPATH=. pytest -n auto && touch .test_passed
 FROM builder AS final
 COPY --from=testrunner /app/.test_passed /app/.test_passed
 
+ENV PYTHONPATH=/app
+
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
