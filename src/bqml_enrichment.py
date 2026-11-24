@@ -199,47 +199,8 @@ class BigQueryMLEnrichmentService:
             query_job.result()
             logging.info("Successfully materialized %s.%s.%s in BigQuery.", self.project_id, self.dataset_id, target_table)
         except Exception as e:
-            logging.warning("BigQuery ML Gemini remote model failed (%s). Falling back to taxonomy heuristic enrichment...", e)
-            fallback_query = f"""
-            CREATE OR REPLACE TABLE `{self.project_id}.{self.dataset_id}.{target_table}` AS
-            SELECT
-              stock_code,
-              description,
-              CASE
-                WHEN REGEXP_CONTAINS(LOWER(description), r'mug|cup|plate|bowl|bottle|spoon|fork|knife|dish|kitchen|baking|teapot') THEN 'Kitchen & Dining'
-                WHEN REGEXP_CONTAINS(LOWER(description), r'light|lamp|candle|holder|frame|clock|mirror|cushion|curtain') THEN 'Home Decor & Lighting'
-                WHEN REGEXP_CONTAINS(LOWER(description), r'xmas|christmas|easter|halloween|holiday|santa|tree') THEN 'Holiday & Seasonal'
-                WHEN REGEXP_CONTAINS(LOWER(description), r'toy|game|doll|puzzle|plush|child|baby|kids') THEN 'Kids & Toys'
-                WHEN REGEXP_CONTAINS(LOWER(description), r'party|balloon|bunting|banner|celebrat|garland|confetti') THEN 'Party & Celebration'
-                WHEN REGEXP_CONTAINS(LOWER(description), r'bag|box|case|tin|basket|storage|cabinet|pouch') THEN 'Storage & Accessories'
-                ELSE 'Gifts & Living'
-              END AS category,
-              ARRAY<STRING>['retail', 'ecommerce', 'lifestyle'] AS tags,
-              unit_price,
-              CONCAT(
-                'Product: ', description,
-                ' | Category: ',
-                CASE
-                  WHEN REGEXP_CONTAINS(LOWER(description), r'mug|cup|plate|bowl|bottle|spoon|fork|knife|dish|kitchen|baking|teapot') THEN 'Kitchen & Dining'
-                  WHEN REGEXP_CONTAINS(LOWER(description), r'light|lamp|candle|holder|frame|clock|mirror|cushion|curtain') THEN 'Home Decor & Lighting'
-                  WHEN REGEXP_CONTAINS(LOWER(description), r'xmas|christmas|easter|halloween|holiday|santa|tree') THEN 'Holiday & Seasonal'
-                  WHEN REGEXP_CONTAINS(LOWER(description), r'toy|game|doll|puzzle|plush|child|baby|kids') THEN 'Kids & Toys'
-                  WHEN REGEXP_CONTAINS(LOWER(description), r'party|balloon|bunting|banner|celebrat|garland|confetti') THEN 'Party & Celebration'
-                  WHEN REGEXP_CONTAINS(LOWER(description), r'bag|box|case|tin|basket|storage|cabinet|pouch') THEN 'Storage & Accessories'
-                  ELSE 'Gifts & Living'
-                END,
-                ' | Price: $', CAST(ROUND(unit_price, 2) AS STRING),
-                ' | Tags: retail, ecommerce, lifestyle'
-              ) AS document_text,
-              CURRENT_TIMESTAMP() AS enriched_at
-            FROM `{self.project_id}.{self.dataset_id}.{source_table}`;
-            """
-            try:
-                client.query(fallback_query).result()
-                logging.info("Successfully materialized %s.%s.%s using taxonomy heuristic enrichment.", self.project_id, self.dataset_id, target_table)
-            except Exception as fe:
-                logging.error("Fallback text enrichment failed: %s", fe)
-                raise RuntimeError(f"BigQuery ML text enrichment job failed: {e}") from e
+            logging.error("BigQuery ML text enrichment job failed: %s", e)
+            raise RuntimeError(f"BigQuery ML text enrichment job failed: {e}") from e
 
     def execute_vector_embedding_job(self, source_table: str = "dim_products_enriched", target_table: str = "product_catalog_vectors") -> None:
         """
