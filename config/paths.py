@@ -15,7 +15,6 @@ PROCESSED_DIR = DATA_DIR / "processed"
 PREDICTIONS_DIR = DATA_DIR / "predictions"
 MODELS_DIR = BASE_DIR / "models"
 CONFIG_DIR = BASE_DIR / "config"
-SQL_DIR = BASE_DIR / "sql"
 
 DIRECTORIES = [
     DATA_DIR,
@@ -24,7 +23,6 @@ DIRECTORIES = [
     PREDICTIONS_DIR,
     MODELS_DIR,
     CONFIG_DIR,
-    SQL_DIR
 ]
 
 # Crear directorios si no existen
@@ -45,5 +43,6 @@ CUSTOMER_CLUSTERS = PREDICTIONS_DIR / "customer_clusters.csv"
 CHURN_PREDICTIONS = PREDICTIONS_DIR / "customer_churn_predictions.csv"
 EXPERIMENT_CONFIG_PATH = CONFIG_DIR / "experiment.yaml"
 
-# 5. Scripts SQL de Infraestructura
-POSTGRES_INIT_SQL = SQL_DIR / "postgres_init.sql"
+# 5. Scripts SQL de Inicialización
+POSTGRES_INIT_SQL = BASE_DIR / "init.sql"
+INIT_SQL = POSTGRES_INIT_SQL

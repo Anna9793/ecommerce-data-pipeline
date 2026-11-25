@@ -7,7 +7,7 @@ def test_paths_definition_and_structure():
     """Verify that config.paths defines valid Path objects and required directories exist."""
     from config.paths import (
         BASE_DIR, DATA_DIR, RAW_DIR, PROCESSED_DIR, PREDICTIONS_DIR,
-        MODELS_DIR, CONFIG_DIR, SQL_DIR,
+        MODELS_DIR, CONFIG_DIR,
         RAW_EXCEL, BRONZE_RETAIL, SILVER_RETAIL, GOLD_RFM,
         SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL,
         CLUSTER_PROFILE, CUSTOMER_CLUSTERS, EXPERIMENT_CONFIG_PATH,
@@ -20,7 +20,6 @@ def test_paths_definition_and_structure():
     assert isinstance(PREDICTIONS_DIR, Path)
     assert isinstance(MODELS_DIR, Path)
     assert isinstance(CONFIG_DIR, Path)
-    assert isinstance(SQL_DIR, Path)
     assert isinstance(RAW_EXCEL, Path)
     assert isinstance(BRONZE_RETAIL, Path)
     assert isinstance(SILVER_RETAIL, Path)
@@ -39,5 +38,4 @@ def test_paths_definition_and_structure():
     assert PREDICTIONS_DIR.exists()
     assert MODELS_DIR.exists()
     assert CONFIG_DIR.exists()
-    assert SQL_DIR.exists()
     assert POSTGRES_INIT_SQL.exists()
