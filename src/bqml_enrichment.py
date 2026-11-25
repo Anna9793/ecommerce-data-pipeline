@@ -4,19 +4,11 @@ import logging
 import pandas as pd
 from typing import List, Dict, Optional, Tuple
 
-# Standard Category Taxonomy for E-Commerce Platform
-STANDARD_CATEGORIES = [
-    "Kitchen & Dining",
-    "Home Decor & Lighting",
-    "Holiday & Seasonal",
-    "Smart Audio & Acoustics",
-    "Performance Activewear",
-    "Ergonomic Workspace",
-    "Storage & Accessories",
-    "Party & Celebration",
-    "Kids & Toys",
-    "Gifts & Living"
-]
+from src.bq_queries import (
+    STANDARD_CATEGORIES,
+    build_text_enrichment_query,
+    build_vector_embedding_query,
+)
 
 
 class BigQueryMLEnrichmentService:
@@ -32,90 +24,23 @@ class BigQueryMLEnrichmentService:
         self.use_bigquery = os.getenv("USE_BIGQUERY", "false").lower() == "true"
 
     def build_bqml_text_enrichment_query(self, source_table: str = "raw_products", target_table: str = "dim_products_enriched") -> str:
-        """
-        Builds the BigQuery ML SQL query executing ML.GENERATE_TEXT with Gemini 1.5 Flash.
-        """
-        categories_str = ", ".join(STANDARD_CATEGORIES)
-        return f"""
-        CREATE OR REPLACE TABLE `{self.project_id}.{self.dataset_id}.{target_table}` AS
-        WITH raw_prompts AS (
-          SELECT 
-            stock_code,
-            description,
-            unit_price,
-            CONCAT(
-              'You are an expert e-commerce catalog taxonomist. Analyze this product description: "', 
-              description, 
-              '". Return a JSON object with "category" (choose one of: {categories_str}) and "tags" (array of 3-5 search keywords). JSON only.'
-            ) AS prompt
-          FROM `{self.project_id}.{self.dataset_id}.{source_table}`
-          WHERE description IS NOT NULL AND TRIM(description) != ''
-        ),
-        llm_responses AS (
-          SELECT 
-            stock_code,
-            description,
-            unit_price,
-            ml_generate_text_result
-          FROM ML.GENERATE_TEXT(
-            MODEL `{self.project_id}.{self.dataset_id}.gemini_flash_remote`,
-            TABLE raw_prompts,
-            STRUCT(
-              0.1 AS temperature,
-              128 AS max_output_tokens,
-              'application/json' AS response_mime_type,
-              TRUE AS flatten_json_output
-            )
-          )
+        """Builds the BigQuery ML SQL query executing ML.GENERATE_TEXT with Gemini 1.5 Flash."""
+        return build_text_enrichment_query(
+            project_id=self.project_id,
+            dataset_id=self.dataset_id,
+            source_table=source_table,
+            target_table=target_table,
+            categories=STANDARD_CATEGORIES,
         )
-        SELECT
-          stock_code,
-          description,
-          COALESCE(JSON_EXTRACT_SCALAR(ml_generate_text_result, '$.category'), 'Gifts & Living') AS category,
-          COALESCE(JSON_EXTRACT_STRING_ARRAY(ml_generate_text_result, '$.tags'), ARRAY<STRING>['lifestyle', 'general']) AS tags,
-          unit_price,
-          CONCAT(
-            'Product: ', description, 
-            ' | Category: ', COALESCE(JSON_EXTRACT_SCALAR(ml_generate_text_result, '$.category'), 'Gifts & Living'), 
-            ' | Price: $', CAST(ROUND(unit_price, 2) AS STRING),
-            ' | Tags: ', ARRAY_TO_STRING(COALESCE(JSON_EXTRACT_STRING_ARRAY(ml_generate_text_result, '$.tags'), ARRAY<STRING>['gift', 'lifestyle']), ', ')
-          ) AS document_text,
-          CURRENT_TIMESTAMP() AS enriched_at
-        FROM llm_responses;
-        """.strip()
 
     def build_bqml_vector_embedding_query(self, source_table: str = "dim_products_enriched", target_table: str = "product_catalog_vectors") -> str:
-        """
-        Builds the BigQuery ML SQL query executing ML.GENERATE_EMBEDDING with text-embedding-004.
-        """
-        return f"""
-        CREATE OR REPLACE TABLE `{self.project_id}.{self.dataset_id}.{target_table}` AS
-        SELECT
-          stock_code,
-          description,
-          category,
-          unit_price,
-          document_text,
-          ml_generate_embedding_result AS embedding,
-          CURRENT_TIMESTAMP() AS vectorized_at
-        FROM ML.GENERATE_EMBEDDING(
-          MODEL `{self.project_id}.{self.dataset_id}.text_embedding_remote`,
-          (
-            SELECT 
-              stock_code,
-              description,
-              category,
-              unit_price,
-              document_text,
-              document_text AS content
-            FROM `{self.project_id}.{self.dataset_id}.{source_table}`
-          ),
-          STRUCT(
-            'RETRIEVAL_DOCUMENT' AS task_type,
-            768 AS output_dimensionality
-          )
-        );
-        """.strip()
+        """Builds the BigQuery ML SQL query executing ML.GENERATE_EMBEDDING with text-embedding-004."""
+        return build_vector_embedding_query(
+            project_id=self.project_id,
+            dataset_id=self.dataset_id,
+            source_table=source_table,
+            target_table=target_table,
+        )
 
     def enrich_products_batch(self, df_products: pd.DataFrame) -> pd.DataFrame:
         """
