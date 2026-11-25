@@ -46,4 +46,4 @@ CHURN_PREDICTIONS = PREDICTIONS_DIR / "customer_churn_predictions.csv"
 EXPERIMENT_CONFIG_PATH = CONFIG_DIR / "experiment.yaml"
 
 # 5. Scripts SQL de Infraestructura
-BIGQUERY_MEDALLION_SQL = SQL_DIR / "bigquery_medallion.sql"
+POSTGRES_INIT_SQL = SQL_DIR / "postgres_init.sql"

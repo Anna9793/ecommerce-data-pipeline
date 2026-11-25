@@ -11,7 +11,7 @@ def test_paths_definition_and_structure():
         RAW_EXCEL, BRONZE_RETAIL, SILVER_RETAIL, GOLD_RFM,
         SEGMENTATION_MODEL_PKL, CHURN_MODEL_PKL,
         CLUSTER_PROFILE, CUSTOMER_CLUSTERS, EXPERIMENT_CONFIG_PATH,
-        BIGQUERY_MEDALLION_SQL
+        POSTGRES_INIT_SQL
     )
     assert isinstance(BASE_DIR, Path)
     assert isinstance(DATA_DIR, Path)
@@ -30,7 +30,7 @@ def test_paths_definition_and_structure():
     assert isinstance(CLUSTER_PROFILE, Path)
     assert isinstance(CUSTOMER_CLUSTERS, Path)
     assert isinstance(EXPERIMENT_CONFIG_PATH, Path)
-    assert isinstance(BIGQUERY_MEDALLION_SQL, Path)
+    assert isinstance(POSTGRES_INIT_SQL, Path)
 
     # Check directory existence
     assert DATA_DIR.exists()
@@ -40,4 +40,4 @@ def test_paths_definition_and_structure():
     assert MODELS_DIR.exists()
     assert CONFIG_DIR.exists()
     assert SQL_DIR.exists()
-    assert BIGQUERY_MEDALLION_SQL.exists()
+    assert POSTGRES_INIT_SQL.exists()
